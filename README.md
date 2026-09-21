@@ -5,10 +5,10 @@ Hesak is an Android-based assistive application designed to support Deaf and har
 Dr. Rehab Alahmadi
 
 ## Team Members
-Leen Mohammad Almuqhim
-Nora Abdullah Aluqaili
-Lubna Mohammed Alqifari
-Remas Salem Alayidh
+- Leen Mohammad Almuqhim
+- Nora Abdullah Aluqaili
+- Lubna Mohammed Alqifari
+- Remas Salem Alayidh
 
 ## Project
 Graduation Project
