@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'home_screen.dart';
+import '../core/theme/hesak_colors.dart';
+import '../core/theme/hesak_text_styles.dart';
+import 'main_shell.dart';
 
+/// The first screen the user sees when the app opens.
+/// Colors and text styles come from lib/core/theme.
+/// Shows the animated logo, then the tagline, then moves to the home screen.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -9,75 +14,121 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
+// TickerProviderStateMixin (not Single...) because we have two animation controllers.
 class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
+  // --- Sound wave animation ---
   late AnimationController _controller;
   late Animation<double> _waveAnimation;
 
- @override
-void initState() {
-  super.initState();
+  // --- Tagline animation ---
+  late AnimationController _taglineController;
+  late Animation<double> _taglineOpacity; // Fades the text from invisible to visible
+  late Animation<Offset> _taglineSlide; // Moves the text slightly upward while it appears
 
-  // Controls the sound wave animation
-  _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 700),
-  );
+  // Timers are stored so we can cancel them if the screen closes early.
+  Timer? _taglineTimer;
+  Timer? _navigationTimer;
 
-  // Defines the vertical scaling range of the sound waves
-  _waveAnimation = Tween<double>(
-    begin: 0.82,
-    end: 1.08,
-  ).animate(
-    CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    ),
-  );
+  @override
+  void initState() {
+    super.initState();
 
-  // Repeats the sound wave animation continuously
-  _controller.repeat(reverse: true);
+    // One full wave movement takes 700ms.
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
 
-  // Navigate to the home screen after displaying the splash screen
-  Timer(const Duration(seconds: 5), () {
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const HomeScreen(),
-        ),
-      );
-    }
-  });
-}
+    // The waves stretch vertically between 82% and 108% of their size.
+    _waveAnimation = Tween<double>(
+      begin: 0.82,
+      end: 1.08,
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeInOut, // Smooth start and end of each movement
+      ),
+    );
+
+    // Play forward, then backward, forever (like a pulsing sound wave).
+    _controller.repeat(reverse: true);
+
+    // The tagline takes 1.4 seconds to fully appear.
+    _taglineController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    );
+
+    // Opacity goes from 0 (transparent) to 1 (fully visible).
+    _taglineOpacity = CurvedAnimation(
+      parent: _taglineController,
+      curve: Curves.easeIn,
+    );
+
+    // Starts slightly below its final position, then slides up into place.
+    _taglineSlide = Tween<Offset>(
+      begin: const Offset(0, 0.4),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _taglineController,
+        curve: Curves.easeOut,
+      ),
+    );
+
+    // Wait 1.5 seconds after the logo appears, then show the tagline.
+    _taglineTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (mounted) _taglineController.forward();
+    });
+
+    // After 5 seconds, replace the splash screen with the home screen
+    // (pushReplacement means the user can't go back to the splash).
+    _navigationTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const HesakMainShell(),
+          ),
+        );
+      }
+    });
+  }
 
   @override
   void dispose() {
+    // Clean up timers and controllers to avoid memory leaks and errors.
+    _taglineTimer?.cancel();
+    _navigationTimer?.cancel();
     _controller.dispose();
+    _taglineController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Used to size the logo relative to the screen width.
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
+
+        // Soft purple gradient background.
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFF0E6FF),
-              Color(0xFFFCF9FF),
-              Color(0xFFF3E9FF),
-            ],
+            colors: HesakColors.splashGradient,
           ),
         ),
+
+        // Stack lets us place decorative shapes behind the logo.
         child: Stack(
           children: [
+            // Decorative curved shape in the top-left corner.
             Positioned(
               top: -90,
               left: -80,
@@ -85,7 +136,7 @@ void initState() {
                 width: 350,
                 height: 220,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFBFA3E8).withOpacity(0.18),
+                  color: HesakColors.splashShapeTop.withOpacity(0.18),
                   borderRadius: const BorderRadius.only(
                     bottomRight: Radius.circular(220),
                   ),
@@ -93,6 +144,7 @@ void initState() {
               ),
             ),
 
+            // Decorative curved shape in the bottom-right corner.
             Positioned(
               bottom: -100,
               right: -100,
@@ -100,7 +152,7 @@ void initState() {
                 width: 420,
                 height: 260,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFCAB3EE).withOpacity(0.20),
+                  color: HesakColors.splashShapeBottom.withOpacity(0.20),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(250),
                   ),
@@ -108,56 +160,88 @@ void initState() {
               ),
             ),
 
+            // Main content: logo on top, tagline below it.
             Center(
-              child: SizedBox(
-                width: screenWidth * 0.72,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
+              child: Column(
+                mainAxisSize: MainAxisSize.min, // Only take the height we need
+                children: [
+                  // ---------- Logo (ear + waves + end shape) ----------
+                  SizedBox(
+                    width: screenWidth * 0.72, // Logo takes 72% of screen width
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Ear image (27% of the logo width).
+                        Flexible(
+                          flex: 27,
+                          child: Transform.translate(
+                            offset: const Offset(18, -6), // Nudge to connect with the waves
+                            child: Image.asset(
+                              'assets/images/logo/splash_ear.png',
+                              width: 105,
+                            ),
+                          ),
+                        ),
 
-                    Flexible(
-                      flex: 27,
-                      child: Transform.translate(
-                        offset: const Offset(18, -6),
-                        child: Image.asset(
-                          'assets/images/logo/splash_ear.png',
-                          width: 105,
+                        // Animated sound waves (46% of the logo width).
+                        Flexible(
+                          flex: 46,
+                          child: AnimatedBuilder(
+                            animation: _waveAnimation,
+                            // Rebuilds every frame to stretch the waves vertically.
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scaleX: 1.0, // Width stays the same
+                                scaleY: _waveAnimation.value, // Height pulses
+                                alignment: Alignment.center,
+                                child: child,
+                              );
+                            },
+                            // Passed as child so the image isn't rebuilt every frame.
+                            child: Image.asset(
+                              'assets/images/logo/splash_waves.png',
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+
+                        // End shape of the logo (27% of the logo width).
+                        Flexible(
+                          flex: 27,
+                          child: Transform.translate(
+                            offset: const Offset(-8, 0), // Nudge left to close the gap
+                            child: Image.asset(
+                              'assets/images/logo/splash_end.png',
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Space between the logo and the tagline.
+                  const SizedBox(height: 28),
+
+                  // ---------- Tagline ----------
+                  // Slides up and fades in together.
+                  SlideTransition(
+                    position: _taglineSlide,
+                    child: FadeTransition(
+                      opacity: _taglineOpacity,
+                      child: SizedBox(
+                        width: screenWidth * 0.8,
+                        child: const Text(
+                          'لأن ما لا يسمع يستحق أن يدرك',
+                          textAlign: TextAlign.center,
+                          textDirection: TextDirection.rtl, // Arabic reads right-to-left
+                          style: HesakTextStyles.splashTagline,
                         ),
                       ),
                     ),
-
-                    Flexible(
-                      flex: 46,
-                      child: AnimatedBuilder(
-                        animation: _waveAnimation,
-                        builder: (context, child) {
-                          return Transform.scale(
-                            scaleX: 1.0,
-                            scaleY: _waveAnimation.value,
-                            alignment: Alignment.center,
-                            child: child,
-                          );
-                        },
-                        child: Image.asset(
-                          'assets/images/logo/splash_waves.png',
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-
-                    Flexible(
-                      flex: 27,
-                      child: Transform.translate(
-                        offset: const Offset(-8, 0),
-                        child: Image.asset(
-                          'assets/images/logo/splash_end.png',
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],
