@@ -169,6 +169,9 @@ class _SplashScreenState extends State<SplashScreen>
                   SizedBox(
                     width: screenWidth * 0.72, // Logo takes 72% of screen width
                     child: Row(
+                      // The logo is always ear -> waves -> end (left to right),
+                      // even though the app is Arabic (right-to-left).
+                      textDirection: TextDirection.ltr,
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
