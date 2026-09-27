@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/data/hesak_modes.dart';
 import '../core/theme/hesak_colors.dart';
+import '../services/auth_service.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'chats_screen.dart';
 import 'home_screen.dart';
@@ -39,8 +40,9 @@ class _HesakMainShellState extends State<HesakMainShell> {
   String _selectedModeId = HesakModeIds.general;
 
   // The user's name, shown in the home greeting.
-  // TODO: take it from the user's account / settings.
-  static const String _userName = 'رحاب';
+  // It's the name typed in "إنشاء حساب" (saved in AuthService).
+  // Empty when we don't know it yet (e.g. after login, until the server is connected).
+  final String _userName = AuthService.instance.currentUserName ?? '';
 
   @override
   Widget build(BuildContext context) {
@@ -56,11 +58,11 @@ class _HesakMainShellState extends State<HesakMainShell> {
       // The order here must match HesakNavTab: home, chats, modes, settings.
       body: IndexedStack(
         index: _selectedTab.index,
-        children: const [
+        children: [
           HomeScreen(userName: _userName),
-          ChatsScreen(),
-          ModesScreen(),
-          SettingsScreen(),
+          const ChatsScreen(),
+          const ModesScreen(),
+          const SettingsScreen(),
         ],
       ),
 
