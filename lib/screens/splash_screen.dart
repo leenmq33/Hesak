@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+
 import 'dart:async';
+
 import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_text_styles.dart';
-import 'main_shell.dart';
+import 'auth/auth_flow_screen.dart';
 
 /// The first screen the user sees when the app opens.
 /// Colors and text styles come from lib/core/theme.
-/// Shows the animated logo, then the tagline, then moves to the home screen.
+/// Shows the animated logo, then the tagline, then fades into the welcome screen.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -23,8 +25,10 @@ class _SplashScreenState extends State<SplashScreen>
 
   // --- Tagline animation ---
   late AnimationController _taglineController;
-  late Animation<double> _taglineOpacity; // Fades the text from invisible to visible
-  late Animation<Offset> _taglineSlide; // Moves the text slightly upward while it appears
+  late Animation<double>
+  _taglineOpacity; // Fades the text from invisible to visible
+  late Animation<Offset>
+  _taglineSlide; // Moves the text slightly upward while it appears
 
   // Timers are stored so we can cancel them if the screen closes early.
   Timer? _taglineTimer;
@@ -41,10 +45,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     // The waves stretch vertically between 82% and 108% of their size.
-    _waveAnimation = Tween<double>(
-      begin: 0.82,
-      end: 1.08,
-    ).animate(
+    _waveAnimation = Tween<double>(begin: 0.82, end: 1.08).animate(
       CurvedAnimation(
         parent: _controller,
         curve: Curves.easeInOut, // Smooth start and end of each movement
@@ -67,29 +68,28 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     // Starts slightly below its final position, then slides up into place.
-    _taglineSlide = Tween<Offset>(
-      begin: const Offset(0, 0.4),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _taglineController,
-        curve: Curves.easeOut,
-      ),
-    );
+    _taglineSlide = Tween<Offset>(begin: const Offset(0, 0.4), end: Offset.zero)
+        .animate(
+          CurvedAnimation(parent: _taglineController, curve: Curves.easeOut),
+        );
 
     // Wait 1.5 seconds after the logo appears, then show the tagline.
     _taglineTimer = Timer(const Duration(milliseconds: 1500), () {
       if (mounted) _taglineController.forward();
     });
 
-    // After 5 seconds, replace the splash screen with the home screen
+    // After 5 seconds, fade into the welcome screen (sign in / sign up).
+    // Both use the same purple background and logo spot, so it looks like one screen.
     // (pushReplacement means the user can't go back to the splash).
-    _navigationTimer = Timer(const Duration(seconds: 5), () {
+    _navigationTimer = Timer(const Duration(milliseconds: 5000), () {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (context) => const HesakMainShell(),
+          PageRouteBuilder(
+            transitionDuration: const Duration(milliseconds: 600),
+            pageBuilder: (_, __, ___) => const HesakAuthFlowScreen(),
+            transitionsBuilder: (_, animation, __, child) =>
+                FadeTransition(opacity: animation, child: child),
           ),
         );
       }
@@ -119,9 +119,10 @@ class _SplashScreenState extends State<SplashScreen>
         // Soft purple gradient background.
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: HesakColors.splashGradient,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors:
+                HesakColors.splashGradient, // Same purple as the welcome screen
           ),
         ),
 
@@ -179,7 +180,10 @@ class _SplashScreenState extends State<SplashScreen>
                         Flexible(
                           flex: 27,
                           child: Transform.translate(
-                            offset: const Offset(18, -6), // Nudge to connect with the waves
+                            offset: const Offset(
+                              18,
+                              -6,
+                            ), // Nudge to connect with the waves
                             child: Image.asset(
                               'assets/images/logo/splash_ear.png',
                               width: 105,
@@ -213,7 +217,10 @@ class _SplashScreenState extends State<SplashScreen>
                         Flexible(
                           flex: 27,
                           child: Transform.translate(
-                            offset: const Offset(-8, 0), // Nudge left to close the gap
+                            offset: const Offset(
+                              -8,
+                              0,
+                            ), // Nudge left to close the gap
                             child: Image.asset(
                               'assets/images/logo/splash_end.png',
                               fit: BoxFit.contain,
@@ -236,9 +243,10 @@ class _SplashScreenState extends State<SplashScreen>
                       child: SizedBox(
                         width: screenWidth * 0.8,
                         child: const Text(
-                          'لأن ما لا يسمع يستحق أن يدرك',
+                          'لأن ما لا يُسمع يَستحق أن يُدرك',
                           textAlign: TextAlign.center,
-                          textDirection: TextDirection.rtl, // Arabic reads right-to-left
+                          textDirection:
+                              TextDirection.rtl, // Arabic reads right-to-left
                           style: HesakTextStyles.splashTagline,
                         ),
                       ),

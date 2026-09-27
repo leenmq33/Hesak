@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'hesak_colors.dart';
 
 /// ALL text styles used in the Hesak app live here.
@@ -26,7 +27,7 @@ class HesakTextStyles {
     color: HesakColors.primaryDark,
   );
 
-  /// Splash tagline ("لأن ما لا يسمع يستحق أن يدرك"). 22 / SemiBold.
+  /// Splash tagline ("لأن ما لا يُسمع يَستحق أن يُدرك"). 22 / SemiBold.
   static const TextStyle splashTagline = TextStyle(
     fontFamily: fontFamily,
     fontSize: 22,
@@ -128,4 +129,98 @@ class HesakTextStyles {
     fontWeight: FontWeight.w700,
     color: HesakColors.urgent,
   );
+
+  // ---- Sign in / sign up screens ----
+
+  /// Title at the top of the white sheet ("تسجيل الدخول", "إنشاء حساب"). 20 / Bold.
+  static const TextStyle authSheetTitle = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.primaryDark,
+  );
+
+  /// Label above a text field ("البريد الإلكتروني:"). 17 / Bold.
+  static const TextStyle fieldLabel = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 17,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.textPrimary,
+  );
+
+  /// Text the user types in a field. 15 / Regular.
+  static const TextStyle fieldInput = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 15,
+    fontWeight: FontWeight.w400,
+    color: HesakColors.textPrimary,
+  );
+
+  /// Placeholder inside a field ("example@email.com"). 15 / Regular / grey.
+  static const TextStyle fieldHint = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 15,
+    fontWeight: FontWeight.w400,
+    color: HesakColors.fieldHint,
+  );
+
+  /// Error under a field ("البريد الإلكتروني غير صحيح"). 12 / Medium / red.
+  static const TextStyle fieldError = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+    color: HesakColors.urgent,
+  );
+
+  /// Text on the big rounded buttons. 18 / Bold / white.
+  static const TextStyle buttonLabel = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 18,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.onPrimary,
+  );
+
+  /// Text inside the pink note box. 11.5 / Medium.
+  static const TextStyle infoBanner = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 11.5,
+    fontWeight: FontWeight.w500,
+    color: HesakColors.infoBannerText,
+    height: 1.4,
+  );
+
+  /// One password rule ("8 خانات على الأقل"). 11.5 / Regular.
+  static const TextStyle passwordRule = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 11.5,
+    fontWeight: FontWeight.w400,
+    color: HesakColors.textSecondary,
+  );
+
+  /// Small grey text ("ليس لديك حساب؟"). 12.5 / Regular.
+  static const TextStyle authHint = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 12.5,
+    fontWeight: FontWeight.w400,
+    color: HesakColors.textMuted,
+  );
+
+  /// Small tappable link ("إنشاء حساب", "هل نسيت كلمة المرور؟"). 12.5 / Bold.
+  static const TextStyle authLink = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 12.5,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.primaryDark,
+  );
+
+  /// Text on the main glass button ("إنشاء حساب"). 18 / Bold / dark purple.
+  static const TextStyle glassButtonPrimaryLabel = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 18,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.primaryDark,
+  );
+
+  /// Text on the light glass button ("تسجيل الدخول"). 18 / Bold / white.
+  static const TextStyle glassButtonSecondaryLabel = buttonLabel;
 }

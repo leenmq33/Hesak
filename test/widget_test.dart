@@ -1,30 +1,29 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:hesak/main.dart';
 
+// =====================================================================
+//  Basic app test: the app opens without errors and shows the splash.
+//  Run it with:  flutter test
+// =====================================================================
+
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets(
+    'App opens on the splash screen, then goes to the welcome screen',
+    (tester) async {
+      // Open the app.
+      await tester.pumpWidget(const HesakApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+      // The splash tagline is on screen.
+      expect(find.text('لأن ما لا يُسمع يَستحق أن يُدرك'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+      // Wait for the splash (5 seconds) + the fade to the welcome screen,
+      // then let the welcome buttons appear (so no timer is left running).
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pump(const Duration(seconds: 1));
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
-  });
+      // The two welcome buttons are there.
+      expect(find.text('إنشاء حساب'), findsOneWidget);
+      expect(find.text('تسجيل الدخول'), findsOneWidget);
+    },
+  );
 }

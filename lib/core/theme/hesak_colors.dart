@@ -86,15 +86,87 @@ class HesakColors {
   static const Color urgent = Color(0xFFB3261E);
 
   // ---------------------------------------------------------------
-  // Splash screen only
+  // Splash + sign in / sign up screens
   // ---------------------------------------------------------------
 
-  /// Splash background gradient (top-left -> bottom-right).
-  static const List<Color> splashGradient = [
-    Color(0xFFF0E6FF),
-    Color(0xFFFCF9FF),
-    Color(0xFFF3E9FF),
-  ];
+  /// Purple background, lighter at the top (splash, welcome).
+  static const Color authGradientLight = Color(0xFFADA1BB);
+
+  /// Purple background, darker at the bottom (splash, welcome).
+  static const Color authGradientDark = Color(0xFF76638B);
+
+  /// Splash background gradient (top -> bottom). Same as the welcome screen,
+  /// so moving from the splash to the welcome buttons looks seamless.
+  static const List<Color> splashGradient = [authGradientLight, authGradientDark];
+
+  /// Main button (إنشاء حساب, تسجيل الدخول, التالي, حفظ).
+  static const Color buttonPrimary = Color(0xFF6B5578);
+
+  /// Lighter purple button (not used on the welcome screen anymore — the
+  /// welcome buttons are glass now). Kept for other pages that need it.
+  static const Color buttonSecondary = Color(0xFFB4A8C2);
+
+  /// Text on the lighter second button.
+  static const Color onButtonSecondary = Color(0xFFF6F2F9);
+
+  /// Grey fill of text fields (email, password ...).
+  static const Color fieldFill = Color(0xFFE8E7E8);
+
+  /// Placeholder text and icons inside text fields.
+  static const Color fieldHint = Color(0xFF8E8A93);
+
+  /// Light pink box with a note (e.g. "سيستخدم حسك هذا الصوت...").
+  static const Color infoBannerFill = Color(0xFFFFF5F5);
+
+  /// Border of the note box.
+  static const Color infoBannerBorder = Color(0xFFE3A1A8);
+
+  /// Text and icon of the note box.
+  static const Color infoBannerText = Color(0xFFA33A45);
+
+  /// Password rule that is met (green dot with a check).
+  static const Color passwordRuleMet = Color(0xFF5BAE7F);
+
+  /// Password rule that is not met yet (empty grey dot).
+  static const Color passwordRuleUnmet = Color(0xFFD9D6DD);
+
+  // ---- Moving (breathing) background of the sign in / sign up screens ----
+  // Only our purples: the background slowly shifts between these tones.
+
+  /// Top color of the moving background, moment A (= the light purple).
+  static const Color authBreathTopA = authGradientLight;
+
+  /// Top color of the moving background, moment B (a touch deeper purple).
+  static const Color authBreathTopB = Color(0xFF9C8DB0);
+
+  /// Bottom color of the moving background, moment A (= the dark purple).
+  static const Color authBreathBottomA = authGradientDark;
+
+  /// Bottom color of the moving background, moment B (= the button purple).
+  static const Color authBreathBottomB = buttonPrimary;
+
+  /// Soft light blobs that drift slowly over the moving background (~25% opacity).
+  static const Color authBreathGlow = Color(0x40E9E1F4);
+
+  /// Edge of those blobs (same color, fully transparent) so they fade out softly.
+  static const Color authBreathGlowEdge = Color(0x00E9E1F4);
+
+  // ---- Glass buttons on the welcome screen ----
+
+  /// "إنشاء حساب" (main): thick white glass (~62% opacity).
+  static const Color glassPrimaryFill = Color(0x9EFFFFFF);
+
+  /// Border of the main glass button (~90% white).
+  static const Color glassPrimaryBorder = Color(0xE6FFFFFF);
+
+  /// "تسجيل الدخول" (second): very light glass (~10% white).
+  static const Color glassSecondaryFill = Color(0x1AFFFFFF);
+
+  /// Border of the second glass button (~55% white).
+  static const Color glassSecondaryBorder = Color(0x8CFFFFFF);
+
+  /// Soft purple shadow under the main glass button.
+  static const Color glassShadow = Color(0x333F2A73);
 
   /// Splash decorative corner shape (top-left), used at 18% opacity.
   static const Color splashShapeTop = Color(0xFFBFA3E8);

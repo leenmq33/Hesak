@@ -33,7 +33,10 @@ class HomeScreen extends StatelessWidget {
       child: Column(
         children: [
           // Shared header: logo + waves + greeting on the right + divider.
-          HesakPageHeader.greeting(text: 'مرحبًا, $userName !'),
+          // No name yet -> just "مرحبًا !".
+          HesakPageHeader.greeting(
+            text: userName.isEmpty ? 'مرحبًا !' : 'مرحبًا, $userName !',
+          ),
 
           // Everything under the header (scrollable).
           const Expanded(child: _HomeTabContent()),
