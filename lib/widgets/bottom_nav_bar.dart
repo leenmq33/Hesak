@@ -48,6 +48,14 @@ class HesakBottomNavBar extends StatefulWidget {
   /// Called when the user taps "إضافة" (add a new mode).
   final VoidCallback? onAddModeTap;
 
+  /// Icon of the active mode for the middle button. Needed when the active mode
+  /// is NOT on the wheel (not starred). null = look it up in [modes].
+  final IconData? activeModeIcon;
+
+  /// For an active mode WITHOUT an icon: the first letter of its name,
+  /// shown in the middle button instead of an icon. null = show the icon.
+  final String? activeModeLetter;
+
   const HesakBottomNavBar({
     super.key,
     required this.selectedTab,
@@ -56,6 +64,8 @@ class HesakBottomNavBar extends StatefulWidget {
     this.selectedModeId,
     this.onModeSelected,
     this.onAddModeTap,
+    this.activeModeIcon,
+    this.activeModeLetter,
   });
 
   @override
@@ -302,6 +312,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
                       _buildWheelItem(
                         keyName: widget.modes[i].id,
                         icon: widget.modes[i].icon,
+                        letter: widget.modes[i].letter, // First letter for modes without an icon
                         label: widget.modes[i].label,
                         isActive: widget.selectedModeId == widget.modes[i].id,
                         onTap: () => _handleModeTap(widget.modes[i].id),
@@ -372,12 +383,19 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
             scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
             child: FadeTransition(opacity: animation, child: child),
           ),
-          child: Icon(
-            _activeModeIcon,
-            key: ValueKey(_activeModeIcon), // Tells the switcher the icon changed
-            color: HesakColors.onPrimary,
-            size: 36,
-          ),
+          // The active mode's icon, or its first letter when it has no icon.
+          child: widget.activeModeLetter != null
+              ? Text(
+                  widget.activeModeLetter!,
+                  key: ValueKey('letter_${widget.activeModeLetter}'), // Tells the switcher it changed
+                  style: HesakTextStyles.modeCircleLetter.copyWith(color: HesakColors.onPrimary, fontSize: 30),
+                )
+              : Icon(
+                  _activeModeIcon,
+                  key: ValueKey(_activeModeIcon), // Tells the switcher the icon changed
+                  color: HesakColors.onPrimary,
+                  size: 36,
+                ),
         ),
       ),
     );
@@ -385,6 +403,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
 
   /// Icon of the active mode. Falls back to the person icon (general mode).
   IconData get _activeModeIcon {
+    if (widget.activeModeIcon != null) return widget.activeModeIcon!;
     for (final mode in widget.modes) {
       if (mode.id == widget.selectedModeId) return mode.icon;
     }
@@ -442,6 +461,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
   Widget _buildWheelItem({
     required String keyName,
     required IconData icon,
+    String? letter, // Shown instead of the icon when set
     required String label,
     required bool isActive,
     required VoidCallback onTap,
@@ -495,11 +515,20 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
                         ),
                       ],
                     ),
-                    child: Icon(
-                      icon,
-                      size: 28,
-                      color: isActive ? HesakColors.primaryMuted : HesakColors.iconInactive,
-                    ),
+                    child: letter != null
+                        ? Center(
+                            child: Text(
+                              letter,
+                              style: HesakTextStyles.modeCircleLetter.copyWith(
+                                color: isActive ? HesakColors.primaryMuted : HesakColors.iconInactive,
+                              ),
+                            ),
+                          )
+                        : Icon(
+                            icon,
+                            size: 28,
+                            color: isActive ? HesakColors.primaryMuted : HesakColors.iconInactive,
+                          ),
                   ),
                   const SizedBox(height: 4),
                   Text(

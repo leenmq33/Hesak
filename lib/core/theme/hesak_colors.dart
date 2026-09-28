@@ -173,4 +173,36 @@ class HesakColors {
 
   /// Splash decorative corner shape (bottom-right), used at 20% opacity.
   static const Color splashShapeBottom = Color(0xFFCAB3EE);
+
+  // ---------------------------------------------------------------
+  // Modes page (الأوضاع)
+  // ---------------------------------------------------------------
+
+  /// Selected mode circle, selected chips, save buttons on the modes page.
+  /// Same deep purple as the listen button, so "selected / important" looks the same everywhere.
+  static const Color modeSelected = primary;
+
+  /// Soft ring around the selected mode circle.
+  static const Color modeSelectedRing = primaryLight;
+
+  /// Grey fill of a mode circle that is NOT selected.
+  static const Color modeUnselectedFill = Color(0xFFECEAEF);
+
+  /// Dark background of the small message at the bottom ("تمت إضافة ...").
+  static const Color toastBackground = textPrimary;
+
+  /// Delete buttons / delete confirmation (same red as errors).
+  static const Color danger = urgent;
+
+  /// Very light purple fill of the selected mode tile (top row of the modes page).
+  static const Color modeTileSelectedFill = Color(0xFFF7F3FB);
+
+  /// See-through white on the purple mode card header (icon circle, star button) (~18%).
+  static const Color modeHeaderOverlay = Color(0x2EFFFFFF);
+
+  /// Soft white text on the purple mode card header (schedule line) (~90%).
+  static const Color onModeHeaderSoft = Color(0xE6FFFFFF);
+
+  /// Green dot of "مفعّل الآن".
+  static const Color activeDot = passwordRuleMet;
 }

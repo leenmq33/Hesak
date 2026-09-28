@@ -14,6 +14,7 @@ import '../core/theme/hesak_text_styles.dart';
 /// Usage in any screen:
 ///   const HesakPageHeader(title: 'المحادثات'),          // centered page title
 ///   const HesakPageHeader.greeting(text: 'مرحبًا رحاب'), // greeting on the right
+///   HesakPageHeader(title: 'الأوضاع', onBack: () => Navigator.pop(context)), // + back arrow on the right
 class HesakPageHeader extends StatelessWidget {
   /// The text shown under the logo (page title or greeting).
   final String title;
@@ -21,13 +22,17 @@ class HesakPageHeader extends StatelessWidget {
   /// true = greeting style, aligned to the right. false = centered page title.
   final bool isGreeting;
 
+  /// Optional: shows a back arrow on the right (for inner pages). null = no arrow.
+  final VoidCallback? onBack;
+
   /// Centered page title (all pages except home).
-  const HesakPageHeader({super.key, required this.title}) : isGreeting = false;
+  const HesakPageHeader({super.key, required this.title, this.onBack}) : isGreeting = false;
 
   /// Greeting on the right side, used on the home page instead of a title.
   const HesakPageHeader.greeting({super.key, required String text})
       : title = text,
-        isGreeting = true;
+        isGreeting = true,
+        onBack = null;
 
   @override
   Widget build(BuildContext context) {
@@ -78,12 +83,32 @@ class HesakPageHeader extends StatelessWidget {
                     style: HesakTextStyles.greeting,
                   ),
                 )
-              // Page title: centered, big title style.
-              : Text(
-                  title,
-                  key: const Key('header_page_title'),
-                  textAlign: TextAlign.center,
-                  style: HesakTextStyles.pageTitle,
+              // Page title: centered, big title style (+ back arrow on the right if given).
+              : SizedBox(
+                  width: double.infinity, // Full width, so the arrow sits at the screen edge
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Text(
+                        title,
+                        key: const Key('header_page_title'),
+                        textAlign: TextAlign.center,
+                        style: HesakTextStyles.pageTitle,
+                      ),
+                      if (onBack != null)
+                        Positioned(
+                          right: 0,
+                          child: IconButton(
+                            key: const Key('header_back_button'),
+                            onPressed: onBack,
+                            // Points right in Arabic (flips with the text direction).
+                            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 22),
+                            color: HesakColors.textPrimary,
+                            tooltip: 'رجوع',
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
         ),
 

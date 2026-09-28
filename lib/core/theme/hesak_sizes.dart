@@ -82,4 +82,21 @@ class HesakSizes {
 
   /// Blur behind the glass buttons on the welcome screen.
   static const double glassBlur = 14;
+
+  // ---- Modes page ----
+
+  /// Mode circle (not selected) on the modes page.
+  static const double modeCircle = 58;
+
+  /// Mode circle when selected (a bit bigger).
+  static const double modeCircleSelected = 66;
+
+  /// Big mode circle at the top of the edit page.
+  static const double modeCircleLarge = 84;
+
+  /// Round star button ("الأوضاع المفضلة").
+  static const double modeStarButton = 38;
+
+  /// Corner radius of the small cards inside a section (e.g. one schedule period).
+  static const double radiusInnerCard = 14;
 }
