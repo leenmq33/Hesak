@@ -62,4 +62,24 @@ class HesakSizes {
 
   /// Height of the logo + waves area at the top of every page.
   static const double headerHeight = 100;
+
+  // ---- Sign in / sign up screens ----
+
+  /// Height of a text field.
+  static const double fieldHeight = 52;
+
+  /// Corner radius of a text field.
+  static const double radiusField = 8;
+
+  /// Height of the big rounded buttons.
+  static const double buttonHeight = 58;
+
+  /// Corner radius of the big buttons (half the height = pill shape).
+  static const double radiusButton = 29;
+
+  /// Left/right space inside the white sheet.
+  static const double authSheetPadding = 28;
+
+  /// Blur behind the glass buttons on the welcome screen.
+  static const double glassBlur = 14;
 }
