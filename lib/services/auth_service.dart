@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 // =====================================================================
 //  AUTH SERVICE — the ONLY place that talks to the account system.
 //
@@ -23,19 +25,32 @@ class AuthResult {
   const AuthResult.failure(this.errorMessage) : isSuccess = false;
 }
 
-/// Sign up, log in, reset password, and save the "call name".
-/// Use it everywhere through `AuthService.instance`.
-class AuthService {
+/// Sign up, log in, reset password, the "call name", and the account
+/// settings (الإعدادات). Use it everywhere through `AuthService.instance`.
+///
+/// It's a ChangeNotifier: widgets that show the user's info (e.g. the home
+/// greeting) rebuild when it changes, using ListenableBuilder.
+class AuthService extends ChangeNotifier {
   AuthService._(); // Only one AuthService in the whole app
   static final AuthService instance = AuthService._();
 
   // Fake waiting time, so the loading spinner can be seen.
   static const Duration _fakeDelay = Duration(milliseconds: 900);
 
-  /// The signed-in user's name (from sign up). Shown in the home greeting
-  /// ("مرحبًا, فلان !"). null = we don't know it yet.
-  /// TODO: after login, read it from the user's profile on the server.
+  // ---- The signed-in user's info ----
+  // TODO: after login, read all of these from the user's profile on the server.
+
+  /// Name (from sign up). Shown in the home greeting ("مرحبًا, فلان !"). null = unknown.
   String? currentUserName;
+
+  /// Email (from sign up / login). null = unknown.
+  String? currentEmail;
+
+  /// Reading voice (from sign up).
+  HesakVoice currentVoice = HesakVoice.male;
+
+  /// The name Hesak listens for (للتنبيه عند النداء). null = not added yet.
+  String? currentCallName;
 
   /// Creates a new account.
   Future<AuthResult> signUp({
@@ -47,6 +62,9 @@ class AuthService {
     // TODO: create the account on the real server (e.g. Firebase Auth).
     await Future.delayed(_fakeDelay);
     currentUserName = name; // Remember it for the home greeting
+    currentEmail = email;
+    currentVoice = voice;
+    notifyListeners();
     return const AuthResult.success();
   }
 
@@ -57,8 +75,10 @@ class AuthService {
   }) async {
     // TODO: check email + password on the real server.
     // Example of a real error: return const AuthResult.failure('البريد الإلكتروني أو كلمة المرور غير صحيحة');
-    // TODO: also load the user's name from the server into currentUserName.
+    // TODO: also load the user's name, voice and call name from the server.
     await Future.delayed(_fakeDelay);
+    currentEmail = email;
+    notifyListeners();
     return const AuthResult.success();
   }
 
@@ -74,6 +94,55 @@ class AuthService {
   Future<AuthResult> saveCallName({required String callName}) async {
     // TODO: save it to the user's profile on the server.
     await Future.delayed(_fakeDelay);
+    currentCallName = callName;
+    notifyListeners();
     return const AuthResult.success();
+  }
+
+  // ---------------------------------------------------------------------
+  // Account settings (الإعدادات)
+  // ---------------------------------------------------------------------
+
+  /// Changes the user's name.
+  Future<AuthResult> updateName({required String name}) async {
+    // TODO: save it to the user's profile on the server.
+    await Future.delayed(_fakeDelay);
+    currentUserName = name;
+    notifyListeners();
+    return const AuthResult.success();
+  }
+
+  /// Changes the reading voice (saved right away, no loading).
+  void updateVoice(HesakVoice voice) {
+    // TODO: save it to the user's profile on the server.
+    if (voice == currentVoice) return;
+    currentVoice = voice;
+    notifyListeners();
+  }
+
+  /// Changes the password. The current password is checked first.
+  Future<AuthResult> changePassword({required String currentPassword, required String newPassword}) async {
+    // TODO (Firebase): re-authenticate with currentPassword, then user.updatePassword(newPassword).
+    // Example of a real error: return const AuthResult.failure('كلمة المرور الحالية غير صحيحة');
+    await Future.delayed(_fakeDelay);
+    return const AuthResult.success();
+  }
+
+  /// Starts changing the email: sends a confirmation link to the NEW email.
+  /// The email only changes after the user opens that link (keeps the account safe).
+  Future<AuthResult> requestEmailChange({required String newEmail, required String currentPassword}) async {
+    // TODO (Firebase): re-authenticate with currentPassword, then user.verifyBeforeUpdateEmail(newEmail).
+    await Future.delayed(_fakeDelay);
+    return const AuthResult.success();
+  }
+
+  /// Signs the user out and forgets their info on this phone.
+  Future<void> logOut() async {
+    // TODO (Firebase): await FirebaseAuth.instance.signOut();
+    currentUserName = null;
+    currentEmail = null;
+    currentCallName = null;
+    currentVoice = HesakVoice.male;
+    notifyListeners();
   }
 }
