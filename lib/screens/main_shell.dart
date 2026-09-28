@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/data/hesak_modes.dart';
+import '../core/data/hesak_mode_store.dart';
 import '../core/theme/hesak_colors.dart';
 import '../services/auth_service.dart';
 import '../widgets/bottom_nav_bar.dart';
@@ -14,7 +14,7 @@ import 'settings_screen.dart';
 //  It owns:
 //  - The page background and the bottom bar (HesakBottomNavBar).
 //  - Which page is open (tapping a tab switches the page).
-//  - The active mode (العام / النوم / السيارة) from the middle button.
+//  - Passing the user's modes (from HesakModeStore) to the middle button.
 //
 //  Each page lives in its own file, so each teammate can work on one page
 //  without touching the others:
@@ -36,8 +36,9 @@ class _HesakMainShellState extends State<HesakMainShell> {
   // The page that is open now (starts on الرئيسية).
   HesakNavTab _selectedTab = HesakNavTab.home;
 
-  // The active listening mode (starts on العام).
-  String _selectedModeId = HesakModeIds.general;
+  // The user's modes + the active one live in HesakModeStore
+  // (lib/core/data/hesak_mode_store.dart), shared with the الأوضاع page.
+  final HesakModeStore _modeStore = HesakModeStore.instance;
 
   // The user's name, shown in the home greeting.
   // It's the name typed in "إنشاء حساب" (saved in AuthService).
@@ -61,36 +62,39 @@ class _HesakMainShellState extends State<HesakMainShell> {
         children: [
           HomeScreen(userName: _userName),
           const ChatsScreen(),
-          const ModesScreen(),
+          // isActive: the phone back button only goes back inside الأوضاع while it's shown.
+          ModesScreen(isActive: _selectedTab == HesakNavTab.modes),
           const SettingsScreen(),
         ],
       ),
 
-      bottomNavigationBar: HesakBottomNavBar(
-        // Tabs: tapping one opens its page.
-        selectedTab: _selectedTab,
-        onTabSelected: (tab) {
-          setState(() {
-            _selectedTab = tab;
-          });
-        },
+      // Rebuilds the bar when the modes change (e.g. a mode is starred on the الأوضاع page).
+      bottomNavigationBar: ListenableBuilder(
+        listenable: _modeStore,
+        builder: (context, _) => HesakBottomNavBar(
+          // Tabs: tapping one opens its page.
+          selectedTab: _selectedTab,
+          onTabSelected: (tab) {
+            setState(() {
+              _selectedTab = tab;
+            });
+          },
 
-        // Mode wheel (middle button).
-        modes: hesakDefaultModes,
-        selectedModeId: _selectedModeId,
-        onModeSelected: (modeId) {
-          setState(() {
-            _selectedModeId = modeId;
-          });
-          // TODO: apply the mode's listening settings here.
-        },
-        onAddModeTap: () {
-          // "إضافة" -> open the modes page for now.
-          // TODO: open an "add new mode" screen instead, when it's ready.
-          setState(() {
-            _selectedTab = HesakNavTab.modes;
-          });
-        },
+          // Mode wheel: ONLY the starred modes (الأوضاع المفضلة).
+          // The middle button always shows the active mode's icon, even if it isn't starred.
+          modes: _modeStore.wheelOptions,
+          selectedModeId: _modeStore.selectedModeId,
+          activeModeIcon: _modeStore.selectedMode.icon,
+          activeModeLetter: _modeStore.selectedMode.toOption().letter, // Mode without an icon
+          onModeSelected: _modeStore.selectMode,
+          onAddModeTap: () {
+            // "إضافة" -> go to the الأوضاع tab and open the add-mode page.
+            setState(() {
+              _selectedTab = HesakNavTab.modes;
+            });
+            WidgetsBinding.instance.addPostFrameCallback((_) => ModesScreen.openAddModePage());
+          },
+        ),
       ),
     );
   }

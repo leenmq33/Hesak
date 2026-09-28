@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'hesak_colors.dart';
 
 /// ALL text styles used in the Hesak app live here.
@@ -27,7 +26,7 @@ class HesakTextStyles {
     color: HesakColors.primaryDark,
   );
 
-  /// Splash tagline ("لأن ما لا يُسمع يَستحق أن يُدرك"). 22 / SemiBold.
+  /// Splash tagline (the sentence under the logo). 22 / SemiBold.
   static const TextStyle splashTagline = TextStyle(
     fontFamily: fontFamily,
     fontSize: 22,
@@ -223,4 +222,193 @@ class HesakTextStyles {
 
   /// Text on the light glass button ("تسجيل الدخول"). 18 / Bold / white.
   static const TextStyle glassButtonSecondaryLabel = buttonLabel;
+
+
+  // ---- Modes page ----
+
+  /// Name of the selected mode under the circles ("العام"). 17 / Bold.
+  static const TextStyle modeName = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 17,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.textPrimary,
+  );
+
+  /// Label under a mode circle (not selected). 12 / Regular / grey.
+  static const TextStyle modeCircleLabel = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: HesakColors.textSecondary,
+  );
+
+  /// Label under the selected mode circle. 12.5 / Bold / dark.
+  static const TextStyle modeCircleLabelSelected = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 12.5,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.textPrimary,
+  );
+
+  /// Letter shown in a mode circle that has no icon. 22 / Bold.
+  static const TextStyle modeCircleLetter = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 22,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.iconInactive,
+  );
+
+  /// Small tappable purple text ("عرض الكل", "إضافة فترة", "تحديد الكل"). 13 / Bold.
+  static const TextStyle modeLink = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.modeSelected,
+  );
+
+  /// Days of a schedule period ("الأحد – الخميس"). 13 / Bold.
+  static const TextStyle modePeriodDays = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.textPrimary,
+  );
+
+  /// Time of a schedule period / time field ("11:00 م"). 13 / Bold / purple.
+  static const TextStyle modePeriodTime = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.modeSelected,
+  );
+
+  /// Label of a setting row ("التنبيه عند نداء اسمك", "من:"). 13.5 / Bold.
+  static const TextStyle modeSettingLabel = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 13.5,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.textPrimary,
+  );
+
+  /// Chip that is NOT selected (days, sounds, alert types). 12 / Regular / grey.
+  static const TextStyle modeChip = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: HesakColors.textSecondary,
+  );
+
+  /// Chip that IS selected. 12 / Bold / purple.
+  static const TextStyle modeChipSelected = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.modeSelected,
+  );
+
+  /// Selected day chip (white text on purple). 12 / Bold / white.
+  static const TextStyle modeDayChipSelected = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.onPrimary,
+  );
+
+  /// "مفعّل" badge next to the active mode's name. 10.5 / Bold / purple.
+  static const TextStyle modeBadge = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 10.5,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.modeSelected,
+  );
+
+  /// Small buttons inside sections ("حفظ" / "إلغاء"). 13 / Bold.
+  static const TextStyle modeSmallButton = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.onPrimary,
+  );
+
+  /// "حذف الوضع" and other red actions. 13.5 / Bold / red.
+  static const TextStyle modeDanger = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 13.5,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.danger,
+  );
+
+  /// Title of a confirmation dialog ("حذف وضع السيارة؟"). 17 / Bold.
+  static const TextStyle dialogTitle = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 17,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.textPrimary,
+  );
+
+  /// Text of a confirmation dialog. 13 / Regular / grey.
+  static const TextStyle dialogBody = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    color: HesakColors.textSecondary,
+    height: 1.6,
+  );
+
+  /// Text of the small message at the bottom ("تمت إضافة ..."). 13 / Medium / white.
+  static const TextStyle toast = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+    color: HesakColors.onPrimary,
+  );
+
+  /// Section title on the modes pages ("جدولة الوضع", "الإعدادات العامة").
+  /// A bit bigger than the labels inside the section. 16.5 / Bold.
+  static const TextStyle modeSectionTitle = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 16.5,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.textPrimary,
+  );
+
+  /// Name under a mode tile (not selected). 13 / Medium / dark (easy to read).
+  static const TextStyle modeTileLabel = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+    color: HesakColors.textPrimary,
+  );
+
+  /// Name under the selected mode tile. 13.5 / Bold / purple.
+  static const TextStyle modeTileLabelSelected = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 13.5,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.modeSelected,
+  );
+
+  /// Mode name on the purple card header ("النوم"). 20 / Bold / white.
+  static const TextStyle modeHeaderName = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.onPrimary,
+  );
+
+  /// Schedule line on the purple card header. 12 / Regular / soft white.
+  static const TextStyle modeHeaderSubtitle = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: HesakColors.onModeHeaderSoft,
+  );
+
+  /// Value in the settings summary ("4 أصوات", "مفعّل"). 12.5 / Regular / grey.
+  static const TextStyle modeSummaryValue = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 12.5,
+    fontWeight: FontWeight.w400,
+    color: HesakColors.textSecondary,
+  );
 }
