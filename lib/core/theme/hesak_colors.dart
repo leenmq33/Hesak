@@ -95,10 +95,12 @@ class HesakColors {
   /// Purple background, darker at the bottom (splash, welcome).
   static const Color authGradientDark = Color(0xFF76638B);
 
-  /// Splash background gradient (top -> bottom). Same as the welcome screen,
-  /// so moving from the splash to the welcome buttons looks seamless.
-  static const List<Color> splashGradient = [authGradientLight, authGradientDark];
-
+    /// Splash background gradient (top-left -> bottom-right), as agreed in the guide.
+  static const List<Color> splashGradient = [
+    Color(0xFFF0E6FF),
+    Color(0xFFFCF9FF),
+    Color(0xFFF3E9FF),
+  ];
   /// Main button (إنشاء حساب, تسجيل الدخول, التالي, حفظ).
   static const Color buttonPrimary = Color(0xFF6B5578);
 

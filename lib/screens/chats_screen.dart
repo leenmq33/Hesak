@@ -273,9 +273,9 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
           // Centred right above the "الإعدادات" tab of the bottom bar:
           // bar side padding 14 + half the 62px tab - half the 52px button.
           left: 19,
-          // Just above the bottom bar. TODO: tweak by a few px on real
-          // devices if it touches the bar (bigger = higher).
-          bottom: 64,
+          // Sits just above the top edge of the bottom bar.
+          // TODO: tweak by a few px on real devices (bigger = higher).
+          bottom: 90,
           child: _ChatsNewConversationButton(onPressed: _startNewConversation),
         ),
       ],
