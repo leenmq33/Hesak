@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../core/theme/hesak_colors.dart';
+import '../core/theme/hesak_palette.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
 
@@ -15,6 +16,7 @@ import '../core/theme/hesak_text_styles.dart';
 ///   const HesakPageHeader(title: 'المحادثات'),          // centered page title
 ///   const HesakPageHeader.greeting(text: 'مرحبًا رحاب'), // greeting on the right
 ///   HesakPageHeader(title: 'الأوضاع', onBack: () => Navigator.pop(context)), // + back arrow on the right
+///   HesakPageHeader(title: 'الإعدادات', followsAppearance: true), // changes with فاتح / داكن
 class HesakPageHeader extends StatelessWidget {
   /// The text shown under the logo (page title or greeting).
   final String title;
@@ -25,18 +27,39 @@ class HesakPageHeader extends StatelessWidget {
   /// Optional: shows a back arrow on the right (for inner pages). null = no arrow.
   final VoidCallback? onBack;
 
+  /// true = follows the appearance (فاتح / داكن) from HesakThemeController.
+  /// For now only the الإعدادات pages use it; the rest stay light.
+  final bool followsAppearance;
+
   /// Centered page title (all pages except home).
-  const HesakPageHeader({super.key, required this.title, this.onBack}) : isGreeting = false;
+  const HesakPageHeader({super.key, required this.title, this.onBack, this.followsAppearance = false})
+      : isGreeting = false;
 
   /// Greeting on the right side, used on the home page instead of a title.
   const HesakPageHeader.greeting({super.key, required String text})
       : title = text,
         isGreeting = true,
-        onBack = null;
+        onBack = null,
+        followsAppearance = false;
 
   @override
   Widget build(BuildContext context) {
+    // Headers that follow فاتح / داكن rebuild by themselves when it changes
+    // (works even when the header is created with const).
+    if (followsAppearance) {
+      return ListenableBuilder(
+        listenable: HesakThemeController.instance,
+        builder: (context, _) => _buildHeader(context),
+      );
+    }
+    return _buildHeader(context);
+  }
+
+  Widget _buildHeader(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    // Dark only when this header follows the appearance AND داكن is picked.
+    final bool isDark = followsAppearance && HesakThemeController.instance.isDark;
+    final HesakPalette palette = isDark ? HesakPalette.dark : HesakPalette.light;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -52,7 +75,9 @@ class HesakPageHeader extends StatelessWidget {
                 right: 0,
                 top: 0,
                 bottom: 0,
-                child: CustomPaint(painter: _HesakHeaderWavePainter()),
+                child: CustomPaint(
+                  painter: _HesakHeaderWavePainter(color: isDark ? palette.headerLines : HesakColors.headerWaves),
+                ),
               ),
 
               // Logo: 6% from the left, 36% of the screen width.
@@ -61,7 +86,7 @@ class HesakPageHeader extends StatelessWidget {
                 top: 0,
                 bottom: 6,
                 child: Center(
-                  child: _HesakHeaderLogo(width: screenWidth * 0.36),
+                  child: _HesakHeaderLogo(width: screenWidth * 0.36, isOnDark: isDark),
                 ),
               ),
             ],
@@ -93,7 +118,7 @@ class HesakPageHeader extends StatelessWidget {
                         title,
                         key: const Key('header_page_title'),
                         textAlign: TextAlign.center,
-                        style: HesakTextStyles.pageTitle,
+                        style: HesakTextStyles.pageTitle.copyWith(color: palette.title),
                       ),
                       if (onBack != null)
                         Positioned(
@@ -103,7 +128,7 @@ class HesakPageHeader extends StatelessWidget {
                             onPressed: onBack,
                             // Points right in Arabic (flips with the text direction).
                             icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 22),
-                            color: HesakColors.textPrimary,
+                            color: palette.textPrimary,
                             tooltip: 'رجوع',
                           ),
                         ),
@@ -113,7 +138,7 @@ class HesakPageHeader extends StatelessWidget {
         ),
 
         // ---------- 3) Divider ----------
-        const _HesakHeaderDivider(),
+        _HesakHeaderDivider(color: isDark ? palette.headerLines : HesakColors.lavenderAccent),
       ],
     );
   }
@@ -122,7 +147,9 @@ class HesakPageHeader extends StatelessWidget {
 /// Thin divider under the page title.
 /// Lavender in the middle, fades out at both ends.
 class _HesakHeaderDivider extends StatelessWidget {
-  const _HesakHeaderDivider();
+  final Color color;
+
+  const _HesakHeaderDivider({required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -133,9 +160,9 @@ class _HesakHeaderDivider extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              HesakColors.lavenderAccent.withOpacity(0), // Invisible at the left end
-              HesakColors.lavenderAccent, // Full color in the middle
-              HesakColors.lavenderAccent.withOpacity(0), // Invisible at the right end
+              color.withOpacity(0), // Invisible at the left end
+              color, // Full color in the middle
+              color.withOpacity(0), // Invisible at the right end
             ],
           ),
         ),
@@ -148,11 +175,23 @@ class _HesakHeaderDivider extends StatelessWidget {
 /// The shadow is a blurred, faded copy of the logo drawn slightly lower.
 class _HesakHeaderLogo extends StatelessWidget {
   final double width;
+  final bool isOnDark; // Dark page: the purple logo sits on a light pill so it stays visible
 
-  const _HesakHeaderLogo({required this.width});
+  const _HesakHeaderLogo({required this.width, this.isOnDark = false});
 
   @override
   Widget build(BuildContext context) {
+    if (isOnDark) {
+      return Container(
+        width: width,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: HesakColors.surface,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: _buildLogoImage(),
+      );
+    }
     return SizedBox(
       width: width,
       child: Stack(
@@ -189,6 +228,10 @@ class _HesakHeaderLogo extends StatelessWidget {
 /// wide on the left, crosses at ~62% of the width, opens again at the right edge.
 /// Fades in from the left so there is no hard start.
 class _HesakHeaderWavePainter extends CustomPainter {
+  final Color color;
+
+  _HesakHeaderWavePainter({required this.color});
+
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width;
@@ -203,9 +246,9 @@ class _HesakHeaderWavePainter extends CustomPainter {
         begin: Alignment.centerLeft,
         end: Alignment.centerRight,
         colors: [
-          HesakColors.headerWaves.withOpacity(0),
-          HesakColors.headerWaves.withOpacity(0.40),
-          HesakColors.headerWaves.withOpacity(0.40),
+          color.withOpacity(0),
+          color.withOpacity(0.40),
+          color.withOpacity(0.40),
         ],
         stops: const [0.0, 0.25, 1.0],
       ).createShader(Rect.fromLTWH(0, 0, w, h));
@@ -243,5 +286,5 @@ class _HesakHeaderWavePainter extends CustomPainter {
 
   // The drawing never changes, so no need to repaint.
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _HesakHeaderWavePainter oldDelegate) => oldDelegate.color != color;
 }

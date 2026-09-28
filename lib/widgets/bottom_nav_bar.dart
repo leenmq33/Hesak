@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../core/data/hesak_modes.dart';
 import '../core/theme/hesak_colors.dart';
+import '../core/theme/hesak_palette.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
 
@@ -271,6 +272,8 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
                             child: CustomPaint(
                               painter: _HesakModeMenuHalfCirclePainter(
                                 diameter: _modeMenuBackdropRadius * 2,
+                                fillColor: HesakPalette.current.modeMenuBackdrop,
+                                borderColor: HesakPalette.current.modeMenuBackdropBorder,
                               ),
                             ),
                           ),
@@ -285,7 +288,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
                     bottom: 0,
                     height: barHeight,
                     child: CustomPaint(
-                      painter: _HesakNavBarNotchPainter(color: HesakColors.navBar),
+                      painter: _HesakNavBarNotchPainter(color: HesakPalette.current.navBar), // Follows فاتح / داكن
                       child: Padding(
                         // Extra bottom padding keeps the icons above the home indicator.
                         padding: EdgeInsets.fromLTRB(8, 8, 8, 6 + bottomInset),
@@ -429,7 +432,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
             width: 62,
             height: 50,
             decoration: BoxDecoration(
-              color: isSelected ? HesakColors.primaryLight : Colors.transparent,
+              color: isSelected ? HesakPalette.current.navPill : Colors.transparent,
               borderRadius: BorderRadius.circular(25), // Half the height = fully rounded ends
             ),
             child: Column(
@@ -438,14 +441,16 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
                 Icon(
                   isSelected ? selectedIcon : icon,
                   size: HesakSizes.iconNavTab,
-                  color: isSelected ? HesakColors.primaryMuted : HesakColors.iconInactive,
+                  color: isSelected ? HesakPalette.current.navSelected : HesakPalette.current.iconInactive,
                 ),
                 const SizedBox(height: 2),
                 Text(
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: isSelected ? HesakTextStyles.navLabelSelected : HesakTextStyles.navLabel,
+                  style: (isSelected ? HesakTextStyles.navLabelSelected : HesakTextStyles.navLabel).copyWith(
+                    color: isSelected ? HesakPalette.current.navSelected : HesakPalette.current.iconInactive,
+                  ),
                 ),
               ],
             ),
@@ -500,11 +505,11 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
                     width: _modeMenuItemSize,
                     height: _modeMenuItemSize,
                     decoration: BoxDecoration(
-                      color: HesakColors.primaryLight,
+                      color: HesakPalette.current.accentSoft,
                       shape: BoxShape.circle,
                       // Active mode gets a stronger purple border.
                       border: Border.all(
-                        color: isActive ? HesakColors.primaryMuted : HesakColors.primaryLightBorder,
+                        color: isActive ? HesakPalette.current.navSelected : HesakPalette.current.accentSoftBorder,
                         width: isActive ? 2 : 1.5,
                       ),
                       boxShadow: [
@@ -520,14 +525,14 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
                             child: Text(
                               letter,
                               style: HesakTextStyles.modeCircleLetter.copyWith(
-                                color: isActive ? HesakColors.primaryMuted : HesakColors.iconInactive,
+                                color: isActive ? HesakPalette.current.navSelected : HesakPalette.current.iconInactive,
                               ),
                             ),
                           )
                         : Icon(
                             icon,
                             size: 28,
-                            color: isActive ? HesakColors.primaryMuted : HesakColors.iconInactive,
+                            color: isActive ? HesakPalette.current.navSelected : HesakPalette.current.iconInactive,
                           ),
                   ),
                   const SizedBox(height: 4),
@@ -536,8 +541,8 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: isActive
-                        ? HesakTextStyles.modeLabel.copyWith(color: HesakColors.primaryMuted)
-                        : HesakTextStyles.modeLabel,
+                        ? HesakTextStyles.modeLabel.copyWith(color: HesakPalette.current.navSelected)
+                        : HesakTextStyles.modeLabel.copyWith(color: HesakPalette.current.textSecondary),
                   ),
                 ],
               ),
@@ -553,8 +558,10 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
 /// The bar covers its bottom edge, so only the top half is drawn.
 class _HesakModeMenuHalfCirclePainter extends CustomPainter {
   final double diameter; // Size of the square this is painted in
+  final Color fillColor; // See-through fill (follows فاتح / داكن)
+  final Color borderColor; // Thin outline
 
-  _HesakModeMenuHalfCirclePainter({required this.diameter});
+  _HesakModeMenuHalfCirclePainter({required this.diameter, required this.fillColor, required this.borderColor});
 
   /// Top half of a circle, flat side on the middle button's center line.
   Path _buildHalfCirclePath(Size size) {
@@ -572,13 +579,13 @@ class _HesakModeMenuHalfCirclePainter extends CustomPainter {
 
     // Soft shadow, then the see-through fill, then a thin outline.
     canvas.drawShadow(half, HesakColors.primaryMuted.withOpacity(0.15), 8, true);
-    canvas.drawPath(half, Paint()..color = HesakColors.modeMenuBackdrop);
+    canvas.drawPath(half, Paint()..color = fillColor);
     canvas.drawPath(
       half,
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1
-        ..color = HesakColors.modeMenuBackdropBorder,
+        ..color = borderColor,
     );
   }
 
@@ -588,7 +595,7 @@ class _HesakModeMenuHalfCirclePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _HesakModeMenuHalfCirclePainter oldDelegate) =>
-      oldDelegate.diameter != diameter;
+      oldDelegate.diameter != diameter || oldDelegate.fillColor != fillColor || oldDelegate.borderColor != borderColor;
 }
 
 /// Paints the bar: rounded top corners, square bottom (touches the screen edge),

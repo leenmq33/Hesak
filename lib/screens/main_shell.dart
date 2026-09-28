@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/data/hesak_mode_store.dart';
 import '../core/theme/hesak_colors.dart';
+import '../core/theme/hesak_palette.dart';
 import '../services/auth_service.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'chats_screen.dart';
@@ -40,10 +41,6 @@ class _HesakMainShellState extends State<HesakMainShell> {
   // (lib/core/data/hesak_mode_store.dart), shared with the الأوضاع page.
   final HesakModeStore _modeStore = HesakModeStore.instance;
 
-  // The user's name, shown in the home greeting.
-  // It's the name typed in "إنشاء حساب" (saved in AuthService).
-  // Empty when we don't know it yet (e.g. after login, until the server is connected).
-  final String _userName = AuthService.instance.currentUserName ?? '';
 
   @override
   Widget build(BuildContext context) {
@@ -60,17 +57,23 @@ class _HesakMainShellState extends State<HesakMainShell> {
       body: IndexedStack(
         index: _selectedTab.index,
         children: [
-          HomeScreen(userName: _userName),
+          // Home greeting uses the user's name from AuthService, and updates
+          // when it changes in الإعدادات. Empty = unknown (e.g. after login, for now).
+          ListenableBuilder(
+            listenable: AuthService.instance,
+            builder: (context, _) => HomeScreen(userName: AuthService.instance.currentUserName ?? ''),
+          ),
           const ChatsScreen(),
           // isActive: the phone back button only goes back inside الأوضاع while it's shown.
           ModesScreen(isActive: _selectedTab == HesakNavTab.modes),
-          const SettingsScreen(),
+          SettingsScreen(isActive: _selectedTab == HesakNavTab.settings),
         ],
       ),
 
       // Rebuilds the bar when the modes change (e.g. a mode is starred on the الأوضاع page).
+      // Also rebuilds when the appearance (فاتح / داكن) changes.
       bottomNavigationBar: ListenableBuilder(
-        listenable: _modeStore,
+        listenable: Listenable.merge([_modeStore, HesakThemeController.instance]),
         builder: (context, _) => HesakBottomNavBar(
           // Tabs: tapping one opens its page.
           selectedTab: _selectedTab,
