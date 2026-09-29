@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "428873182461",
+    "project_id": "hesak-4f175",
+    "storage_bucket": "hesak-4f175.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:428873182461:android:d2f51f7fa6a441ecaae294",
+        "android_client_info": {
+          "package_name": "com.example.hesak"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDdmh2jhwGAxSxtTNeFwCf9coQSTOC9fI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
