@@ -6,10 +6,12 @@ import '../../core/data/hesak_sounds.dart';
 import '../../core/theme/hesak_colors.dart';
 import '../../core/theme/hesak_sizes.dart';
 import '../../core/theme/hesak_text_styles.dart';
+import '../../widgets/hesak_confirm_dialog.dart';
+import '../../widgets/hesak_toast.dart';
 
 // =====================================================================
 //  MODES WIDGETS — building blocks shared by the الأوضاع pages:
-//    modes_screen.dart (main page), modes_all_screen.dart (عرض الكل),
+//    modes_screen.dart (main page),
 //    mode_editor_screen.dart (edit / add a mode).
 //
 //  NAMING: everything here starts with "Modes". Keys: 'modes_<name>'.
@@ -20,171 +22,13 @@ import '../../core/theme/hesak_text_styles.dart';
 // =====================================================================
 
 // ---------------------------------------------------------------------
-// Messages & confirmation dialog
+// Messages (the toast + confirm dialog are shared: lib/widgets/)
 // ---------------------------------------------------------------------
-
-/// Small dark message near the bottom of the screen (e.g. "تم حفظ التعديلات").
-/// Drawn on top of everything (not a SnackBar), so it sits just above the
-/// bottom bar instead of floating in the middle of the page.
-OverlayEntry? _modesCurrentToast;
-
-void showModesToast(BuildContext context, String message, {IconData icon = Icons.check_circle_rounded}) {
-  final overlay = Overlay.maybeOf(context, rootOverlay: true);
-  if (overlay == null) return;
-  // Read from the root overlay: a page inside the tab sees the bottom bar's height here instead.
-  final double bottomInset = MediaQuery.of(overlay.context).padding.bottom;
-
-  // Only one message at a time.
-  _modesCurrentToast?.remove();
-  _modesCurrentToast = null;
-
-  late final OverlayEntry entry;
-  entry = OverlayEntry(
-    builder: (_) => Positioned(
-      left: 16,
-      right: 16,
-      bottom: 110 + bottomInset, // Just above the bottom bar
-      child: IgnorePointer(
-        child: _ModesToastView(
-          message: message,
-          icon: icon,
-          onFinished: () {
-            if (_modesCurrentToast == entry) {
-              entry.remove();
-              _modesCurrentToast = null;
-            }
-          },
-        ),
-      ),
-    ),
-  );
-  _modesCurrentToast = entry;
-  overlay.insert(entry);
-}
-
-/// The message box: fades in, waits 2 seconds, fades out, then asks to be removed.
-class _ModesToastView extends StatefulWidget {
-  final String message;
-  final IconData icon;
-  final VoidCallback onFinished;
-
-  const _ModesToastView({required this.message, required this.icon, required this.onFinished});
-
-  @override
-  State<_ModesToastView> createState() => _ModesToastViewState();
-}
-
-class _ModesToastViewState extends State<_ModesToastView> with SingleTickerProviderStateMixin {
-  late final AnimationController _fadeController = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 220),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _run();
-  }
-
-  Future<void> _run() async {
-    await _fadeController.forward();
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
-    await _fadeController.reverse();
-    if (mounted) widget.onFinished();
-  }
-
-  @override
-  void dispose() {
-    _fadeController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _fadeController,
-      child: Material(
-        color: HesakColors.toastBackground,
-        borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard),
-        elevation: 4,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Directionality(
-            textDirection: TextDirection.rtl,
-            child: Row(
-              children: [
-                Icon(widget.icon, color: HesakColors.onPrimary, size: 18),
-                const SizedBox(width: 8),
-                Expanded(child: Text(widget.message, style: HesakTextStyles.toast)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Asks the user to confirm (used for deleting and leaving without saving).
-/// Returns true when the user taps [confirmLabel].
-Future<bool> showModesConfirmDialog(
-  BuildContext context, {
-  required String title,
-  required String message,
-  required String confirmLabel,
-  IconData icon = Icons.delete_outline_rounded,
-  bool isDanger = true, // true = red confirm button
-}) async {
-  final bool? result = await showDialog<bool>(
-    context: context,
-    builder: (dialogContext) => Dialog(
-      backgroundColor: HesakColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(HesakSizes.radiusCard)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 40, color: isDanger ? HesakColors.danger : HesakColors.modeSelected),
-            const SizedBox(height: 12),
-            Text(title, textAlign: TextAlign.center, style: HesakTextStyles.dialogTitle),
-            const SizedBox(height: 6),
-            Text(message, textAlign: TextAlign.center, style: HesakTextStyles.dialogBody),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: ModesPillButton(
-                    key: const Key('modes_dialog_confirm_button'),
-                    label: confirmLabel,
-                    color: isDanger ? HesakColors.danger : HesakColors.modeSelected,
-                    onTap: () => Navigator.pop(dialogContext, true),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ModesPillButton(
-                    key: const Key('modes_dialog_cancel_button'),
-                    label: 'إلغاء',
-                    isFilled: false,
-                    onTap: () => Navigator.pop(dialogContext, false),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-  return result ?? false;
-}
 
 /// Stars / un-stars a mode and shows the message.
 void modesToggleFavorite(BuildContext context, HesakModeConfig mode) {
   final bool isNowFavorite = HesakModeStore.instance.toggleFavorite(mode.id);
-  showModesToast(
+  showHesakToast(
     context,
     isNowFavorite
         ? 'تمت إضافة وضع ${mode.name} إلى الأوضاع المفضلة'
@@ -195,15 +39,16 @@ void modesToggleFavorite(BuildContext context, HesakModeConfig mode) {
 
 /// Asks, deletes the mode, shows the message. Returns true if deleted.
 Future<bool> modesDeleteWithConfirm(BuildContext context, HesakModeConfig mode) async {
-  final bool isConfirmed = await showModesConfirmDialog(
+  final bool isConfirmed = await showHesakConfirmDialog(
     context,
-    title: 'حذف وضع ${mode.name}؟',
+    title: 'هل تريد حذف وضع ${mode.name}؟',
     message: 'سيتم حذف الوضع وكل إعداداته،\nولا يمكن التراجع عن ذلك.',
     confirmLabel: 'حذف',
+    icon: Icons.delete_outline_rounded,
   );
   if (!isConfirmed || !context.mounted) return false;
   HesakModeStore.instance.deleteMode(mode.id);
-  showModesToast(context, 'تم حذف وضع ${mode.name}', icon: Icons.delete_outline_rounded);
+  showHesakToast(context, 'تم حذف وضع ${mode.name}', icon: Icons.delete_outline_rounded);
   return true;
 }
 
@@ -305,7 +150,9 @@ class ModesSaveCancelRow extends StatelessWidget {
   }
 }
 
-/// Round star button: empty star = not in الأوضاع المفضلة, filled = in it.
+/// Round star button (الأوضاع المفضلة):
+///  - favorite: deep purple circle + filled white star
+///  - not favorite: light grey circle + grey outlined star
 /// [isOnDark] = see-through white circle, for the purple mode card header.
 class ModesStarButton extends StatelessWidget {
   final bool isFavorite;
@@ -319,7 +166,9 @@ class ModesStarButton extends StatelessWidget {
     return Tooltip(
       message: isFavorite ? 'إزالة من الأوضاع المفضلة' : 'إضافة إلى الأوضاع المفضلة',
       child: Material(
-        color: isOnDark ? HesakColors.modeHeaderOverlay : HesakColors.modeSelected,
+        color: isOnDark
+            ? HesakColors.modeHeaderOverlay
+            : (isFavorite ? HesakColors.modeSelected : HesakColors.modeUnselectedFill),
         shape: const CircleBorder(),
         child: InkWell(
           onTap: onTap,
@@ -334,7 +183,7 @@ class ModesStarButton extends StatelessWidget {
               child: Icon(
                 isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
                 key: ValueKey(isFavorite),
-                color: HesakColors.onPrimary,
+                color: isOnDark || isFavorite ? HesakColors.onPrimary : HesakColors.iconInactive,
                 size: 22,
               ),
             ),
@@ -565,12 +414,15 @@ class ModesDayChip extends StatelessWidget {
 /// "إضافة فترة" opens a box to pick days + from/to time, with "حفظ" / "إلغاء".
 /// Every change is sent to [onChanged] (the page decides when it's saved).
 /// This widget shows the message itself: "تمت إضافة الفترة" / "تم تعديل الفترة" /
-/// "تم حذف الفترة" / "تمت الإضافة" (days joined a period with the same time).
+/// "تم حذف الفترة".
+/// [modeId] = the mode these periods belong to. Two modes can't share the same
+/// time, so a new period is also checked against every OTHER mode.
 class ModesScheduleEditor extends StatefulWidget {
+  final String modeId;
   final List<HesakSchedulePeriod> periods;
   final ValueChanged<List<HesakSchedulePeriod>> onChanged;
 
-  const ModesScheduleEditor({super.key, required this.periods, required this.onChanged});
+  const ModesScheduleEditor({super.key, required this.modeId, required this.periods, required this.onChanged});
 
   @override
   State<ModesScheduleEditor> createState() => _ModesScheduleEditorState();
@@ -630,6 +482,7 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
   ///  - Same time + same days as a saved period -> not saved, "هذه الفترة موجودة مسبقًا".
   ///  - Same time as another period -> its days are added to that period (one card, no duplicates).
   ///  - Clashes with another period on the same day -> not saved, red message instead.
+  ///  - Clashes with a period of ANOTHER mode -> not saved, "هذه الفترة تتعارض مع وضع X".
   void _saveEditing() {
     final int editingIndex = _editingIndex!;
     final candidate = HesakSchedulePeriod(days: {..._draftDays}, start: _draftStart, end: _draftEnd);
@@ -661,6 +514,13 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
       return;
     }
 
+    // Another mode already has this time -> that mode keeps it.
+    final HesakModeConfig? otherMode = HesakModeStore.instance.modeClashingWith(candidate, modeId: widget.modeId);
+    if (otherMode != null) {
+      setState(() => _clashMessage = 'هذه الفترة تتعارض مع وضع ${otherMode.name}');
+      return;
+    }
+
     final updated = [...widget.periods];
     final bool isMerged = sameTimeIndex != -1;
     if (isMerged) {
@@ -683,27 +543,23 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
     });
     widget.onChanged(updated);
 
-    // The message says exactly what happened.
-    if (isMerged) {
-      showModesToast(context, 'تمت الإضافة'); // Days joined a period with the same time
-    } else if (editingIndex == _newPeriodIndex) {
-      showModesToast(context, 'تمت إضافة الفترة');
-    } else {
-      showModesToast(context, 'تم تعديل الفترة');
-    }
+    // New period (even when it joined a period with the same time) -> "تمت إضافة الفترة".
+    // Edited period -> "تم تعديل الفترة".
+    showHesakToast(context, editingIndex == _newPeriodIndex ? 'تمت إضافة الفترة' : 'تم تعديل الفترة');
   }
 
   Future<void> _deletePeriod(int index) async {
     final period = widget.periods[index];
-    final bool isConfirmed = await showModesConfirmDialog(
+    final bool isConfirmed = await showHesakConfirmDialog(
       context,
-      title: 'حذف الفترة؟',
+      title: 'هل تريد حذف الفترة؟',
       message: '${period.daysText}\n${period.timeText}',
       confirmLabel: 'حذف',
+      icon: Icons.delete_outline_rounded,
     );
     if (!isConfirmed || !mounted) return;
     widget.onChanged([...widget.periods]..removeAt(index));
-    showModesToast(context, 'تم حذف الفترة', icon: Icons.delete_outline_rounded);
+    showHesakToast(context, 'تم حذف الفترة', icon: Icons.delete_outline_rounded);
   }
 
   @override
@@ -843,6 +699,7 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
           ModesTimeField(
             key: const Key('modes_schedule_start_time'),
             label: 'من:',
+            pickerTitle: 'وقت البداية',
             time: _draftStart,
             onChanged: (time) => setState(() {
               _draftStart = time;
@@ -853,6 +710,7 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
           ModesTimeField(
             key: const Key('modes_schedule_end_time'),
             label: 'إلى:',
+            pickerTitle: 'وقت النهاية',
             time: _draftEnd,
             onChanged: (time) => setState(() {
               _draftEnd = time;
@@ -892,30 +750,80 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
 }
 
 /// "من:  [🕐 11:00 م]" — tapping the time opens the phone's clock picker.
+/// The same picker everywhere (الأوضاع, تعديل وضع, إضافة وضع), all in Hesak colors.
 class ModesTimeField extends StatelessWidget {
   final String label;
+  final String pickerTitle; // Title on top of the picker: "وقت البداية" / "وقت النهاية"
   final TimeOfDay time;
   final ValueChanged<TimeOfDay> onChanged;
 
-  const ModesTimeField({super.key, required this.label, required this.time, required this.onChanged});
+  const ModesTimeField({
+    super.key,
+    required this.label,
+    required this.pickerTitle,
+    required this.time,
+    required this.onChanged,
+  });
 
   Future<void> _pickTime(BuildContext context) async {
     final picked = await showTimePicker(
       context: context,
       initialTime: time,
-      // Purple clock to match the app.
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: Theme.of(context).colorScheme.copyWith(
-                primary: HesakColors.modeSelected,
-                onPrimary: HesakColors.onPrimary,
-                surface: HesakColors.surface,
-              ),
-        ),
-        child: child!,
-      ),
+      // Same title on the clock AND the keyboard view.
+      helpText: pickerTitle,
+      confirmText: 'تأكيد',
+      cancelText: 'إلغاء',
+      builder: (context, child) => Theme(data: _hesakTimePickerTheme(Theme.of(context)), child: child!),
     );
     if (picked != null && context.mounted) onChanged(picked);
+  }
+
+  /// Hesak colors for the whole picker (no pink / red): ص / م, the chosen hour,
+  /// the clock hand, the frame and the buttons.
+  static ThemeData _hesakTimePickerTheme(ThemeData base) {
+    Color selectedOr(Set<WidgetState> states, Color selected, Color other) =>
+        states.contains(WidgetState.selected) ? selected : other;
+
+    return base.copyWith(
+      colorScheme: base.colorScheme.copyWith(
+        primary: HesakColors.modeSelected,
+        onPrimary: HesakColors.onPrimary,
+        primaryContainer: HesakColors.primaryLight,
+        onPrimaryContainer: HesakColors.modeSelected,
+        // Material uses these for ص / م — that's where the pink came from.
+        tertiary: HesakColors.modeSelected,
+        tertiaryContainer: HesakColors.primaryLight,
+        onTertiaryContainer: HesakColors.modeSelected,
+        surface: HesakColors.surface,
+        onSurface: HesakColors.textPrimary,
+        outline: HesakColors.primaryLightBorder,
+      ),
+      timePickerTheme: TimePickerThemeData(
+        backgroundColor: HesakColors.surface,
+        helpTextStyle: HesakTextStyles.modeSectionTitle,
+        hourMinuteColor: WidgetStateColor.resolveWith(
+          (states) => selectedOr(states, HesakColors.primaryLight, HesakColors.modeUnselectedFill),
+        ),
+        hourMinuteTextColor: WidgetStateColor.resolveWith(
+          (states) => selectedOr(states, HesakColors.modeSelected, HesakColors.textPrimary),
+        ),
+        dayPeriodColor: WidgetStateColor.resolveWith(
+          (states) => selectedOr(states, HesakColors.primaryLight, Colors.transparent),
+        ),
+        dayPeriodTextColor: WidgetStateColor.resolveWith(
+          (states) => selectedOr(states, HesakColors.modeSelected, HesakColors.textSecondary),
+        ),
+        dayPeriodBorderSide: const BorderSide(color: HesakColors.primaryLightBorder),
+        dialBackgroundColor: HesakColors.modeUnselectedFill,
+        dialHandColor: HesakColors.modeSelected,
+        dialTextColor: WidgetStateColor.resolveWith(
+          (states) => selectedOr(states, HesakColors.onPrimary, HesakColors.textPrimary),
+        ),
+        entryModeIconColor: HesakColors.modeSelected,
+        confirmButtonStyle: TextButton.styleFrom(foregroundColor: HesakColors.modeSelected),
+        cancelButtonStyle: TextButton.styleFrom(foregroundColor: HesakColors.modeSelected),
+      ),
+    );
   }
 
   @override
@@ -955,10 +863,13 @@ class ModesTimeField extends StatelessWidget {
 // ---------------------------------------------------------------------
 
 /// Call-name alert switch, alert types (pick 1+), repeat (pick 1).
+/// [alertRepeat] null / [alertTypes] empty = nothing picked yet (إضافة وضع starts empty).
+/// [canClearAlertTypes] true = the last alert type can be un-picked (إضافة وضع).
 class ModesGeneralSettingsFields extends StatelessWidget {
   final bool isCallNameAlertOn;
   final Set<HesakAlertType> alertTypes;
-  final HesakAlertRepeat alertRepeat;
+  final HesakAlertRepeat? alertRepeat;
+  final bool canClearAlertTypes;
   final ValueChanged<bool> onCallNameAlertChanged;
   final ValueChanged<Set<HesakAlertType>> onAlertTypesChanged;
   final ValueChanged<HesakAlertRepeat> onAlertRepeatChanged;
@@ -971,6 +882,7 @@ class ModesGeneralSettingsFields extends StatelessWidget {
     required this.onCallNameAlertChanged,
     required this.onAlertTypesChanged,
     required this.onAlertRepeatChanged,
+    this.canClearAlertTypes = false,
   });
 
   @override
@@ -1016,7 +928,8 @@ class ModesGeneralSettingsFields extends StatelessWidget {
                 onTap: () {
                   final updated = {...alertTypes};
                   if (updated.contains(type)) {
-                    if (updated.length == 1) return; // Keep at least one way to alert
+                    // A saved mode keeps at least one way to alert.
+                    if (updated.length == 1 && !canClearAlertTypes) return;
                     updated.remove(type);
                   } else {
                     updated.add(type);
@@ -1277,8 +1190,10 @@ class _ModesSoundsPickerState extends State<ModesSoundsPicker> {
 // ---------------------------------------------------------------------
 
 /// Grid of icons (first = no icon -> first letter) + the name field.
+/// [isIconPicked] false = nothing is highlighted yet (the add page starts like this).
 class ModesIconNamePicker extends StatelessWidget {
   final IconData? icon;
+  final bool isIconPicked;
   final ValueChanged<IconData?> onIconChanged;
   final TextEditingController nameController;
   final String? nameError;
@@ -1291,6 +1206,7 @@ class ModesIconNamePicker extends StatelessWidget {
     required this.nameController,
     required this.nameError,
     required this.onNameChanged,
+    this.isIconPicked = true,
   });
 
   @override
@@ -1346,21 +1262,13 @@ class ModesIconNamePicker extends StatelessWidget {
   }
 
   Widget _iconOption(BuildContext context, IconData? choice, String letter) {
-    final bool isSelected = icon == choice;
+    final bool isSelected = isIconPicked && icon == choice;
     return GestureDetector(
       key: Key('modes_icon_option_${choice?.codePoint ?? 'none'}'),
       onTap: () => onIconChanged(choice),
-      child: choice == null && !isSelected
-          // "No icon" option: white circle with the letter and a purple outline.
-          ? Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: HesakColors.surface,
-                border: Border.all(color: HesakColors.primaryLightBorder, width: 1.5),
-              ),
-              child: Center(child: Text(letter, style: HesakTextStyles.modeCircleLetter.copyWith(fontSize: 16))),
-            )
-          : ModesModeCircle(icon: choice, letter: letter, isSelected: isSelected, size: 44),
+      // Every option looks the same: grey when not picked, purple when picked.
+      // The "no icon" option shows the first letter of the name (or ؟).
+      child: ModesModeCircle(icon: choice, letter: letter, isSelected: isSelected, size: 44),
     );
   }
 }
@@ -1410,7 +1318,7 @@ class _ModesIconNameSheetState extends State<_ModesIconNameSheet> {
     HesakModeStore.instance.updateMode(
       widget.mode.copyWith(name: name, icon: _icon, clearIcon: _icon == null),
     );
-    showModesToast(context, 'تم حفظ التعديلات'); // Shows on the page under the sheet
+    showHesakToast(context, 'تم حفظ التعديلات'); // Shows on the page under the sheet
     Navigator.pop(context);
   }
 

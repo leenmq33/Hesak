@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 import '../../widgets/hesak_page_header.dart';
 import '../auth/auth_widgets.dart' show AuthValidators;
 import 'settings_widgets.dart';
+import '../../widgets/hesak_toast.dart';
 
 // =====================================================================
 //  CHANGE PASSWORD (تغيير كلمة المرور) — opened from الإعدادات.
@@ -76,7 +77,7 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
     setState(() => _isLoading = false);
 
     if (result.isSuccess) {
-      showSettingsToast(context, 'تم تغيير كلمة المرور');
+      showHesakToast(context, 'تم تغيير كلمة المرور');
       Navigator.pop(context);
     } else {
       setState(() => _serverError = result.errorMessage);
@@ -87,12 +88,12 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
   Future<void> _sendResetLink() async {
     final email = AuthService.instance.currentEmail;
     if (email == null) {
-      showSettingsToast(context, 'لا يوجد بريد إلكتروني مسجّل', icon: Icons.error_outline_rounded);
+      showHesakToast(context, 'لا يوجد بريد إلكتروني مسجّل', icon: Icons.error_outline_rounded);
       return;
     }
     await AuthService.instance.sendPasswordResetEmail(email: email);
     if (!mounted) return;
-    showSettingsToast(context, 'أرسلنا رابط الاستعادة إلى بريدك', icon: Icons.mark_email_read_outlined);
+    showHesakToast(context, 'تم إرسال رابط الاستعادة إلى بريدك', icon: Icons.mark_email_read_outlined);
   }
 
   @override

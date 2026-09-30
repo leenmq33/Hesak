@@ -6,6 +6,8 @@ import '../../core/theme/hesak_sizes.dart';
 import '../../core/theme/hesak_text_styles.dart';
 import '../../widgets/hesak_page_header.dart';
 import 'modes_widgets.dart';
+import '../../widgets/hesak_confirm_dialog.dart';
+import '../../widgets/hesak_toast.dart';
 
 // =====================================================================
 //  MODE EDITOR — one page for BOTH:
@@ -22,6 +24,9 @@ import 'modes_widgets.dart';
 //  ADD page, top to bottom:
 //   icon + name -> الإعدادات العامة -> الأصوات (emergency only at first)
 //   -> جدولة الوضع (last) -> "إنشاء الوضع".
+//   It starts EMPTY: no icon, no alert type, no repeat, call-name alert off.
+//   Required before "إنشاء الوضع": name + at least one alert type + repeat.
+//   Until then the button is faded and a grey line says what's missing.
 //
 //  NAMING: everything here starts with "ModeEditor". Keys: 'mode_editor_<name>'.
 // =====================================================================
@@ -44,11 +49,13 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
   // ---- Drafts (what the user is changing, not saved yet) ----
   late bool _draftCallNameAlert;
   late Set<HesakAlertType> _draftAlertTypes;
-  late HesakAlertRepeat _draftAlertRepeat;
+  HesakAlertRepeat? _draftAlertRepeat; // null = not picked yet (add page)
   late Set<String> _draftSoundIds;
 
   // Add page only:
   IconData? _draftIcon;
+  bool _isIconPicked = false; // Nothing is highlighted until the user picks
+  late final String _newModeId = _store.newModeId(); // Also used to check schedule clashes
   final _nameController = TextEditingController();
   String? _nameError;
   List<HesakSchedulePeriod> _draftPeriods = [];
@@ -65,10 +72,10 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
       _resetGeneralDraft(saved);
       _resetSoundsDraft(saved);
     } else {
-      // New mode defaults.
-      _draftCallNameAlert = true;
-      _draftAlertTypes = {HesakAlertType.vibration, HesakAlertType.flash};
-      _draftAlertRepeat = HesakAlertRepeat.twice;
+      // New mode: the user picks everything.
+      _draftCallNameAlert = false;
+      _draftAlertTypes = {};
+      _draftAlertRepeat = null;
       _draftSoundIds = {...hesakEmergencySoundIds}; // Emergency only at first
     }
   }
@@ -113,15 +120,23 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
       alertTypes: {..._draftAlertTypes},
       alertRepeat: _draftAlertRepeat,
     ));
-    showModesToast(context, 'تم حفظ التعديلات');
+    showHesakToast(context, 'تم حفظ التعديلات');
   }
 
   void _saveSounds(HesakModeConfig saved) {
     _store.updateMode(saved.copyWith(soundIds: {..._draftSoundIds}));
-    showModesToast(context, 'تم حفظ التعديلات');
+    showHesakToast(context, 'تم حفظ التعديلات');
   }
 
+  // ---- Add page: what's still missing ----
+
+  bool get _isNameMissing => _nameController.text.trim().isEmpty;
+  bool get _isAlertTypeMissing => _draftAlertTypes.isEmpty;
+  bool get _isRepeatMissing => _draftAlertRepeat == null;
+  bool get _canCreate => !_isNameMissing && !_isAlertTypeMissing && !_isRepeatMissing;
+
   void _createMode() {
+    if (!_canCreate) return;
     final problem = modesNameProblem(_nameController.text);
     if (problem != null) {
       setState(() => _nameError = problem);
@@ -129,16 +144,16 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
     }
     final name = _nameController.text.trim();
     _store.addMode(HesakModeConfig(
-      id: _store.newModeId(),
+      id: _newModeId,
       name: name,
       icon: _draftIcon,
       periods: _draftPeriods,
       isCallNameAlertOn: _draftCallNameAlert,
       alertTypes: {..._draftAlertTypes},
-      alertRepeat: _draftAlertRepeat,
+      alertRepeat: _draftAlertRepeat!,
       soundIds: {..._draftSoundIds},
     ));
-    showModesToast(context, 'تم إنشاء وضع $name');
+    showHesakToast(context, 'تم إنشاء وضع $name');
     _hasTouchedNewMode = false; // Nothing left unsaved
     Navigator.pop(context);
   }
@@ -154,10 +169,10 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
       Navigator.pop(context);
       return;
     }
-    final bool shouldLeave = await showModesConfirmDialog(
+    final bool shouldLeave = await showHesakConfirmDialog(
       context,
-      title: 'لديك تعديلات غير محفوظة',
-      message: 'هل تريد الخروج بدون حفظ؟',
+      title: 'هل تريد الخروج بدون حفظ؟',
+      message: 'ستُفقد التعديلات التي أجريتها.',
       confirmLabel: 'خروج',
       icon: Icons.warning_amber_rounded,
     );
@@ -208,6 +223,8 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+        // Space under the header line, so the circle doesn't touch it.
+        const SizedBox(height: 18),
         // ---- Circle with pencil (one button edits name + icon) ----
         Center(
           child: GestureDetector(
@@ -243,6 +260,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
         ModesSectionCard(
           title: 'جدولة الوضع',
           child: ModesScheduleEditor(
+            modeId: saved.id,
             periods: saved.periods,
             // Saved right away. The schedule widget shows its own message.
             onChanged: (periods) => _store.updateMode(saved.copyWith(periods: periods)),
@@ -273,12 +291,18 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildSoundsPicker(),
-              if (isSoundsChanged)
+              if (isSoundsChanged) ...[
+                // A line across the section, so "حفظ" / "إلغاء" clearly belong to
+                // ALL the sounds (not only the last category).
+                const SizedBox(height: 22),
+                const Divider(height: 1, thickness: 1.2, color: HesakColors.primaryLightBorder),
+                const SizedBox(height: 4),
                 ModesSaveCancelRow(
                   keyPrefix: 'mode_editor_sounds',
                   onSave: () => _saveSounds(saved),
                   onCancel: () => setState(() => _resetSoundsDraft(saved)),
                 ),
+              ],
             ],
           ),
         ),
@@ -319,8 +343,10 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
         // ---- Icon + name ----
         ModesIconNamePicker(
           icon: _draftIcon,
+          isIconPicked: _isIconPicked,
           onIconChanged: (icon) => setState(() {
             _draftIcon = icon;
+            _isIconPicked = true;
             _hasTouchedNewMode = true;
           }),
           nameController: _nameController,
@@ -339,6 +365,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
         ModesSectionCard(
           title: 'جدولة الوضع',
           child: ModesScheduleEditor(
+            modeId: _newModeId,
             periods: _draftPeriods,
             onChanged: (periods) => setState(() {
               _draftPeriods = periods;
@@ -348,12 +375,14 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
         ),
 
         const SizedBox(height: 8),
+        // Faded until the name, an alert type and the repeat are picked.
         ModesPillButton(
           key: const Key('mode_editor_create_button'),
           label: 'إنشاء الوضع',
           height: HesakSizes.buttonHeight,
-          onTap: _createMode,
+          onTap: _canCreate ? _createMode : null,
         ),
+        if (!_canCreate) _buildMissingHint(),
         ],
       ),
     );
@@ -363,11 +392,47 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
   // Shared pieces (edit + add)
   // =====================================================================
 
+  /// Grey line under "إنشاء الوضع": what's still missing (the missing parts in bold purple).
+  ///  e.g. "اكتب اسم الوضع واختر نوع التنبيه وتكرار التنبيه لإنشاء الوضع"
+  Widget _buildMissingHint() {
+    const TextStyle missingStyle = TextStyle(fontWeight: FontWeight.w700, color: HesakColors.modeSelected);
+    final List<String> toPick = [
+      if (_isAlertTypeMissing) 'نوع التنبيه',
+      if (_isRepeatMissing) 'تكرار التنبيه',
+    ];
+
+    final List<InlineSpan> spans = [];
+    if (_isNameMissing) {
+      spans.add(const TextSpan(text: 'اكتب '));
+      spans.add(const TextSpan(text: 'اسم الوضع', style: missingStyle));
+      if (toPick.isNotEmpty) spans.add(const TextSpan(text: ' و'));
+    }
+    if (toPick.isNotEmpty) {
+      spans.add(const TextSpan(text: 'اختر '));
+      for (int i = 0; i < toPick.length; i++) {
+        if (i > 0) spans.add(const TextSpan(text: ' و'));
+        spans.add(TextSpan(text: toPick[i], style: missingStyle));
+      }
+    }
+    spans.add(const TextSpan(text: ' لإنشاء الوضع'));
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Text.rich(
+        TextSpan(children: spans),
+        key: const Key('mode_editor_missing_hint'),
+        textAlign: TextAlign.center,
+        style: HesakTextStyles.modeHint.copyWith(height: 1.6),
+      ),
+    );
+  }
+
   Widget _buildGeneralFields() {
     return ModesGeneralSettingsFields(
       isCallNameAlertOn: _draftCallNameAlert,
       alertTypes: _draftAlertTypes,
       alertRepeat: _draftAlertRepeat,
+      canClearAlertTypes: _isNew, // A new mode may un-pick all (then it can't be created yet)
       onCallNameAlertChanged: (value) => setState(() {
         _draftCallNameAlert = value;
         _hasTouchedNewMode = true;

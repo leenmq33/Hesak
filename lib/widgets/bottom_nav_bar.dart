@@ -148,6 +148,11 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
     _isModeMenuOpen ? _modeMenuController.forward() : _modeMenuController.reverse();
   }
 
+  /// Closes the mode menu (does nothing when it's already closed).
+  void _closeModeMenu() {
+    if (_isModeMenuOpen) _toggleModeMenu();
+  }
+
   /// A mode circle was tapped: close the menu and make it the active mode.
   void _handleModeTap(String modeId) {
     _toggleModeMenu();
@@ -234,7 +239,10 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final barHeight = _navBarHeight + bottomInset;
 
-    return SizedBox(
+    // Tap ANYWHERE outside the bar/wheel (the page, the header ...) = close the wheel.
+    return TapRegion(
+      onTapOutside: (_) => _closeModeMenu(),
+      child: SizedBox(
       key: _navBarAreaKey,
       // Tall enough for the wheel. The empty space above the bar
       // is transparent and lets taps pass through to the page behind it
@@ -287,7 +295,11 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
                     right: 0,
                     bottom: 0,
                     height: barHeight,
-                    child: CustomPaint(
+                    // Any tap on the bar (a tab or the empty part) also closes the wheel.
+                    // A tab still opens its page.
+                    child: Listener(
+                      onPointerDown: (_) => _closeModeMenu(),
+                      child: CustomPaint(
                       painter: _HesakNavBarNotchPainter(color: HesakPalette.current.navBar), // Follows فاتح / داكن
                       child: Padding(
                         // Extra bottom padding keeps the icons above the home indicator.
@@ -304,6 +316,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
                           ],
                         ),
                       ),
+                    ),
                     ),
                   ),
 
@@ -348,6 +361,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
             },
           );
         },
+      ),
       ),
     );
   }

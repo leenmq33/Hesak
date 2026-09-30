@@ -173,25 +173,19 @@ class _HesakHeaderDivider extends StatelessWidget {
 
 /// The logo with a soft shadow underneath it.
 /// The shadow is a blurred, faded copy of the logo drawn slightly lower.
+/// Dark page: the WHITE logo (assets/images/logo/hesak_logo_white.png), with a
+/// softer shadow from the purple logo (a white shadow would look like a glow).
 class _HesakHeaderLogo extends StatelessWidget {
   final double width;
-  final bool isOnDark; // Dark page: the purple logo sits on a light pill so it stays visible
+  final bool isOnDark;
 
   const _HesakHeaderLogo({required this.width, this.isOnDark = false});
 
+  static const String _purpleLogo = 'assets/images/logo/hesak_logo.png';
+  static const String _whiteLogo = 'assets/images/logo/hesak_logo_white.png';
+
   @override
   Widget build(BuildContext context) {
-    if (isOnDark) {
-      return Container(
-        width: width,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: HesakColors.surface,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: _buildLogoImage(),
-      );
-    }
     return SizedBox(
       width: width,
       child: Stack(
@@ -200,26 +194,28 @@ class _HesakHeaderLogo extends StatelessWidget {
           Transform.translate(
             offset: const Offset(0, 5),
             child: Opacity(
-              opacity: 0.30,
+              opacity: isOnDark ? 0.22 : 0.30,
               child: ImageFiltered(
                 imageFilter: ui.ImageFilter.blur(sigmaX: 3, sigmaY: 3),
-                child: _buildLogoImage(),
+                child: _buildLogoImage(_purpleLogo),
               ),
             ),
           ),
 
-          // The real logo on top.
-          _buildLogoImage(),
+          // The real logo on top: purple on light pages, white on dark pages.
+          _buildLogoImage(isOnDark ? _whiteLogo : _purpleLogo),
         ],
       ),
     );
   }
 
   /// The full logo as a single transparent PNG.
-  Widget _buildLogoImage() {
+  /// If the white logo file isn't in the project yet, the purple one is shown instead.
+  Widget _buildLogoImage(String path) {
     return Image.asset(
-      'assets/images/logo/hesak_logo.png',
+      path,
       fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) => Image.asset(_purpleLogo, fit: BoxFit.contain),
     );
   }
 }

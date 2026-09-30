@@ -127,6 +127,18 @@ HesakWeekday? hesakFirstClashDay(HesakSchedulePeriod candidate, Iterable<HesakSc
   return null;
 }
 
+/// true when [period] covers the moment [now] (used by the real schedule).
+bool hesakPeriodCovers(HesakSchedulePeriod period, DateTime now) {
+  // DateTime.weekday: Monday = 1 ... Sunday = 7  ->  our index: Sunday = 0 ... Saturday = 6.
+  final int nowMinute = (now.weekday % 7) * _minutesPerDay + now.hour * 60 + now.minute;
+  for (final day in period.days) {
+    for (final range in _hesakWeekRanges(day, period.start, period.end)) {
+      if (range.$1 <= nowMinute && nowMinute < range.$2) return true;
+    }
+  }
+  return false;
+}
+
 /// "11:00 م" — 12-hour time with ص / م.
 String hesakFormatTime(TimeOfDay time) {
   final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
@@ -254,6 +266,9 @@ class HesakModeStore extends ChangeNotifier {
         _loadFromFirebase(user.uid);
       }
     });
+    // The real schedule: look at the clock every 30 seconds.
+    _scheduleTimer = Timer.periodic(const Duration(seconds: 30), (_) => checkSchedule());
+    checkSchedule(isAppStart: true);
   }
   static final HesakModeStore instance = HesakModeStore._();
 
@@ -315,12 +330,113 @@ class HesakModeStore extends ChangeNotifier {
   List<HesakModeOption> get wheelOptions =>
       _modes.where((mode) => mode.isFavorite).map((mode) => mode.toOption()).toList();
 
+  // -------------------------------------------------------------------
+  // Listening (the big button on الرئيسية)
+  // -------------------------------------------------------------------
 
+  bool _isListening = false;
+
+  /// true while the listen button on الرئيسية is ON.
+  /// The selected mode is only really ACTIVE (مفعّل) while listening.
+  bool get isListening => _isListening;
+
+  /// Called by the listen button on الرئيسية.
+  void setListening(bool isOn) {
+    if (isOn == _isListening) return;
+    _isListening = isOn;
+    notifyListeners();
+    // TODO: start / stop the real microphone listening here.
+  }
+
+  // -------------------------------------------------------------------
+  // The real schedule (جدولة الوضع)
+  //  - When "now" enters a period of a mode, that mode becomes the selected one.
+  //  - When the period ends, العام becomes the selected one.
+  //  - If the user picks another mode by hand during a period, we leave it:
+  //    we only switch when a period STARTS or ENDS.
+  //  - Works while the app is open. When the app opens again, it checks right away.
+  //    TODO: switching while the app is fully closed needs the real background
+  //    listening service (Android) — later.
+  // -------------------------------------------------------------------
+
+  Timer? _scheduleTimer;
+
+  /// The mode whose period covered "now" at the last check (null = none).
+  String? _lastScheduledModeId;
+
+  /// The selected mode when the SCHEDULE picked it (null = the user picked it).
+  /// Saved in Firebase with the selected mode.
+  String? _scheduleSelectedModeId;
+
+  final StreamController<String> _scheduleMessages = StreamController<String>.broadcast();
+
+  /// Messages to show when the schedule switches the mode
+  /// ("تم التبديل إلى وضع النوم حسب الجدولة"). HesakMainShell shows them.
+  Stream<String> get scheduleMessages => _scheduleMessages.stream;
+
+  /// The first mode (in the user's order) with a period that covers [now], or null.
+  HesakModeConfig? scheduledModeAt(DateTime now) {
+    for (final mode in _modes) {
+      if (mode.periods.any((period) => hesakPeriodCovers(period, now))) return mode;
+    }
+    return null;
+  }
+
+  /// Looks at the clock and switches the selected mode when a period starts or ends.
+  /// [isAppStart] = the app just opened (or the modes just loaded).
+  void checkSchedule({bool isAppStart = false}) {
+    final HesakModeConfig? scheduled = scheduledModeAt(DateTime.now());
+
+    if (isAppStart) {
+      _lastScheduledModeId = scheduled?.id;
+      if (scheduled != null) {
+        _switchBySchedule(scheduled);
+      } else if (_scheduleSelectedModeId == _selectedModeId && !selectedMode.isGeneral) {
+        // The schedule picked this mode, and its period ended while the app was closed -> back to العام.
+        // (A mode the user picked by hand stays.)
+        _switchBySchedule(modeById(HesakModeIds.general));
+      }
+      return;
+    }
+
+    if (scheduled?.id == _lastScheduledModeId) return; // Nothing started or ended
+    _lastScheduledModeId = scheduled?.id;
+    // A period started -> its mode. A period ended -> العام.
+    _switchBySchedule(scheduled ?? modeById(HesakModeIds.general));
+  }
+
+  void _switchBySchedule(HesakModeConfig? mode) {
+    if (mode == null || mode.id == _selectedModeId) return;
+    selectMode(mode.id, isBySchedule: true);
+    _scheduleMessages.add('تم التبديل إلى وضع ${mode.name} حسب الجدولة');
+  }
+
+  /// The other mode that already has [candidate]'s time, or null.
+  /// Two modes can't share the same time: the mode that took it first keeps it.
+  /// [modeId] = the mode being edited (or the new mode's id).
+  HesakModeConfig? modeClashingWith(HesakSchedulePeriod candidate, {required String modeId}) {
+    for (final mode in _modes) {
+      if (mode.id == modeId) continue;
+      if (hesakFirstClashDay(candidate, mode.periods) != null) return mode;
+    }
+    return null;
+  }
+
+  @override
+  void dispose() {
+    _scheduleTimer?.cancel();
+    _scheduleMessages.close();
+    super.dispose();
+  }
 
   /// Makes [id] the active mode.
-  void selectMode(String id) {
+  /// [isBySchedule] true = the schedule picked it (not the user).
+  void selectMode(String id, {bool isBySchedule = false}) {
     if (id == _selectedModeId || modeById(id) == null) return;
     _selectedModeId = id;
+    // Remember if the schedule picked it, so after the app was closed we know
+    // whether to go back to العام (schedule) or keep it (the user's choice).
+    _scheduleSelectedModeId = isBySchedule ? id : null;
     notifyListeners();
     _saveSelectedModeId();
     // TODO: apply the mode's listening settings here.
@@ -358,13 +474,30 @@ class HesakModeStore extends ChangeNotifier {
   }
 
   /// Moves a mode to a new place in the list — used by drag-to-reorder on the
-  /// "عرض الكل" page. [oldIndex] / [newIndex] are given the way ReorderableListView
+  /// الأوضاع page. [oldIndex] / [newIndex] are given the way ReorderableListView
   /// gives them. The wheel in the bottom bar shows the starred modes in this same order.
   void reorderModes({required int oldIndex, required int newIndex}) {
     if (oldIndex < 0 || oldIndex >= _modes.length) return;
     if (newIndex > oldIndex) newIndex -= 1; // ReorderableListView counts the moved item
     final moved = _modes.removeAt(oldIndex);
     _modes.insert(newIndex.clamp(0, _modes.length), moved);
+    notifyListeners();
+    _saveAllModes(); // The order of every mode changed
+  }
+
+  /// Puts the modes in the order of [orderedIds] (used by the الأوضاع page, where
+  /// the selected mode stays on top and the others are dragged under it).
+  void setModesOrder(List<String> orderedIds) {
+    if (orderedIds.length != _modes.length) return;
+    final reordered = <HesakModeConfig>[];
+    for (final id in orderedIds) {
+      final mode = modeById(id);
+      if (mode == null) return; // Unknown id -> keep the old order
+      reordered.add(mode);
+    }
+    _modes
+      ..clear()
+      ..addAll(reordered);
     notifyListeners();
     _saveAllModes(); // The order of every mode changed
   }
@@ -402,7 +535,10 @@ class HesakModeStore extends ChangeNotifier {
       ..clear()
       ..addAll(_defaultModes());
     _selectedModeId = HesakModeIds.general;
+    _scheduleSelectedModeId = null;
+    _isListening = false;
     notifyListeners();
+    checkSchedule(isAppStart: true);
   }
 
   /// Reads the user's modes and the active mode from Firestore.
@@ -445,8 +581,10 @@ class HesakModeStore extends ChangeNotifier {
       final savedModeId = settings?['currentModeId'] as String?;
       _selectedModeId =
       (savedModeId != null && modeById(savedModeId) != null) ? savedModeId : HesakModeIds.general;
+      _scheduleSelectedModeId = settings?['scheduleSelectedModeId'] as String?;
 
       notifyListeners();
+      checkSchedule(isAppStart: true); // The loaded schedule may say another mode now
     } catch (e) {
       debugPrint('🔴 [HesakModeStore] load error: $e');
     }
@@ -494,7 +632,10 @@ class HesakModeStore extends ChangeNotifier {
     if (userDoc == null) return;
     unawaited(
       userDoc
-          .update({'settings.currentModeId': _selectedModeId})
+          .update({
+            'settings.currentModeId': _selectedModeId,
+            'settings.scheduleSelectedModeId': _scheduleSelectedModeId, // null = picked by the user
+          })
           .catchError((e) => debugPrint('🔴 [HesakModeStore] select error: $e')),
     );
   }
