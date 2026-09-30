@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../core/data/hesak_mode_store.dart';
 import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_palette.dart';
 import '../services/auth_service.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/hesak_toast.dart';
 import 'chats_screen.dart';
 import 'home_screen.dart';
 import 'modes_screen.dart';
@@ -16,6 +19,8 @@ import 'settings_screen.dart';
 //  - The page background and the bottom bar (HesakBottomNavBar).
 //  - Which page is open (tapping a tab switches the page).
 //  - Passing the user's modes (from HesakModeStore) to the middle button.
+//  - Showing the message when the schedule switches the mode, and checking
+//    the schedule again when the app comes back from the background.
 //
 //  Each page lives in its own file, so each teammate can work on one page
 //  without touching the others:
@@ -33,7 +38,7 @@ class HesakMainShell extends StatefulWidget {
   State<HesakMainShell> createState() => _HesakMainShellState();
 }
 
-class _HesakMainShellState extends State<HesakMainShell> {
+class _HesakMainShellState extends State<HesakMainShell> with WidgetsBindingObserver {
   // The page that is open now (starts on الرئيسية).
   HesakNavTab _selectedTab = HesakNavTab.home;
 
@@ -41,6 +46,34 @@ class _HesakMainShellState extends State<HesakMainShell> {
   // (lib/core/data/hesak_mode_store.dart), shared with the الأوضاع page.
   final HesakModeStore _modeStore = HesakModeStore.instance;
 
+  // "تم التبديل إلى وضع النوم حسب الجدولة" messages from the store.
+  StreamSubscription<String>? _scheduleMessagesSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scheduleMessagesSubscription = _modeStore.scheduleMessages.listen((message) {
+      // After the frame, so it never shows in the middle of a build.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) showHesakToast(context, message, icon: Icons.schedule_rounded);
+      });
+    });
+    _modeStore.checkSchedule(isAppStart: true);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _scheduleMessagesSubscription?.cancel();
+    super.dispose();
+  }
+
+  // Back from the background -> a period may have started or ended meanwhile.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _modeStore.checkSchedule();
+  }
 
   @override
   Widget build(BuildContext context) {

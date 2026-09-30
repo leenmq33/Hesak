@@ -68,10 +68,8 @@ class _CallNameFormState extends State<CallNameForm> {
         const AuthSheetHeader(title: 'للتنبيه عند النداء'),
 
         const SizedBox(height: 14),
-        const AuthInfoBanner(
-          'أدخل الاسم الذي ترغب أن يتعرّف عليه حسّك عند سماعه، '
-          'سيصلك تنبيه لإخبارك بأن أحدًا يناديك.',
-        ),
+        // Same note as in الإعدادات (الاسم للنداء).
+        const AuthInfoBanner('سيُنبّهك حِسّك عند سماع هذا الاسم، لتعرف أن أحدًا يناديك.'),
 
         const AuthFieldLabel('الاسم:'),
         AuthTextField(

@@ -117,7 +117,7 @@ class HesakColors {
   /// Placeholder text and icons inside text fields.
   static const Color fieldHint = Color(0xFF8E8A93);
 
-  /// Light pink box with a note (e.g. "سيستخدم حسك هذا الصوت...").
+  /// Light pink box with a note (e.g. "سيستخدم حِسّك هذا الصوت...").
   static const Color infoBannerFill = Color(0xFFFFF5F5);
 
   /// Border of the note box.
@@ -207,4 +207,11 @@ class HesakColors {
 
   /// Green dot of "مفعّل الآن".
   static const Color activeDot = passwordRuleMet;
+
+  /// Mode card header while listening is OFF (غير مفعّل): a lighter purple.
+  static const Color modeHeaderIdleStart = Color(0xFF9585B0);
+  static const Color modeHeaderIdleEnd = Color(0xFF7D6A9A);
+
+  /// Grey dot in the "غير مفعّل" badge.
+  static const Color idleDot = iconInactive;
 }

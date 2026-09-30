@@ -411,4 +411,20 @@ class HesakTextStyles {
     fontWeight: FontWeight.w400,
     color: HesakColors.textSecondary,
   );
+
+  /// Small grey hints on the الأوضاع page ("اضغط للتفعيل", "اضغط زر الاستماع ..."). 12 / Regular / grey.
+  static const TextStyle modeHint = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: HesakColors.textSecondary,
+  );
+
+  /// Mode name in the list rows of the الأوضاع page. 15 / Bold.
+  static const TextStyle modeRowName = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.textPrimary,
+  );
 }

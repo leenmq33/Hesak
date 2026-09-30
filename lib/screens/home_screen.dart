@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/data/hesak_mode_store.dart';
 import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
@@ -120,6 +121,8 @@ class _HomeListenButtonState extends State<_HomeListenButton>
   /// Start or stop the listening animation.
   void _toggleListening() {
     setState(() => _isListening = !_isListening);
+    // Tell the الأوضاع page (it shows "مفعّل" / "غير مفعّل").
+    HesakModeStore.instance.setListening(_isListening);
 
     if (_isListening) {
       _listenPulseController.repeat(reverse: true); // grow -> shrink -> grow ...
@@ -193,12 +196,34 @@ class _HomeListenButtonState extends State<_HomeListenButton>
         const SizedBox(height: 4),
 
         // Text under the button changes with the state (with a soft fade).
-        AnimatedSwitcher(
+        // While listening it's 2 lines, so the size grows smoothly.
+        AnimatedSize(
           duration: const Duration(milliseconds: 250),
-          child: Text(
-            _isListening ? 'جارٍ الاستماع...' : 'اضغط للاستماع',
-            key: ValueKey(_isListening), // Tells the switcher the text changed
-            style: HesakTextStyles.actionLabel,
+          alignment: Alignment.topCenter,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: _isListening
+                ? Column(
+                    key: const ValueKey('home_listen_label_on'), // Tells the switcher the text changed
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('حِسّك يستمع…', style: HesakTextStyles.actionLabel),
+                      const SizedBox(height: 4),
+                      Text(
+                        'اضغط للإيقاف',
+                        style: HesakTextStyles.actionLabel.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: HesakColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  )
+                : const Text(
+                    'اضغط للاستماع',
+                    key: ValueKey('home_listen_label_off'),
+                    style: HesakTextStyles.actionLabel,
+                  ),
           ),
         ),
       ],

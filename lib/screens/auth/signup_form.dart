@@ -153,7 +153,7 @@ class _SignUpFormState extends State<SignUpForm> {
         // Clear space after the email, so the pink note box doesn't stick to it.
         // The note belongs to the voice, so it sits close to the voice row.
         const SizedBox(height: 40),
-        const AuthInfoBanner('سيستخدم حسّك هذا الصوت لقراءة النصوص بصوت مسموع'),
+        const AuthInfoBanner('سيستخدم حِسّك هذا الصوت لقراءة النصوص بصوت مسموع'),
         const SizedBox(height: 10),
         Row(
           children: [

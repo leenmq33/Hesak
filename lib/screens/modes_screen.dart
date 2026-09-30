@@ -5,22 +5,29 @@ import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
 import '../widgets/hesak_page_header.dart';
 import 'modes/mode_editor_screen.dart';
-import 'modes/modes_all_screen.dart';
 import 'modes/modes_widgets.dart';
 
 // =====================================================================
 //  MODES PAGE (الأوضاع) — the tab in the bottom bar.
 //
-//  The tab has its OWN navigator, so the inner pages (عرض الكل, إضافة وضع,
-//  تعديل وضع) open INSIDE the tab and the bottom bar stays visible.
+//  The tab has its OWN navigator, so the inner pages (إضافة وضع, تعديل وضع)
+//  open INSIDE the tab and the bottom bar stays visible.
 //
-//  Main page, top to bottom:
-//   - "عرض الكل ‹" (left) + a row of mode tiles. Tap a tile = make it active.
-//     The selected tile has a purple frame. Last tile "إضافة" opens the add page.
-//   - ONE card with everything about the active mode:
-//       purple header: icon, name, "مفعّل الآن", schedule line, star
+//  ONE page, top to bottom:
+//   - The SELECTED mode, always on top, open, and NOT draggable:
+//       purple header: icon, name, "مفعّل" / "غير مفعّل", schedule line, star
+//       (+ a hint line under it while listening is off)
 //       body: جدولة الوضع (saved right away) + ملخص الإعدادات
 //       + "تعديل إعدادات الوضع ‹" (opens the edit page)
+//   - A small grey hint: "اضغط للتفعيل" · "اسحب للترتيب"
+//   - The other modes as closed rows: drag handle, icon, name, schedule, star, pencil.
+//       tap a row = it becomes the selected mode (moves to the top)
+//       pencil    = edit it WITHOUT selecting it
+//       drag      = change the order (the wheel on the bar follows this order)
+//   - "إضافة وضع جديد"
+//
+//  "مفعّل" = the selected mode is really working, which only happens while
+//  the listen button on الرئيسية is ON (HesakModeStore.isListening).
 //
 //  Data: HesakModeStore (lib/core/data/hesak_mode_store.dart).
 //  Shared pieces: modes/modes_widgets.dart.
@@ -49,7 +56,7 @@ class ModesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Phone back button: go back inside the tab first (e.g. from عرض الكل to الأوضاع).
+    // Phone back button: go back inside the tab first (e.g. from تعديل وضع to الأوضاع).
     return NavigatorPopHandler(
       enabled: isActive,
       onPop: () => navigatorKey.currentState?.maybePop(),
@@ -64,7 +71,7 @@ class ModesScreen extends StatelessWidget {
   }
 }
 
-/// The first page of the tab: header + tiles + active mode card.
+/// The first page of the tab: header + selected mode card + the other modes.
 class _ModesHomePage extends StatelessWidget {
   const _ModesHomePage();
 
@@ -79,7 +86,7 @@ class _ModesHomePage extends StatelessWidget {
             // Shared header: logo + waves + page title + divider.
             const HesakPageHeader(title: 'الأوضاع'),
 
-            // Rebuilds whenever a mode changes (selected, starred, edited ...).
+            // Rebuilds whenever a mode changes (selected, starred, edited, listening ...).
             Expanded(
               child: ListenableBuilder(
                 listenable: HesakModeStore.instance,
@@ -95,181 +102,252 @@ class _ModesHomePage extends StatelessWidget {
 }
 
 /// Everything under the header.
-class _ModesPageContent extends StatelessWidget {
+class _ModesPageContent extends StatefulWidget {
   final HesakModeStore store;
 
   const _ModesPageContent({required this.store});
 
   @override
+  State<_ModesPageContent> createState() => _ModesPageContentState();
+}
+
+class _ModesPageContentState extends State<_ModesPageContent> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// Tap on a row: that mode becomes the selected one and the page goes up to show it.
+  void _selectMode(String id) {
+    widget.store.selectMode(id);
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(0, duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
+    }
+  }
+
+  /// Drag between the NOT selected modes. The selected mode keeps its place in the order.
+  void _reorderOthers(List<HesakModeConfig> others, int oldIndex, int newIndex) {
+    if (newIndex > oldIndex) newIndex -= 1; // ReorderableListView counts the moved row
+    final List<String> otherIds = others.map((m) => m.id).toList();
+    final String movedId = otherIds.removeAt(oldIndex);
+    otherIds.insert(newIndex.clamp(0, otherIds.length), movedId);
+
+    final List<HesakModeConfig> all = widget.store.modes;
+    final String selectedId = widget.store.selectedModeId;
+    final int selectedIndex = all.indexWhere((m) => m.id == selectedId);
+    final List<String> orderedIds = [...otherIds];
+    if (selectedIndex != -1) orderedIds.insert(selectedIndex.clamp(0, orderedIds.length), selectedId);
+    widget.store.setModesOrder(orderedIds);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final HesakModeStore store = widget.store;
     final HesakModeConfig selected = store.selectedMode;
+    final List<HesakModeConfig> others = store.modes.where((m) => m.id != selected.id).toList();
 
     return SingleChildScrollView(
+      controller: _scrollController,
       // Bottom space keeps the content above the bottom bar.
       padding: const EdgeInsets.fromLTRB(
         HesakSizes.pagePadding,
-        0,
+        4,
         HesakSizes.pagePadding,
         HesakSizes.pageBottomSafeSpace,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ---- "عرض الكل ‹" (left side) ----
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: TextButton(
-              key: const Key('modes_show_all_button'),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ModesAllScreen()),
+          // ---- The selected mode: always on top, not draggable ----
+          _ModesActiveModeCard(mode: selected, isListening: store.isListening),
+
+          // ---- Hint + the other modes ----
+          if (others.isNotEmpty) ...[
+            const SizedBox(height: 22),
+            const _ModesListHint(),
+            const SizedBox(height: 10),
+            ReorderableListView(
+              // Lives inside the page's scroll: not scrollable by itself.
+              shrinkWrap: true,
+              padding: EdgeInsets.zero, // No hidden bottom gap (the bar height) before "إضافة وضع جديد"
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false, // Our own handle (⋮⋮) + long-press on the row
+              onReorder: (oldIndex, newIndex) => _reorderOthers(others, oldIndex, newIndex),
+              // The row being dragged: a little lifted with a soft shadow.
+              proxyDecorator: (child, index, animation) => Material(
+                color: Colors.transparent,
+                elevation: 6,
+                shadowColor: HesakColors.glassShadow,
+                borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
+                child: child,
               ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('عرض الكل', style: HesakTextStyles.modeLink),
-                  SizedBox(width: 2),
-                  // "Forward" arrow: points left in Arabic.
-                  Icon(Icons.arrow_forward_ios_rounded, size: 13, color: HesakColors.modeSelected),
-                ],
-              ),
-            ),
-          ),
-
-          // ---- Mode tiles (the order the user set in عرض الكل) ----
-          _ModesTilesRow(
-            modes: store.modes,
-            selectedModeId: selected.id,
-            onSelect: store.selectMode,
-          ),
-          const SizedBox(height: 14),
-
-          // ---- Everything about the active mode, in one card ----
-          _ModesActiveModeCard(mode: selected),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------
-// Tiles row
-// ---------------------------------------------------------------------
-
-/// Row of mode tiles (scrolls sideways when there are many) + "إضافة".
-class _ModesTilesRow extends StatelessWidget {
-  final List<HesakModeConfig> modes;
-  final String selectedModeId;
-  final ValueChanged<String> onSelect;
-
-  static const double _tileWidth = 80;
-
-  const _ModesTilesRow({required this.modes, required this.selectedModeId, required this.onSelect});
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      clipBehavior: Clip.none,
-      child: Row(
-        children: [
-          for (final mode in modes)
-            Padding(
-              padding: const EdgeInsetsDirectional.only(end: 8),
-              child: _ModesTile(
-                key: Key('modes_tile_${mode.id}'),
-                width: _tileWidth,
-                isSelected: mode.id == selectedModeId,
-                onTap: () => onSelect(mode.id),
-                icon: mode.icon,
-                letter: mode.firstLetter,
-                label: mode.name,
-              ),
-            ),
-
-          // "إضافة" -> add page (dashed-look purple outline).
-          _ModesTile(
-            key: const Key('modes_tile_add'),
-            width: _tileWidth,
-            isSelected: false,
-            isAddTile: true,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ModeEditorScreen()),
-            ),
-            icon: Icons.add_rounded,
-            letter: '+',
-            label: 'إضافة',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One tile: icon (or first letter) + name. Selected = purple frame + light fill.
-class _ModesTile extends StatelessWidget {
-  final double width;
-  final bool isSelected;
-  final bool isAddTile;
-  final VoidCallback onTap;
-  final IconData? icon;
-  final String letter;
-  final String label;
-
-  const _ModesTile({
-    super.key,
-    required this.width,
-    required this.isSelected,
-    required this.onTap,
-    required this.icon,
-    required this.letter,
-    required this.label,
-    this.isAddTile = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final Color contentColor = isSelected || isAddTile ? HesakColors.modeSelected : HesakColors.iconInactive;
-    final radius = BorderRadius.circular(18);
-
-    return SizedBox(
-      width: width,
-      child: Material(
-        color: isSelected ? HesakColors.modeTileSelectedFill : HesakColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: radius,
-          side: BorderSide(
-            color: isSelected
-                ? HesakColors.modeSelected
-                : (isAddTile ? HesakColors.primaryLightBorder : HesakColors.surfaceBorder),
-            width: isSelected ? 2 : 1.3,
-          ),
-        ),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: radius,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
-                  height: 28,
-                  child: Center(
-                    child: icon != null
-                        ? Icon(icon, size: 26, color: contentColor)
-                        : Text(letter, style: HesakTextStyles.modeCircleLetter.copyWith(color: contentColor, fontSize: 20)),
+                for (int i = 0; i < others.length; i++)
+                  ReorderableDelayedDragStartListener(
+                    key: ValueKey('modes_row_${others[i].id}'),
+                    index: i,
+                    child: _ModesModeRow(
+                      mode: others[i],
+                      index: i,
+                      onTap: () => _selectMode(others[i].id),
+                    ),
+                  ),
+              ],
+            ),
+          ] else
+            const SizedBox(height: 14),
+
+          // ---- إضافة وضع جديد ----
+          const _ModesAddCard(),
+        ],
+      ),
+    );
+  }
+}
+
+/// Small grey line: "👆 اضغط للتفعيل   ⋮⋮ اسحب للترتيب".
+class _ModesListHint extends StatelessWidget {
+  const _ModesListHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.touch_app_outlined, size: 16, color: HesakColors.iconInactive),
+        SizedBox(width: 4),
+        Text('اضغط للتفعيل', style: HesakTextStyles.modeHint),
+        SizedBox(width: 18),
+        Icon(Icons.drag_indicator_rounded, size: 16, color: HesakColors.iconInactive),
+        SizedBox(width: 2),
+        Text('اسحب للترتيب', style: HesakTextStyles.modeHint),
+      ],
+    );
+  }
+}
+
+/// One NOT selected mode: ⋮⋮, circle, name + schedule, star, pencil.
+/// Tap = select it. Pencil = edit it (stays not selected).
+class _ModesModeRow extends StatelessWidget {
+  final HesakModeConfig mode;
+  final int index; // Its place in the list (for the drag handle)
+  final VoidCallback onTap;
+
+  const _ModesModeRow({required this.mode, required this.index, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(HesakSizes.radiusCard);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: HesakColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: radius, side: const BorderSide(color: HesakColors.surfaceBorder)),
+        child: InkWell(
+          key: Key('modes_row_tap_${mode.id}'),
+          borderRadius: radius,
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(4, 10, 8, 10),
+            child: Row(
+              children: [
+                // Drag handle: drag right away (the row itself needs a long press).
+                ReorderableDragStartListener(
+                  index: index,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 12),
+                    child: Icon(Icons.drag_indicator_rounded, color: HesakColors.iconInactive, size: 22),
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: isSelected || isAddTile ? HesakTextStyles.modeTileLabelSelected : HesakTextStyles.modeTileLabel,
+                ModesModeCircle.forMode(mode, isSelected: false, size: 50),
+                const SizedBox(width: 12),
+
+                // Name + schedule.
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(mode.name, style: HesakTextStyles.modeRowName, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 3),
+                      Text(mode.scheduleSummary, style: HesakTextStyles.modeHint.copyWith(height: 1.5)),
+                    ],
+                  ),
+                ),
+
+                ModesStarButton(
+                  key: Key('modes_row_star_${mode.id}'),
+                  isFavorite: mode.isFavorite,
+                  onTap: () => modesToggleFavorite(context, mode),
+                ),
+                const SizedBox(width: 8),
+
+                // Pencil: edit without selecting.
+                Tooltip(
+                  message: 'تعديل',
+                  child: Material(
+                    color: HesakColors.surface,
+                    shape: const CircleBorder(side: BorderSide(color: HesakColors.primaryLightBorder, width: 1.3)),
+                    child: InkWell(
+                      key: Key('modes_row_edit_${mode.id}'),
+                      customBorder: const CircleBorder(),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => ModeEditorScreen(modeId: mode.id)),
+                      ),
+                      child: const SizedBox(
+                        width: HesakSizes.modeStarButton,
+                        height: HesakSizes.modeStarButton,
+                        child: Icon(Icons.edit_rounded, size: 18, color: HesakColors.modeSelected),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Last card: "إضافة وضع جديد".
+class _ModesAddCard extends StatelessWidget {
+  const _ModesAddCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(HesakSizes.radiusCard);
+    return Material(
+      color: HesakColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: const BorderSide(color: HesakColors.primaryLightBorder, width: 1.3),
+      ),
+      child: InkWell(
+        key: const Key('modes_add_card'),
+        borderRadius: radius,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ModeEditorScreen()),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: HesakColors.primaryLightBorder, width: 1.5),
+                ),
+                child: const Icon(Icons.add_rounded, color: HesakColors.iconInactive, size: 26),
+              ),
+              const SizedBox(width: 12),
+              const Text('إضافة وضع جديد', style: HesakTextStyles.modeLink),
+            ],
           ),
         ),
       ),
@@ -281,12 +359,14 @@ class _ModesTile extends StatelessWidget {
 // Active mode card
 // ---------------------------------------------------------------------
 
-/// Purple header (icon, name, "مفعّل الآن", schedule, star) + schedule +
+/// Purple header (icon, name, "مفعّل" / "غير مفعّل", schedule, star) + schedule +
 /// settings summary + "تعديل إعدادات الوضع".
+/// [isListening] false = lighter header, grey "غير مفعّل" and a hint line under the header.
 class _ModesActiveModeCard extends StatelessWidget {
   final HesakModeConfig mode;
+  final bool isListening;
 
-  const _ModesActiveModeCard({required this.mode});
+  const _ModesActiveModeCard({required this.mode, required this.isListening});
 
   @override
   Widget build(BuildContext context) {
@@ -302,6 +382,14 @@ class _ModesActiveModeCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildHeader(context),
+          // Listening is off: tell the user how to really turn the mode on.
+          if (!isListening)
+            Container(
+              key: const Key('modes_listen_hint'),
+              color: HesakColors.modeTileSelectedFill,
+              padding: const EdgeInsets.symmetric(horizontal: HesakSizes.cardPaddingHorizontal, vertical: 9),
+              child: const Text('اضغط زر الاستماع في الرئيسية لتفعيل الوضع', style: HesakTextStyles.modeHint),
+            ),
           Padding(
             padding: const EdgeInsets.all(HesakSizes.cardPaddingHorizontal),
             child: Column(
@@ -313,6 +401,7 @@ class _ModesActiveModeCard extends StatelessWidget {
                 ModesScheduleEditor(
                   // New key per mode, so an open edit box doesn't carry over to another mode.
                   key: ValueKey('modes_schedule_${mode.id}'),
+                  modeId: mode.id,
                   periods: mode.periods,
                   // Saved right away. The schedule widget shows its own message.
                   onChanged: (periods) => HesakModeStore.instance.updateMode(mode.copyWith(periods: periods)),
@@ -384,15 +473,19 @@ class _ModesActiveModeCard extends StatelessWidget {
     );
   }
 
-  /// Purple header: icon circle, name + "مفعّل الآن", schedule line, star.
+  /// Purple header: icon circle, name + "مفعّل" / "غير مفعّل", schedule line, star.
+  /// Deep purple while listening, a lighter purple while not.
   Widget _buildHeader(BuildContext context) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
       padding: const EdgeInsets.all(14),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: AlignmentDirectional.topStart,
           end: AlignmentDirectional.bottomEnd,
-          colors: [HesakColors.primaryMuted, HesakColors.primary],
+          colors: isListening
+              ? const [HesakColors.primaryMuted, HesakColors.primary]
+              : const [HesakColors.modeHeaderIdleStart, HesakColors.modeHeaderIdleEnd],
         ),
       ),
       child: Row(
@@ -413,7 +506,7 @@ class _ModesActiveModeCard extends StatelessWidget {
           ),
           const SizedBox(width: 12),
 
-          // Name + "مفعّل الآن" + schedule line.
+          // Name + "مفعّل" / "غير مفعّل" + schedule line.
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -429,7 +522,7 @@ class _ModesActiveModeCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const _ModesActiveBadge(),
+                    _ModesActiveBadge(isListening: isListening),
                   ],
                 ),
                 const SizedBox(height: 5),
@@ -483,28 +576,39 @@ class _ModesActiveModeCard extends StatelessWidget {
   }
 }
 
-/// Small light pill with a green dot: "مفعّل الآن".
+/// Small light pill: green dot + "مفعّل" while listening, grey dot + "غير مفعّل" otherwise.
 class _ModesActiveBadge extends StatelessWidget {
-  const _ModesActiveBadge();
+  final bool isListening;
+
+  const _ModesActiveBadge({required this.isListening});
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      key: const Key('modes_state_badge'),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: HesakColors.primaryLight,
         borderRadius: BorderRadius.circular(10),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
             width: 7,
             height: 7,
-            child: DecoratedBox(decoration: BoxDecoration(shape: BoxShape.circle, color: HesakColors.activeDot)),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isListening ? HesakColors.activeDot : HesakColors.idleDot,
+              ),
+            ),
           ),
-          SizedBox(width: 4),
-          Text('مفعّل الآن', style: HesakTextStyles.modeBadge),
+          const SizedBox(width: 4),
+          Text(
+            isListening ? 'مفعّل' : 'غير مفعّل',
+            style: isListening ? HesakTextStyles.modeBadge : HesakTextStyles.modeBadge.copyWith(color: HesakColors.textSecondary),
+          ),
         ],
       ),
     );
