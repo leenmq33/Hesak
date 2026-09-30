@@ -19,6 +19,7 @@ import '../core/theme/hesak_text_styles.dart';
 import '../widgets/hesak_page_header.dart';
 import 'chats_conversation_screen.dart';
 import 'chats_models.dart';
+import '../services/conversation_service.dart';
 
 /// The Chats tab. HesakMainShell shows it and draws the bottom bar.
 ///
@@ -69,8 +70,11 @@ class _ChatsPageContent extends StatefulWidget {
 }
 
 class _ChatsPageContentState extends State<_ChatsPageContent> {
-  // TODO: load from real storage instead of demo data.
-  final List<ChatsConversation> _conversations = chatsSampleConversations();
+  /// Conversations loaded from Firestore (users/{uid}/conversations).
+  final List<ChatsConversation> _conversations = <ChatsConversation>[];
+
+  /// True while the list is loading from Firestore.
+  bool _isLoading = true;
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -79,7 +83,7 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
   String _searchQuery = '';
 
   /// Number for the next new conversation: "محادثة 01", "محادثة 02", ...
-  /// TODO: persist this counter with the conversations.
+  /// Set from the number of loaded conversations.
   int _nextConversationNumber = 1;
 
   /// Ticks every second so the "تُحذف بعد 17:20:30" countdown stays exact.
@@ -88,9 +92,10 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
   @override
   void initState() {
     super.initState();
+    _loadConversations();
     _countdownTimer = Timer.periodic(
       const Duration(seconds: 1),
-      (_) => _refreshCountdowns(),
+          (_) => _refreshCountdowns(),
     );
   }
 
@@ -101,16 +106,32 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
     super.dispose();
   }
 
+  /// Loads the user's conversations from Firestore.
+  Future<void> _loadConversations() async {
+    final List<ChatsConversation> loaded =
+    await ConversationService.instance.loadConversations();
+    if (!mounted) return;
+    setState(() {
+      _conversations
+        ..clear()
+        ..addAll(loaded);
+      _nextConversationNumber = loaded.length + 1;
+      _isLoading = false;
+    });
+  }
+
   /// Rebuilds the countdowns and drops unsaved conversations whose
-  /// 24 hours are over.
+  /// 24 hours are over (also deletes them from Firestore).
   void _refreshCountdowns() {
     if (!mounted) return;
     setState(() {
-      _conversations.removeWhere((c) =>
-          !c.isSaved &&
-          c.hasStartedListening &&
-          c.timeUntilAutoDelete == Duration.zero);
-      // TODO: delete expired conversations from real storage as well.
+      _conversations.removeWhere((c) {
+        final bool isExpired = !c.isSaved &&
+            c.hasStartedListening &&
+            c.timeUntilAutoDelete == Duration.zero;
+        if (isExpired) ConversationService.instance.deleteConversation(c.id);
+        return isExpired;
+      });
     });
   }
 
@@ -134,6 +155,7 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
   /// Saves / un-saves a conversation. Saved ones appear under "المحفوظة".
   void _toggleConversationSaved(ChatsConversation conversation) {
     setState(() => conversation.isSaved = !conversation.isSaved);
+    ConversationService.instance.saveConversation(conversation);
   }
 
   /// Opens the rename dialog and applies the new title.
@@ -145,6 +167,7 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
     );
     if (newTitle == null || newTitle.trim().isEmpty) return;
     setState(() => conversation.title = newTitle.trim());
+    ConversationService.instance.saveConversation(conversation);
   }
 
   /// Asks for confirmation, then removes the conversation.
@@ -155,7 +178,7 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
       builder: (_) => _ChatsDeleteDialog(title: conversation.title),
     );
     if (isConfirmed != true) return;
-    // TODO: delete from real storage as well.
+    ConversationService.instance.deleteConversation(conversation.id);
     setState(() => _conversations.remove(conversation));
   }
 
@@ -176,12 +199,16 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
         _nextConversationNumber--;
       }
     });
+    // Save everything that happened inside the conversation.
+    if (conversation.hasStartedListening || conversation.messages.isNotEmpty) {
+      ConversationService.instance.saveConversation(conversation);
+    }
   }
 
   /// Creates an empty conversation and opens it (shows the start card).
   void _startNewConversation() {
     final ChatsConversation conversation = ChatsConversation(
-      id: 'chats_${DateTime.now().microsecondsSinceEpoch}',
+      id: ConversationService.instance.newConversationId(),
       // Auto name until the user renames it.
       // TODO: AI suggests a name after a few messages.
       title: chatsDefaultConversationTitle(_nextConversationNumber++),
@@ -239,33 +266,38 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
               ),
             ),
             Expanded(
-              child: visible.isEmpty
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : visible.isEmpty
                   ? _ChatsEmptyState(isSearching: _searchQuery.isNotEmpty)
                   : ListView.separated(
-                      key: const Key('chats_conversations_list'),
-                      padding: const EdgeInsets.fromLTRB(
-                        HesakSizes.pagePadding,
-                        16,
-                        HesakSizes.pagePadding,
-                        // Bar space + room so the last card clears the
-                        // "محادثة جديدة" button.
-                        HesakSizes.pageBottomSafeSpace + 70,
-                      ),
-                      itemCount: visible.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: HesakSizes.sectionGap),
-                      itemBuilder: (_, index) {
-                        final ChatsConversation conversation = visible[index];
-                        return _ChatsConversationCard(
-                          conversation: conversation,
-                          onOpen: () => _openConversation(conversation),
-                          onToggleSaved: () =>
-                              _toggleConversationSaved(conversation),
-                          onRename: () => _renameConversation(conversation),
-                          onDelete: () => _deleteConversation(conversation),
-                        );
-                      },
-                    ),
+                key: const Key('chats_conversations_list'),
+                padding: const EdgeInsets.fromLTRB(
+                  HesakSizes.pagePadding,
+                  16,
+                  HesakSizes.pagePadding,
+                  // Bar space + room so the last card clears the
+                  // "محادثة جديدة" button.
+                  HesakSizes.pageBottomSafeSpace + 70,
+                ),
+                itemCount: visible.length,
+                separatorBuilder: (_, __) =>
+                const SizedBox(height: HesakSizes.sectionGap),
+                itemBuilder: (_, index) {
+                  final ChatsConversation conversation =
+                  visible[index];
+                  return _ChatsConversationCard(
+                    conversation: conversation,
+                    onOpen: () => _openConversation(conversation),
+                    onToggleSaved: () =>
+                        _toggleConversationSaved(conversation),
+                    onRename: () =>
+                        _renameConversation(conversation),
+                    onDelete: () =>
+                        _deleteConversation(conversation),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -359,12 +391,12 @@ class _ChatsFilterTabButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
               boxShadow: isSelected
                   ? <BoxShadow>[
-                      BoxShadow(
-                        color: HesakColors.primary.withValues(alpha: 0.12),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
+                BoxShadow(
+                  color: HesakColors.primary.withValues(alpha: 0.12),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
                   : null,
             ),
             child: Text(
@@ -626,7 +658,7 @@ class _ChatsConversationCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: HesakColors.primaryLight,
                     borderRadius:
-                        BorderRadius.circular(HesakSizes.radiusIconBox),
+                    BorderRadius.circular(HesakSizes.radiusIconBox),
                   ),
                   child: const Icon(
                     Icons.chat_outlined,
@@ -718,7 +750,7 @@ class _ChatsMetaItem extends StatelessWidget {
         // textSecondary instead of textMuted: easier to read for our users.
         Text(text,
             style:
-                HesakTextStyles.caption.copyWith(color: HesakColors.textSecondary)),
+            HesakTextStyles.caption.copyWith(color: HesakColors.textSecondary)),
       ],
     );
   }
@@ -907,7 +939,7 @@ class _ChatsRenameDialog extends StatefulWidget {
 
 class _ChatsRenameDialogState extends State<_ChatsRenameDialog> {
   late final TextEditingController _titleController =
-      TextEditingController(text: widget.currentTitle);
+  TextEditingController(text: widget.currentTitle);
 
   @override
   void dispose() {
@@ -935,7 +967,7 @@ class _ChatsRenameDialogState extends State<_ChatsRenameDialog> {
             filled: true,
             fillColor: HesakColors.surface,
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(
@@ -944,7 +976,7 @@ class _ChatsRenameDialogState extends State<_ChatsRenameDialog> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide:
-                  const BorderSide(color: HesakColors.primaryMuted, width: 1.5),
+              const BorderSide(color: HesakColors.primaryMuted, width: 1.5),
             ),
           ),
         ),
@@ -1060,7 +1092,7 @@ class _ChatsDialogFrame extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment:
-              isCentered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+          isCentered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
           children: children,
         ),
       ),
@@ -1089,7 +1121,7 @@ class _ChatsDialogButton extends StatelessWidget {
         ? (isDestructive ? HesakColors.urgent : HesakColors.primary)
         : HesakColors.primaryLight;
     final Color foreground =
-        isPrimary ? HesakColors.onPrimary : HesakColors.primary;
+    isPrimary ? HesakColors.onPrimary : HesakColors.primary;
 
     return SizedBox(
       height: 48,

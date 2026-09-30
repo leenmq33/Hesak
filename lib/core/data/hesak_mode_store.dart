@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'hesak_modes.dart';
@@ -11,8 +15,13 @@ import 'hesak_sounds.dart';
 //  - The bottom bar (through HesakMainShell) listens to it, so starring
 //    a mode adds it to the wheel right away.
 //
-//  Right now everything lives in memory (resets when the app restarts).
-//  TODO: save to the phone / the server later — only this file changes.
+//  Saved in Firebase (Cloud Firestore):
+//    users/{uid}/userModes/{modeId}   one document per mode the user changed
+//                                     or created (same field names as
+//                                     HesakModeConfig below).
+//    users/{uid}.settings.currentModeId   the active mode.
+//  Built-in modes the user never changed come from the defaults in this file.
+//  Loads automatically after login, and goes back to the defaults on logout.
 //
 //  NAMING: public types start with "Hesak".
 // =====================================================================
@@ -39,10 +48,10 @@ extension HesakAlertTypeInfo on HesakAlertType {
   String get label => const ['اهتزاز', 'إشعار', 'وميض'][index];
 
   IconData get icon => const [
-        Icons.vibration_rounded,
-        Icons.notifications_active_outlined,
-        Icons.flash_on_rounded,
-      ][index];
+    Icons.vibration_rounded,
+    Icons.notifications_active_outlined,
+    Icons.flash_on_rounded,
+  ][index];
 }
 
 /// How many times an alert repeats.
@@ -75,9 +84,9 @@ class HesakSchedulePeriod {
   @override
   bool operator ==(Object other) =>
       other is HesakSchedulePeriod &&
-      setEquals(other.days, days) &&
-      other.start == start &&
-      other.end == end;
+          setEquals(other.days, days) &&
+          other.start == start &&
+          other.end == end;
 
   @override
   int get hashCode => Object.hash(Object.hashAllUnordered(days), start, end);
@@ -198,11 +207,11 @@ class HesakModeConfig {
   /// The small version the bottom bar understands.
   /// Modes without an icon show the first letter of their name (like on the الأوضاع page).
   HesakModeOption toOption() => HesakModeOption(
-        id: id,
-        label: name,
-        icon: icon ?? Icons.person_rounded, // Not shown when [letter] is set
-        letter: icon == null ? firstLetter : null,
-      );
+    id: id,
+    label: name,
+    icon: icon ?? Icons.person_rounded, // Not shown when [letter] is set
+    letter: icon == null ? firstLetter : null,
+  );
 
   HesakModeConfig copyWith({
     String? name,
@@ -236,12 +245,21 @@ class HesakModeConfig {
 /// All the user's modes + which one is active.
 /// Widgets rebuild on changes with `ListenableBuilder(listenable: HesakModeStore.instance, ...)`.
 class HesakModeStore extends ChangeNotifier {
-  HesakModeStore._();
+  HesakModeStore._() {
+    // Load the user's modes after login; back to the defaults after logout.
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user == null) {
+        _resetToDefaults();
+      } else {
+        _loadFromFirebase(user.uid);
+      }
+    });
+  }
   static final HesakModeStore instance = HesakModeStore._();
 
-  // Starting modes. The general mode hears everything; the others only emergencies
-  // (+ road sounds for the car).
-  final List<HesakModeConfig> _modes = [
+  /// Starting modes. The general mode hears everything; the others only emergencies
+  /// (+ road sounds for the car).
+  static List<HesakModeConfig> _defaultModes() => [
     HesakModeConfig(
       id: HesakModeIds.general,
       name: 'العام',
@@ -269,6 +287,8 @@ class HesakModeStore extends ChangeNotifier {
       },
     ),
   ];
+
+  final List<HesakModeConfig> _modes = _defaultModes();
 
   String _selectedModeId = HesakModeIds.general;
 
@@ -302,6 +322,7 @@ class HesakModeStore extends ChangeNotifier {
     if (id == _selectedModeId || modeById(id) == null) return;
     _selectedModeId = id;
     notifyListeners();
+    _saveSelectedModeId();
     // TODO: apply the mode's listening settings here.
   }
 
@@ -321,6 +342,7 @@ class HesakModeStore extends ChangeNotifier {
   void addMode(HesakModeConfig mode) {
     _modes.add(mode);
     notifyListeners();
+    _saveMode(mode);
   }
 
   /// Deletes a mode (never the general one). If it was active, العام becomes active.
@@ -328,8 +350,11 @@ class HesakModeStore extends ChangeNotifier {
     final mode = modeById(id);
     if (mode == null || mode.isGeneral) return;
     _modes.removeWhere((m) => m.id == id);
-    if (_selectedModeId == id) _selectedModeId = HesakModeIds.general;
+    final wasSelected = _selectedModeId == id;
+    if (wasSelected) _selectedModeId = HesakModeIds.general;
     notifyListeners();
+    _deleteSavedMode(id);
+    if (wasSelected) _saveSelectedModeId();
   }
 
   /// Moves a mode to a new place in the list — used by drag-to-reorder on the
@@ -341,6 +366,7 @@ class HesakModeStore extends ChangeNotifier {
     final moved = _modes.removeAt(oldIndex);
     _modes.insert(newIndex.clamp(0, _modes.length), moved);
     notifyListeners();
+    _saveAllModes(); // The order of every mode changed
   }
 
   /// A new unique id for a mode the user creates.
@@ -351,5 +377,203 @@ class HesakModeStore extends ChangeNotifier {
     if (index == -1) return;
     _modes[index] = updated;
     notifyListeners();
+    _saveMode(updated);
+  }
+
+  // -------------------------------------------------------------------
+  // Firebase (Cloud Firestore)
+  // -------------------------------------------------------------------
+
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  /// users/{uid} of the signed-in user (null = not signed in).
+  DocumentReference<Map<String, dynamic>>? get _userDoc {
+    final String? uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return null;
+    return _db.collection('users').doc(uid);
+  }
+
+  /// users/{uid}/userModes of the signed-in user.
+  CollectionReference<Map<String, dynamic>>? get _userModes => _userDoc?.collection('userModes');
+
+  /// Back to the starting modes (after logout).
+  void _resetToDefaults() {
+    _modes
+      ..clear()
+      ..addAll(_defaultModes());
+    _selectedModeId = HesakModeIds.general;
+    notifyListeners();
+  }
+
+  /// Reads the user's modes and the active mode from Firestore.
+  Future<void> _loadFromFirebase(String uid) async {
+    try {
+      final userDoc = _db.collection('users').doc(uid);
+      final modesSnap = await userDoc.collection('userModes').get();
+      final userSnap = await userDoc.get();
+
+      final Map<String, Map<String, dynamic>> saved = {
+        for (final doc in modesSnap.docs) doc.id: doc.data(),
+      };
+      final List<(int, HesakModeConfig)> loaded = [];
+
+      // Built-in modes: the user's saved copy, or the default if never changed.
+      final defaults = _defaultModes();
+      for (int i = 0; i < defaults.length; i++) {
+        final def = defaults[i];
+        final data = saved.remove(def.id);
+        if (data == null) {
+          loaded.add((i, def));
+        } else if (data['isDeleted'] != true) {
+          loaded.add(((data['order'] as num?)?.toInt() ?? i, _modeFromMap(def.id, data, fallback: def)));
+        }
+      }
+
+      // Modes the user created.
+      for (final entry in saved.entries) {
+        if (entry.value['isDeleted'] == true) continue;
+        final order = (entry.value['order'] as num?)?.toInt() ?? 1000;
+        loaded.add((order, _modeFromMap(entry.key, entry.value)));
+      }
+
+      loaded.sort((a, b) => a.$1.compareTo(b.$1));
+      _modes
+        ..clear()
+        ..addAll(loaded.map((e) => e.$2));
+
+      final settings = userSnap.data()?['settings'] as Map<String, dynamic>?;
+      final savedModeId = settings?['currentModeId'] as String?;
+      _selectedModeId =
+      (savedModeId != null && modeById(savedModeId) != null) ? savedModeId : HesakModeIds.general;
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('🔴 [HesakModeStore] load error: $e');
+    }
+  }
+
+  /// Saves one mode (all its settings) to users/{uid}/userModes/{id}.
+  void _saveMode(HesakModeConfig mode) {
+    final collection = _userModes;
+    if (collection == null) return;
+    final order = _modes.indexWhere((m) => m.id == mode.id);
+    unawaited(
+      collection
+          .doc(mode.id)
+          .set(_modeToMap(mode, order), SetOptions(merge: true))
+          .catchError((e) => debugPrint('🔴 [HesakModeStore] save error: $e')),
+    );
+  }
+
+  /// Saves every mode at once (used after reordering).
+  void _saveAllModes() {
+    final collection = _userModes;
+    if (collection == null) return;
+    final batch = _db.batch();
+    for (int i = 0; i < _modes.length; i++) {
+      batch.set(collection.doc(_modes[i].id), _modeToMap(_modes[i], i), SetOptions(merge: true));
+    }
+    unawaited(batch.commit().catchError((e) => debugPrint('🔴 [HesakModeStore] reorder error: $e')));
+  }
+
+  /// A mode the user created is deleted; a built-in mode is only marked as deleted
+  /// (so it doesn't come back from the defaults).
+  void _deleteSavedMode(String id) {
+    final collection = _userModes;
+    if (collection == null) return;
+    final bool isBuiltIn = _defaultModes().any((m) => m.id == id);
+    final Future<void> action = isBuiltIn
+        ? collection.doc(id).set({'isDeleted': true, 'updatedAt': FieldValue.serverTimestamp()})
+        : collection.doc(id).delete();
+    unawaited(action.catchError((e) => debugPrint('🔴 [HesakModeStore] delete error: $e')));
+  }
+
+  /// Saves the active mode to users/{uid}.settings.currentModeId.
+  void _saveSelectedModeId() {
+    final userDoc = _userDoc;
+    if (userDoc == null) return;
+    unawaited(
+      userDoc
+          .update({'settings.currentModeId': _selectedModeId})
+          .catchError((e) => debugPrint('🔴 [HesakModeStore] select error: $e')),
+    );
+  }
+
+  // ---- Converting HesakModeConfig <-> Firestore (same field names) ----
+
+  Map<String, dynamic> _modeToMap(HesakModeConfig mode, int order) {
+    final int iconIndex = mode.icon == null ? -1 : hesakModeIconChoices.indexOf(mode.icon!);
+    return <String, dynamic>{
+      'name': mode.name,
+      'icon': iconIndex >= 0 ? iconIndex : null, // Index in hesakModeIconChoices (null = letter)
+      'isFavorite': mode.isFavorite,
+      'periods': mode.periods.map(_periodToMap).toList(),
+      'isCallNameAlertOn': mode.isCallNameAlertOn,
+      'alertTypes': mode.alertTypes.map((type) => type.name).toList(),
+      'alertRepeat': mode.alertRepeat.name,
+      'soundIds': mode.soundIds.toList(),
+      'order': order,
+      'isDeleted': false,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+  }
+
+  HesakModeConfig _modeFromMap(String id, Map<String, dynamic> d, {HesakModeConfig? fallback}) {
+    IconData? icon = fallback?.icon;
+    if (d.containsKey('icon')) {
+      final index = (d['icon'] as num?)?.toInt();
+      icon = (index != null && index >= 0 && index < hesakModeIconChoices.length)
+          ? hesakModeIconChoices[index]
+          : null;
+    }
+
+    final List<dynamic> rawPeriods = d['periods'] as List<dynamic>? ?? const [];
+    final List<dynamic>? rawTypes = d['alertTypes'] as List<dynamic>?;
+    final List<dynamic>? rawSounds = d['soundIds'] as List<dynamic>?;
+
+    return HesakModeConfig(
+      id: id,
+      name: d['name'] as String? ?? fallback?.name ?? '',
+      icon: icon,
+      isFavorite: d['isFavorite'] as bool? ?? fallback?.isFavorite ?? false,
+      periods: rawPeriods.map((p) => _periodFromMap(Map<String, dynamic>.from(p as Map))).toList(),
+      isCallNameAlertOn: d['isCallNameAlertOn'] as bool? ?? fallback?.isCallNameAlertOn ?? true,
+      alertTypes: rawTypes == null
+          ? (fallback?.alertTypes ?? const {HesakAlertType.vibration, HesakAlertType.flash})
+          : HesakAlertType.values.where((type) => rawTypes.contains(type.name)).toSet(),
+      alertRepeat: HesakAlertRepeat.values.firstWhere(
+            (repeat) => repeat.name == d['alertRepeat'],
+        orElse: () => fallback?.alertRepeat ?? HesakAlertRepeat.twice,
+      ),
+      // Emergency sounds are always on.
+      soundIds: {
+        ...hesakEmergencySoundIds,
+        ...(rawSounds?.cast<String>() ?? fallback?.soundIds ?? const <String>{}),
+      },
+    );
+  }
+
+  Map<String, dynamic> _periodToMap(HesakSchedulePeriod period) => <String, dynamic>{
+    'days': (period.days.map((day) => day.index).toList()..sort()),
+    'start': _timeToHhmm(period.start),
+    'end': _timeToHhmm(period.end),
+  };
+
+  HesakSchedulePeriod _periodFromMap(Map<String, dynamic> d) => HesakSchedulePeriod(
+    days: (d['days'] as List<dynamic>? ?? const [])
+        .map((i) => HesakWeekday.values[(i as num).toInt()])
+        .toSet(),
+    start: _hhmmToTime(d['start'] as String? ?? '00:00'),
+    end: _hhmmToTime(d['end'] as String? ?? '00:00'),
+  );
+
+  /// TimeOfDay -> "22:00".
+  static String _timeToHhmm(TimeOfDay time) =>
+      '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+
+  /// "22:00" -> TimeOfDay.
+  static TimeOfDay _hhmmToTime(String text) {
+    final parts = text.split(':');
+    return TimeOfDay(hour: int.tryParse(parts.first) ?? 0, minute: int.tryParse(parts.last) ?? 0);
   }
 }
