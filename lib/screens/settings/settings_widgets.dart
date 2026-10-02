@@ -3,6 +3,8 @@ import '../../core/theme/hesak_palette.dart';
 import '../../core/theme/hesak_sizes.dart';
 import '../../core/theme/hesak_text_styles.dart';
 import '../auth/auth_widgets.dart' show AuthValidators;
+import '../../services/auth_service.dart';
+import '../../widgets/hesak_toast.dart';
 
 // =====================================================================
 //  SETTINGS WIDGETS — building blocks for the الإعدادات pages
@@ -453,6 +455,7 @@ Future<void> showSettingsNameSheet(
   required String hint,
   required String initialValue,
   required Future<bool> Function(String value) onSave,
+  bool isCallName = false, // true = Arabic letters only (الاسم للنداء)
 }) {
   final palette = HesakPalette.current;
   return showModalBottomSheet<void>(
@@ -468,7 +471,30 @@ Future<void> showSettingsNameSheet(
       hint: hint,
       initialValue: initialValue,
       onSave: onSave,
+      isCallName: isCallName,
     ),
+  );
+}
+
+/// The "الاسم للنداء" sheet (add or edit) — saves to the account and shows the message.
+/// Used by الإعدادات AND by the الأوضاع editor ("إضافة الاسم" next to the call-name switch).
+Future<void> showSettingsCallNameSheet(BuildContext context) {
+  final auth = AuthService.instance;
+  final bool isNew = auth.currentCallName == null;
+  return showSettingsNameSheet(
+    context,
+    title: 'الاسم للنداء',
+    note: 'سيُنبّهك حِسّك عند سماع هذا الاسم، لتعرف أن أحدًا يناديك',
+    fieldLabel: 'الاسم:',
+    hint: 'اكتب الاسم بالعربي',
+    initialValue: auth.currentCallName ?? '',
+    isCallName: true,
+    onSave: (callName) async {
+      final result = await auth.saveCallName(callName: callName);
+      if (!context.mounted) return false;
+      if (result.isSuccess) showHesakToast(context, isNew ? 'تمت إضافة الاسم للنداء' : 'تم تعديل الاسم للنداء');
+      return result.isSuccess;
+    },
   );
 }
 
@@ -479,6 +505,7 @@ class _SettingsNameSheet extends StatefulWidget {
   final String hint;
   final String initialValue;
   final Future<bool> Function(String value) onSave;
+  final bool isCallName;
 
   const _SettingsNameSheet({
     required this.title,
@@ -487,6 +514,7 @@ class _SettingsNameSheet extends StatefulWidget {
     required this.hint,
     required this.initialValue,
     required this.onSave,
+    required this.isCallName,
   });
 
   @override
@@ -506,9 +534,12 @@ class _SettingsNameSheetState extends State<_SettingsNameSheet> {
   String get _text => _controller.text.trim();
 
   /// Red message while typing something wrong (not shown when empty).
-  String? get _error => _text.isEmpty ? null : AuthValidators.nameProblem(_text);
+  String? get _error {
+    if (_text.isEmpty) return null;
+    return widget.isCallName ? AuthValidators.callNameProblem(_text) : AuthValidators.nameProblem(_text);
+  }
 
-  bool get _canSave => _text != widget.initialValue.trim() && AuthValidators.isValidName(_text) && !_isSaving;
+  bool get _canSave => _text != widget.initialValue.trim() && _error == null && !_isSaving;
 
   Future<void> _save() async {
     setState(() => _isSaving = true);

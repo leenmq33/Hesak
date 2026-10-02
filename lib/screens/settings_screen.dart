@@ -19,12 +19,12 @@ import '../widgets/hesak_toast.dart';
 //
 //  Sections:
 //   الحساب:          الاسم (sheet) · البريد الإلكتروني (page) · تغيير كلمة المرور (page)
-//   التفضيلات:        الصوت (ذكر / أنثى) · المظهر (فاتح / داكن)
+//   التفضيلات:        الجنس (ذكر / أنثى) · المظهر (فاتح / داكن)
 //   للتنبيه عند النداء: الاسم للنداء (sheet — add or edit)
 //   تسجيل الخروج (asks first)
 //
 //  Every change has its own "حفظ" (faded until something really changes),
-//  so there's no big "حفظ التعديلات" button. الصوت / المظهر save right away.
+//  so there's no big "حفظ التعديلات" button. الجنس / المظهر save right away.
 //
 //  This page (and the bottom bar) follows the appearance فاتح / داكن
 //  (TRIAL — the other pages stay light for now). See hesak_palette.dart.
@@ -139,14 +139,14 @@ class _SettingsPageContent extends StatelessWidget {
           // ---------------- التفضيلات ----------------
           const SettingsSectionTitle('التفضيلات'),
           // Same note as in إنشاء حساب.
-          const SettingsNote('سيستخدم حِسّك هذا الصوت لقراءة النصوص بصوت مسموع'),
+          const SettingsNote('سيستخدم حِسّك اختيارك لقراءة النصوص للآخرين بصوت مناسب'),
           const SizedBox(height: 10),
           SettingsCard(
             children: [
               SettingsRow(
                 key: const Key('settings_voice_row'),
                 icon: Icons.record_voice_over_outlined,
-                title: 'الصوت',
+                title: 'الجنس',
                 trailing: SettingsSegmented<HesakVoice>(
                   keyPrefix: 'settings_voice',
                   values: HesakVoice.values,
@@ -155,7 +155,7 @@ class _SettingsPageContent extends StatelessWidget {
                   onChanged: (voice) {
                     if (voice == auth.currentVoice) return;
                     auth.updateVoice(voice);
-                    showHesakToast(context, 'تم تغيير الصوت');
+                    showHesakToast(context, 'تم تغيير الجنس');
                   },
                 ),
               ),
@@ -235,7 +235,7 @@ class _SettingsPageContent extends StatelessWidget {
       title: 'الاسم',
       note: null,
       fieldLabel: 'الاسم:',
-      hint: 'اكتب اسمك بالعربي',
+      hint: 'اكتب اسمك',
       initialValue: auth.currentUserName ?? '',
       onSave: (name) async {
         final result = await auth.updateName(name: name);
@@ -246,29 +246,14 @@ class _SettingsPageContent extends StatelessWidget {
     );
   }
 
-  void _editCallName(BuildContext context) {
-    final bool isNew = auth.currentCallName == null;
-    showSettingsNameSheet(
-      context,
-      title: 'الاسم للنداء',
-      note: 'سيُنبّهك حِسّك عند سماع هذا الاسم، لتعرف أن أحدًا يناديك.',
-      fieldLabel: 'الاسم:',
-      hint: 'اكتب الاسم بالعربي',
-      initialValue: auth.currentCallName ?? '',
-      onSave: (callName) async {
-        final result = await auth.saveCallName(callName: callName);
-        if (!context.mounted) return false;
-        if (result.isSuccess) showHesakToast(context, isNew ? 'تمت إضافة الاسم للنداء' : 'تم تعديل الاسم للنداء');
-        return result.isSuccess;
-      },
-    );
-  }
+  /// Shared sheet (also opened from the الأوضاع editor).
+  void _editCallName(BuildContext context) => showSettingsCallNameSheet(context);
 
   Future<void> _logOut(BuildContext context) async {
     final bool isConfirmed = await showHesakConfirmDialog(
       context,
       title: 'هل تريد تسجيل الخروج؟',
-      message: 'ستحتاج إلى تسجيل الدخول مرة أخرى\nلاستخدام حِسّك.',
+      message: 'ستحتاج إلى تسجيل الدخول مرة أخرى\nلاستخدام حِسّك',
       confirmLabel: 'تسجيل الخروج',
       icon: Icons.logout_rounded,
       followsAppearance: true,

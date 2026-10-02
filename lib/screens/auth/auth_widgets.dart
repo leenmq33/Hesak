@@ -58,10 +58,27 @@ class AuthValidators {
   static final RegExp _arabicLettersPattern =
       RegExp(r'^[\u0621-\u064A\u064B-\u0652\u0640 ]+$');
 
-  /// Why a name is not OK, or null when it's fine.
-  /// Rules: not empty, Arabic letters only, at least 2 letters.
-  /// Used by the sign up name AND the call name.
+  // Arabic OR English letters and spaces — no numbers, no symbols.
+  static final RegExp _arabicOrEnglishLettersPattern =
+      RegExp(r'^[\u0621-\u064A\u064B-\u0652\u0640A-Za-z ]+$');
+
+  /// Why the user's NAME is not OK, or null when it's fine.
+  /// Rules: not empty, Arabic or English letters only, at least 2 letters.
+  /// Used by إنشاء حساب and الإعدادات (الاسم).
   static String? nameProblem(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return 'أدخل الاسم';
+    if (!_arabicOrEnglishLettersPattern.hasMatch(trimmed)) return 'اكتب الاسم بالحروف فقط (بدون أرقام أو رموز)';
+    if (trimmed.replaceAll(' ', '').length < 2) return 'الاسم قصير جدًا (حرفين على الأقل)';
+    return null;
+  }
+
+  /// true when the name passes all the rules above.
+  static bool isValidName(String name) => nameProblem(name) == null;
+
+  /// Why the CALL NAME (الاسم للنداء) is not OK, or null when it's fine.
+  /// Rules: not empty, ARABIC letters only (Hesak listens for it in Arabic), at least 2 letters.
+  static String? callNameProblem(String name) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return 'أدخل الاسم';
     if (!_arabicLettersPattern.hasMatch(trimmed)) return 'اكتب الاسم بالحروف العربية فقط (بدون أرقام أو رموز)';
@@ -69,8 +86,8 @@ class AuthValidators {
     return null;
   }
 
-  /// true when the name passes all the rules above.
-  static bool isValidName(String name) => nameProblem(name) == null;
+  /// true when the call name passes all the rules above.
+  static bool isValidCallName(String name) => callNameProblem(name) == null;
 }
 
 // ---------------------------------------------------------------------

@@ -37,12 +37,21 @@ void modesToggleFavorite(BuildContext context, HesakModeConfig mode) {
   );
 }
 
+/// "صوت واحد" / "صوتان" / "4 أصوات" / "12 صوتًا" (Arabic counting).
+String modesSoundsCountText(int count) {
+  if (count == 0) return 'لا يوجد';
+  if (count == 1) return 'صوت واحد';
+  if (count == 2) return 'صوتان';
+  if (count <= 10) return '$count أصوات';
+  return '$count صوتًا';
+}
+
 /// Asks, deletes the mode, shows the message. Returns true if deleted.
 Future<bool> modesDeleteWithConfirm(BuildContext context, HesakModeConfig mode) async {
   final bool isConfirmed = await showHesakConfirmDialog(
     context,
     title: 'هل تريد حذف وضع ${mode.name}؟',
-    message: 'سيتم حذف الوضع وكل إعداداته،\nولا يمكن التراجع عن ذلك.',
+    message: 'سيتم حذف الوضع وكل إعداداته،\nولا يمكن التراجع عن ذلك',
     confirmLabel: 'حذف',
     icon: Icons.delete_outline_rounded,
   );
@@ -189,6 +198,50 @@ class ModesStarButton extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------
+// State badge ("مفعّل" / "غير مفعّل")
+// ---------------------------------------------------------------------
+
+/// Small light pill on the purple mode header:
+/// green dot + "مفعّل" while listening, grey dot + "غير مفعّل" otherwise.
+/// Used on الأوضاع and الرئيسية.
+class ModesStateBadge extends StatelessWidget {
+  final bool isListening;
+
+  const ModesStateBadge({super.key, required this.isListening});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: HesakColors.primaryLight,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 7,
+            height: 7,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isListening ? HesakColors.activeDot : HesakColors.idleDot,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isListening ? 'مفعّل' : 'غير مفعّل',
+            style: isListening ? HesakTextStyles.modeBadge : HesakTextStyles.modeBadge.copyWith(color: HesakColors.textSecondary),
+          ),
+        ],
       ),
     );
   }
@@ -865,8 +918,12 @@ class ModesTimeField extends StatelessWidget {
 /// Call-name alert switch, alert types (pick 1+), repeat (pick 1).
 /// [alertRepeat] null / [alertTypes] empty = nothing picked yet (إضافة وضع starts empty).
 /// [canClearAlertTypes] true = the last alert type can be un-picked (إضافة وضع).
+/// [isCallNameAvailable] false = the user has no الاسم للنداء yet: the switch is faded and
+/// off, with a red note + "إضافة الاسم" ([onAddCallName] opens the call-name sheet).
 class ModesGeneralSettingsFields extends StatelessWidget {
   final bool isCallNameAlertOn;
+  final bool isCallNameAvailable;
+  final VoidCallback? onAddCallName;
   final Set<HesakAlertType> alertTypes;
   final HesakAlertRepeat? alertRepeat;
   final bool canClearAlertTypes;
@@ -883,6 +940,8 @@ class ModesGeneralSettingsFields extends StatelessWidget {
     required this.onAlertTypesChanged,
     required this.onAlertRepeatChanged,
     this.canClearAlertTypes = false,
+    this.isCallNameAvailable = true,
+    this.onAddCallName,
   });
 
   @override
@@ -893,11 +952,23 @@ class ModesGeneralSettingsFields extends StatelessWidget {
         // ---- التنبيه عند نداء اسمك ----
         Row(
           children: [
-            const Expanded(child: Text('التنبيه عند نداء اسمك', style: HesakTextStyles.modeSettingLabel)),
-            Switch(
+            Expanded(
+              child: Text(
+                'التنبيه عند نداء اسمك',
+                style: isCallNameAvailable
+                    ? HesakTextStyles.modeSettingLabel
+                    : HesakTextStyles.modeSettingLabel.copyWith(color: HesakColors.textMuted),
+              ),
+            ),
+            // No call name yet: faded + can't be turned on (a tap explains why).
+            GestureDetector(
+              onTap: isCallNameAvailable ? null : () => showHesakToast(context, 'أضف الاسم للنداء أولًا', icon: Icons.info_outline_rounded),
+              child: Opacity(
+                opacity: isCallNameAvailable ? 1 : 0.45,
+                child: Switch(
               key: const Key('modes_call_name_switch'),
-              value: isCallNameAlertOn,
-              onChanged: onCallNameAlertChanged,
+              value: isCallNameAvailable && isCallNameAlertOn,
+              onChanged: isCallNameAvailable ? onCallNameAlertChanged : null,
               thumbColor: const WidgetStatePropertyAll(HesakColors.onPrimary),
               trackColor: WidgetStateProperty.resolveWith(
                 (states) => states.contains(WidgetState.selected)
@@ -905,9 +976,12 @@ class ModesGeneralSettingsFields extends StatelessWidget {
                     : HesakColors.passwordRuleUnmet,
               ),
               trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+                ),
+              ),
             ),
           ],
         ),
+        if (!isCallNameAvailable) _buildCallNameNeededNote(),
 
         // ---- نوع التنبيه (one or more) ----
         const SizedBox(height: 10),
@@ -958,6 +1032,47 @@ class ModesGeneralSettingsFields extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+
+  /// Red note under the switch when there's no الاسم للنداء:
+  /// "أضف الاسم للنداء أولًا لتفعيل هذه الخاصية" + "إضافة الاسم" (opens the sheet right here).
+  Widget _buildCallNameNeededNote() {
+    return Container(
+      key: const Key('modes_call_name_needed_note'),
+      margin: const EdgeInsets.only(top: 2, bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: HesakColors.infoBannerFill,
+        borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard),
+        border: Border.all(color: HesakColors.infoBannerBorder),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded, size: 16, color: HesakColors.infoBannerText),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'أضف الاسم للنداء أولًا لتفعيل هذه الخاصية',
+              style: HesakTextStyles.modeHint.copyWith(color: HesakColors.infoBannerText),
+            ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            key: const Key('modes_add_call_name_link'),
+            onTap: onAddCallName,
+            child: Text(
+              'إضافة الاسم',
+              style: HesakTextStyles.modeHint.copyWith(
+                color: HesakColors.infoBannerText,
+                fontWeight: FontWeight.w700,
+                decoration: TextDecoration.underline,
+                decorationColor: HesakColors.infoBannerText,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1134,7 +1249,7 @@ class _ModesSoundsPickerState extends State<ModesSoundsPicker> {
                             SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                'أصوات الطوارئ تعمل دائمًا في كل الأوضاع لسلامتك، ولا يمكن إيقافها.',
+                                'أصوات الطوارئ تعمل دائمًا في كل الأوضاع لسلامتك، ولا يمكن إيقافها',
                                 style: HesakTextStyles.body,
                               ),
                             ),

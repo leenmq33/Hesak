@@ -122,7 +122,11 @@ class _LoginFormState extends State<LoginForm> {
           child: TextButton(
             key: const Key('login_forgot_password_button'),
             onPressed: widget.onForgotPassword,
-            child: const Text('هل نسيت كلمة المرور؟', style: HesakTextStyles.authHint),
+            // Same purple as "إنشاء حساب", but not bold.
+            child: Text(
+              'هل نسيت كلمة المرور؟',
+              style: HesakTextStyles.authLink.copyWith(fontWeight: FontWeight.w400),
+            ),
           ),
         ),
 

@@ -4,6 +4,7 @@ import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
 import '../widgets/hesak_page_header.dart';
+import 'home/home_mode_section.dart';
 
 // =====================================================================
 //  HOME PAGE (الرئيسية)
@@ -52,7 +53,7 @@ class HomeScreen extends StatelessWidget {
 // =====================================================================
 
 /// Everything under the header on the home tab:
-/// listen button, current sounds card, alerts card.
+/// listen button, current sounds card, current mode section, alerts card.
 /// Scrollable so it works on small screens.
 class _HomeTabContent extends StatelessWidget {
   const _HomeTabContent();
@@ -76,6 +77,9 @@ class _HomeTabContent extends StatelessWidget {
             SizedBox(height: 26),
             _HomeCurrentSoundsCard(),
             SizedBox(height: HesakSizes.sectionGap),
+            // The current mode (+ its schedule) and its settings summary.
+            HomeModeSection(),
+            SizedBox(height: HesakSizes.sectionGap + 4),
             _HomeAlertsCard(),
           ],
         ),

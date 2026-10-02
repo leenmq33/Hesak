@@ -4,7 +4,9 @@ import '../../core/data/hesak_sounds.dart';
 import '../../core/theme/hesak_colors.dart';
 import '../../core/theme/hesak_sizes.dart';
 import '../../core/theme/hesak_text_styles.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/hesak_page_header.dart';
+import '../settings/settings_widgets.dart' show showSettingsCallNameSheet;
 import 'modes_widgets.dart';
 import '../../widgets/hesak_confirm_dialog.dart';
 import '../../widgets/hesak_toast.dart';
@@ -172,7 +174,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
     final bool shouldLeave = await showHesakConfirmDialog(
       context,
       title: 'هل تريد الخروج بدون حفظ؟',
-      message: 'ستُفقد التعديلات التي أجريتها.',
+      message: 'ستُفقد التعديلات التي أجريتها',
       confirmLabel: 'خروج',
       icon: Icons.warning_amber_rounded,
     );
@@ -195,7 +197,8 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
               HesakPageHeader(title: _isNew ? 'إضافة وضع' : 'الأوضاع', onBack: _handleBack),
               Expanded(
                 child: ListenableBuilder(
-                  listenable: _store,
+                  // Also rebuilds when الاسم للنداء is added (the call-name switch unlocks).
+                  listenable: Listenable.merge([_store, AuthService.instance]),
                   builder: (context, _) => _isNew ? _buildAddPage() : _buildEditPage(),
                 ),
               ),
@@ -433,6 +436,9 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
       alertTypes: _draftAlertTypes,
       alertRepeat: _draftAlertRepeat,
       canClearAlertTypes: _isNew, // A new mode may un-pick all (then it can't be created yet)
+      // No الاسم للنداء yet -> the switch is locked, with "إضافة الاسم" (opens the sheet here).
+      isCallNameAvailable: AuthService.instance.currentCallName != null,
+      onAddCallName: () => showSettingsCallNameSheet(context),
       onCallNameAlertChanged: (value) => setState(() {
         _draftCallNameAlert = value;
         _hasTouchedNewMode = true;
