@@ -34,13 +34,13 @@ class _CallNameFormState extends State<CallNameForm> {
   }
 
   /// true once a valid name is typed -> "التالي" becomes tappable.
-  bool get _canContinue => AuthValidators.isValidName(_callNameController.text);
+  bool get _canContinue => AuthValidators.isValidCallName(_callNameController.text);
 
   /// Error under the field. Shown as soon as something wrong is typed
   /// (e.g. a number), but not while the field is still empty.
   String? get _callNameError {
     if (_callNameController.text.isEmpty) return null;
-    return AuthValidators.nameProblem(_callNameController.text);
+    return AuthValidators.callNameProblem(_callNameController.text);
   }
 
   /// "التالي" tapped: save the name, then open the app.
@@ -69,7 +69,7 @@ class _CallNameFormState extends State<CallNameForm> {
 
         const SizedBox(height: 14),
         // Same note as in الإعدادات (الاسم للنداء).
-        const AuthInfoBanner('سيُنبّهك حِسّك عند سماع هذا الاسم، لتعرف أن أحدًا يناديك.'),
+        const AuthInfoBanner('سيُنبّهك حِسّك عند سماع هذا الاسم، لتعرف أن أحدًا يناديك'),
 
         const AuthFieldLabel('الاسم:'),
         AuthTextField(
@@ -104,7 +104,7 @@ class _CallNameFormState extends State<CallNameForm> {
         const SizedBox(height: 12),
         AuthFooterLink(
           key: const Key('call_name_skip_link'),
-          question: 'يمكنك إضافته لاحقًا.',
+          question: 'يمكنك إضافته لاحقًا',
           linkText: 'تخطي',
           onTap: () {
             if (!_isLoading) widget.onDone(); // Ignore taps while saving

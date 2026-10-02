@@ -130,7 +130,7 @@ class _SignUpFormState extends State<SignUpForm> {
         AuthTextField(
           key: const Key('signup_name_field'),
           controller: _nameController,
-          hint: 'اكتب اسمك بالعربي',
+          hint: 'اكتب اسمك',
           icon: Icons.person_outline_rounded,
           keyboardType: TextInputType.text,
           errorText: _nameError,
@@ -149,15 +149,15 @@ class _SignUpFormState extends State<SignUpForm> {
           onChanged: (_) => setState(() {}),
         ),
 
-        // ---- Reading voice ----
+        // ---- الجنس (Hesak reads the user's texts to others with a matching voice) ----
         // Clear space after the email, so the pink note box doesn't stick to it.
         // The note belongs to the voice, so it sits close to the voice row.
         const SizedBox(height: 40),
-        const AuthInfoBanner('سيستخدم حِسّك هذا الصوت لقراءة النصوص بصوت مسموع'),
+        const AuthInfoBanner('سيستخدم حِسّك اختيارك لقراءة النصوص للآخرين بصوت مناسب'),
         const SizedBox(height: 10),
         Row(
           children: [
-            const Text('الصوت:', style: HesakTextStyles.fieldLabel),
+            const Text('الجنس:', style: HesakTextStyles.fieldLabel),
             const Spacer(),
             AuthVoiceToggle(
               value: _selectedVoice,

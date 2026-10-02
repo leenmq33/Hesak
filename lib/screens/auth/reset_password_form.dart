@@ -98,7 +98,7 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 8),
-        const AuthInfoBanner('أدخل بريدك الإلكتروني المسجّل، وسنرسل لك رابطًا لإنشاء كلمة مرور جديدة.'),
+        const AuthInfoBanner('أدخل بريدك الإلكتروني المسجّل، وسنرسل لك رابطًا لإنشاء كلمة مرور جديدة'),
 
         const AuthFieldLabel('البريد الإلكتروني:'),
         AuthTextField(
@@ -147,7 +147,7 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
         const SizedBox(height: 8),
         Text(
           'أرسلنا رابط استعادة كلمة المرور إلى\n${_emailController.text.trim()}\n'
-          'افتح الرابط واختر كلمة مرور جديدة، ثم ارجع لتسجيل الدخول.',
+          'افتح الرابط واختر كلمة مرور جديدة، ثم ارجع لتسجيل الدخول',
           textAlign: TextAlign.center,
           style: HesakTextStyles.body.copyWith(fontSize: 13, height: 1.6),
         ),

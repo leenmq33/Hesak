@@ -140,7 +140,7 @@ class AuthService extends ChangeNotifier {
         }
         await _auth.signOut();
         return const AuthResult.failure(
-          'لم يتم تأكيد بريدك الإلكتروني بعد. أرسلنا لك رابط التأكيد، افتحه ثم سجّل الدخول.',
+          'لم يتم تأكيد بريدك الإلكتروني بعد، أرسلنا لك رابط التأكيد، افتحه ثم سجّل الدخول',
         );
       }
 

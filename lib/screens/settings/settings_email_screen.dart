@@ -118,7 +118,7 @@ class _SettingsEmailScreenState extends State<SettingsEmailScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 8),
-        const SettingsNote('سنرسل رابط تأكيد إلى بريدك الجديد، ولن يتغيّر البريد إلا بعد فتح الرابط.'),
+        const SettingsNote('سنرسل رابط تأكيد إلى بريدك الجديد، ولن يتغيّر البريد إلا بعد فتح الرابط'),
 
         // Current email (read only).
         Padding(
@@ -180,7 +180,7 @@ class _SettingsEmailScreenState extends State<SettingsEmailScreen> {
         Text('تحقق من بريدك الجديد', textAlign: TextAlign.center, style: HesakTextStyles.fieldLabel.copyWith(color: palette.textPrimary)),
         const SizedBox(height: 8),
         Text(
-          'أرسلنا رابط تأكيد إلى\n$_newEmail\nافتح الرابط لتأكيد بريدك الجديد، وبعدها يتغيّر في حسابك.',
+          'أرسلنا رابط تأكيد إلى\n$_newEmail\nافتح الرابط لتأكيد بريدك الجديد، وبعدها يتغيّر في حسابك',
           textAlign: TextAlign.center,
           style: HesakTextStyles.body.copyWith(color: palette.textSecondary, fontSize: 13, height: 1.6),
         ),
