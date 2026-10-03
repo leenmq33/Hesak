@@ -76,7 +76,7 @@ class _ModesHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: HesakColors.background,
+      backgroundColor: HesakColors.tabPageBackground, // Same lavender as the other tabs
       body: SafeArea(
         bottom: false, // The bottom bar handles the bottom edge
         child: Column(

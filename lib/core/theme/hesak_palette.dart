@@ -120,7 +120,7 @@ class HesakPalette {
 
   /// فاتح — exactly the colors the app already uses.
   static const HesakPalette light = HesakPalette(
-    background: HesakColors.background,
+    background: HesakColors.tabPageBackground, // Lavender like the other tabs
     surface: HesakColors.surface,
     surfaceBorder: HesakColors.surfaceBorder,
     divider: HesakColors.listDivider,

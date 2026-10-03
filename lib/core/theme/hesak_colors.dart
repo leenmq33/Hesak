@@ -41,8 +41,8 @@ class HesakColors {
   /// Main page background (warm off-white).
   static const Color background = Color(0xFFF9F7F5);
 
-  /// Cards (slightly lighter than the background).
-  static const Color surface = Color(0xFFFEFDFB);
+  /// Cards, search bar, tabs (a soft matte white, not bright white).
+  static const Color surface = Color(0xFFF8F6F7);
 
   /// Very soft outline around cards.
   static const Color surfaceBorder = Color(0xFFEDE8EF);
@@ -214,4 +214,79 @@ class HesakColors {
 
   /// Grey dot in the "غير مفعّل" badge.
   static const Color idleDot = iconInactive;
+
+  // ---------------------------------------------------------------
+  // Home page (الرئيسية)
+  // ---------------------------------------------------------------
+
+  /// Light lavender page background of الرئيسية (under the purple top).
+  static const Color homePageBackground = Color(0xFFF6F3F9);
+
+  /// Middle tone of the purple top (between the dark purple and the lavender).
+  static const Color homeHeroMiddle = Color(0xFF8F7FA3);
+
+  /// Purple top of الرئيسية: dark purple at the top, fades into the lavender page.
+  static const List<Color> homeHeroGradient = [
+    primary,
+    buttonPrimary,
+    homeHeroMiddle,
+    primaryLightBorder,
+    homePageBackground,
+  ];
+
+  /// Where each color of [homeHeroGradient] sits (0 = top, 1 = bottom).
+  static const List<double> homeHeroGradientStops = [0.0, 0.28, 0.55, 0.78, 1.0];
+
+  /// Header waves + divider on the purple top (~40% white).
+  static const Color homeHeaderLinesOnPurple = Color(0x66FFFFFF);
+
+  /// Soft white circles (halos) around the listen button (~12% white).
+  static const Color homeHaloFill = Color(0x1FFFFFFF);
+
+  /// Outline of those halos (~40% white).
+  static const Color homeHaloBorder = Color(0x66FFFFFF);
+
+  /// Empty part of the turning ring while listening (~25% white).
+  static const Color homeListenTrack = Color(0x40FFFFFF);
+
+  /// White listen button (before listening): white -> very light lavender.
+  static const List<Color> homeListenButtonIdle = [surface, modeTileSelectedFill, primaryLight];
+
+  /// Purple listen button (while listening).
+  static const List<Color> homeListenButtonActive = [primaryMuted, primary];
+
+  /// Dark soft shadow under the listen button.
+  static const Color homeListenShadow = Color(0x47201430);
+
+  /// Light red box behind an urgent alert icon (e.g. إنذار حريق).
+  static const Color homeUrgentIconFill = Color(0xFFFBE9E7);
+
+  /// Current mode card while listening is OFF (light lavender).
+  static const Color homeModeCardIdle = Color(0xFFF3EEF9);
+
+  /// Outline of the mode card, its tiles and the schedule box.
+  static const Color homeModeCardIdleBorder = Color(0xFFE6DEF0);
+
+  /// Yellow of a favorite mode's star (الأوضاع المفضلة), on light and purple.
+  static const Color favoriteStar = Color(0xFFF2C14E);
+
+  /// Light lavender background of the 4 main tabs
+  /// (الرئيسية bottom, المحادثات, الأوضاع, الإعدادات in فاتح).
+  static const Color tabPageBackground = homePageBackground;
+
+  /// Purple-ish band behind the listen button (الرئيسية), from under the
+  /// greeting: light header -> lavender -> soft purple -> lavender page.
+  static const List<Color> homeListenBandGradient = [
+    background,
+    Color(0xFFF5F1F8),
+    primaryLight,
+    primaryLightBorder,
+    Color(0xFFA897BD),
+    Color(0xFFA897BD),
+    primaryLightBorder,
+    tabPageBackground,
+  ];
+
+  /// Where each color of [homeListenBandGradient] sits (0 = top of the page).
+  static const List<double> homeListenBandStops = [0.0, 0.22, 0.29, 0.37, 0.47, 0.60, 0.73, 0.88];
 }

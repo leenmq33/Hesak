@@ -16,6 +16,8 @@ import 'package:flutter/material.dart';
 import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
+import '../widgets/hesak_confirm_dialog.dart';
+import '../widgets/hesak_listening_required.dart';
 import '../widgets/hesak_page_header.dart';
 import 'chats_conversation_screen.dart';
 import 'chats_models.dart';
@@ -30,14 +32,16 @@ class ChatsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: <Widget>[
-        // Same shared header as the Home page (logo, waves, title, divider).
-        // TODO: if HesakPageHeader names its title parameter differently,
-        // copy the exact line used in home_screen.dart.
-        HesakPageHeader(title: 'المحادثات'),
-        const Expanded(child: _ChatsPageContent()),
-      ],
+    // SafeArea (like الأوضاع / الإعدادات) so the header sits at exactly
+    // the same height on every tab.
+    return const SafeArea(
+      bottom: false,
+      child: Column(
+        children: <Widget>[
+          HesakPageHeader(title: 'المحادثات'),
+          Expanded(child: _ChatsPageContent()),
+        ],
+      ),
     );
   }
 }
@@ -76,15 +80,14 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
   /// True while the list is loading from Firestore.
   bool _isLoading = true;
 
+  /// True when loading failed (e.g. no internet) -> "إعادة المحاولة".
+  bool _hasLoadFailed = false;
+
   final TextEditingController _searchController = TextEditingController();
 
   _ChatsFilterTab _selectedFilterTab = _ChatsFilterTab.all;
   _ChatsSortOrder _selectedSortOrder = _ChatsSortOrder.newestFirst;
   String _searchQuery = '';
-
-  /// Number for the next new conversation: "محادثة 01", "محادثة 02", ...
-  /// Set from the number of loaded conversations.
-  int _nextConversationNumber = 1;
 
   /// Ticks every second so the "تُحذف بعد 17:20:30" countdown stays exact.
   Timer? _countdownTimer;
@@ -93,14 +96,30 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
   void initState() {
     super.initState();
     _loadConversations();
+    // Reload when a conversation is saved / deleted from another page (الرئيسية).
+    ConversationService.instance.changeCount.addListener(_reloadQuietly);
     _countdownTimer = Timer.periodic(
       const Duration(seconds: 1),
           (_) => _refreshCountdowns(),
     );
   }
 
+  /// Reload without the spinner (the list stays on screen meanwhile).
+  Future<void> _reloadQuietly() async {
+    final List<ChatsConversation>? loaded =
+        await ConversationService.instance.loadConversations();
+    if (!mounted || loaded == null) return;
+    setState(() {
+      _hasLoadFailed = false;
+      _conversations
+        ..clear()
+        ..addAll(loaded);
+    });
+  }
+
   @override
   void dispose() {
+    ConversationService.instance.changeCount.removeListener(_reloadQuietly);
     _countdownTimer?.cancel();
     _searchController.dispose();
     super.dispose();
@@ -108,15 +127,22 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
 
   /// Loads the user's conversations from Firestore.
   Future<void> _loadConversations() async {
-    final List<ChatsConversation> loaded =
-    await ConversationService.instance.loadConversations();
+    setState(() {
+      _isLoading = true;
+      _hasLoadFailed = false;
+    });
+    final List<ChatsConversation>? loaded =
+        await ConversationService.instance.loadConversations();
     if (!mounted) return;
     setState(() {
+      _isLoading = false;
+      if (loaded == null) {
+        _hasLoadFailed = true; // Keep what is already on screen (if any)
+        return;
+      }
       _conversations
         ..clear()
         ..addAll(loaded);
-      _nextConversationNumber = loaded.length + 1;
-      _isLoading = false;
     });
   }
 
@@ -172,12 +198,14 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
 
   /// Asks for confirmation, then removes the conversation.
   Future<void> _deleteConversation(ChatsConversation conversation) async {
-    final bool? isConfirmed = await showDialog<bool>(
-      context: context,
-      barrierColor: HesakColors.textPrimary.withValues(alpha: 0.38),
-      builder: (_) => _ChatsDeleteDialog(title: conversation.title),
+    final bool isConfirmed = await showHesakConfirmDialog(
+      context,
+      title: 'هل تريد حذف «${conversation.title}»؟',
+      message: 'ستُحذف المحادثة نهائيًا ولا يمكن استعادتها',
+      confirmLabel: 'حذف',
+      icon: Icons.delete_outline_rounded,
     );
-    if (isConfirmed != true) return;
+    if (!isConfirmed || !mounted) return;
     ConversationService.instance.deleteConversation(conversation.id);
     setState(() => _conversations.remove(conversation));
   }
@@ -193,10 +221,9 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
     if (!mounted) return;
     setState(() {
       // A new conversation that never started and has no messages is dropped.
+      // (Its number is not used up: numbers are saved only when used.)
       if (!conversation.hasStartedListening && conversation.messages.isEmpty) {
         _conversations.remove(conversation);
-        // Give its number back so the next one reuses it.
-        _nextConversationNumber--;
       }
     });
     // Save everything that happened inside the conversation.
@@ -206,14 +233,14 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
   }
 
   /// Creates an empty conversation and opens it (shows the start card).
-  void _startNewConversation() {
-    final ChatsConversation conversation = ChatsConversation(
-      id: ConversationService.instance.newConversationId(),
-      // Auto name until the user renames it.
-      // TODO: AI suggests a name after a few messages.
-      title: chatsDefaultConversationTitle(_nextConversationNumber++),
-      createdAt: DateTime.now(),
-    );
+  /// Works only while listening is on (otherwise the shared window asks
+  /// to turn it on). The number is never reused (see ConversationService).
+  Future<void> _startNewConversation() async {
+    if (!await hesakRequireListening(context)) return;
+    final ChatsConversation conversation =
+        await ConversationService.instance.createNewConversation(_conversations);
+    if (!mounted) return;
+    // TODO: AI suggests a name after a few messages.
     setState(() => _conversations.add(conversation));
     _openConversation(conversation);
   }
@@ -266,10 +293,16 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
               ),
             ),
             Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+              child: _isLoading && _conversations.isEmpty
+                  ? const Center(
+                      child: CircularProgressIndicator(color: HesakColors.primary))
+                  : _hasLoadFailed && _conversations.isEmpty
+                  ? _ChatsLoadFailedState(onRetry: _loadConversations)
                   : visible.isEmpty
-                  ? _ChatsEmptyState(isSearching: _searchQuery.isNotEmpty)
+                  ? _ChatsEmptyState(
+                      isSearching: _searchQuery.isNotEmpty,
+                      isAllTab: isAllTab,
+                    )
                   : ListView.separated(
                 key: const Key('chats_conversations_list'),
                 padding: const EdgeInsets.fromLTRB(
@@ -584,8 +617,9 @@ class _ChatsExpiryNotice extends StatelessWidget {
           Expanded(
             child: Text.rich(
               TextSpan(
+                // All the text is red, like the box (no full stop).
                 style: HesakTextStyles.body.copyWith(
-                  color: HesakColors.textPrimary,
+                  color: HesakColors.urgent,
                   height: 1.6,
                 ),
                 children: <InlineSpan>[
@@ -594,7 +628,7 @@ class _ChatsExpiryNotice extends StatelessWidget {
                     text: '24 ساعة',
                     style: HesakTextStyles.captionUrgent,
                   ),
-                  const TextSpan(text: '. احفظ ما يهمك بزر الحفظ.'),
+                  const TextSpan(text: '، احفظ ما يهمك بزر الحفظ'),
                 ],
               ),
             ),
@@ -834,9 +868,12 @@ class _ChatsCardMenuButton extends StatelessWidget {
 
 /// Shown when the filter / search returns nothing.
 class _ChatsEmptyState extends StatelessWidget {
-  const _ChatsEmptyState({required this.isSearching});
+  const _ChatsEmptyState({required this.isSearching, required this.isAllTab});
 
   final bool isSearching;
+
+  /// "الكل" = conversations of the last 24 hours (+ saved ones).
+  final bool isAllTab;
 
   @override
   Widget build(BuildContext context) {
@@ -858,23 +895,92 @@ class _ChatsEmptyState extends StatelessWidget {
               border: Border.all(color: HesakColors.primaryLightBorder),
             ),
             child: Icon(
-              isSearching ? Icons.search_rounded : Icons.bookmark_border_rounded,
+              isSearching
+                  ? Icons.search_rounded
+                  : isAllTab
+                  ? Icons.chat_bubble_outline_rounded
+                  : Icons.bookmark_border_rounded,
               size: HesakSizes.iconInBox + 3,
               color: HesakColors.primaryMuted,
             ),
           ),
           const SizedBox(height: 12),
           Text(
-            isSearching ? 'لا توجد نتائج' : 'لا توجد محادثات محفوظة',
+            isSearching
+                ? 'لا توجد نتائج'
+                : isAllTab
+                ? 'لا توجد محادثات خلال 24 ساعة'
+                : 'لا توجد محادثات محفوظة',
             style: HesakTextStyles.cardTitle,
           ),
           const SizedBox(height: 6),
           Text(
             isSearching
-                ? 'جرّب كلمة أخرى أو امسح البحث.'
-                : 'اضغط زر الحفظ في أي محادثة لتبقى محفوظة لديك.',
+                ? 'جرّب كلمة أخرى أو امسح البحث'
+                : isAllTab
+                ? 'ابدأ محادثة جديدة من زر الإضافة'
+                : 'اضغط زر الحفظ في أي محادثة لتبقى محفوظة لديك',
             textAlign: TextAlign.center,
             style: HesakTextStyles.body.copyWith(height: 1.6),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Loading failed (e.g. no internet): message + "إعادة المحاولة".
+class _ChatsLoadFailedState extends StatelessWidget {
+  const _ChatsLoadFailedState({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      key: const Key('chats_load_failed'),
+      padding: const EdgeInsets.fromLTRB(
+        HesakSizes.pagePadding,
+        40,
+        HesakSizes.pagePadding,
+        HesakSizes.pageBottomSafeSpace,
+      ),
+      child: Column(
+        children: <Widget>[
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: HesakColors.urgent.withValues(alpha: 0.07),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.wifi_off_rounded,
+                size: HesakSizes.iconInBox + 3, color: HesakColors.urgent),
+          ),
+          const SizedBox(height: 12),
+          Text('تعذّر تحميل المحادثات', style: HesakTextStyles.cardTitle),
+          const SizedBox(height: 6),
+          Text(
+            'تحقّق من اتصالك بالإنترنت ثم أعد المحاولة',
+            textAlign: TextAlign.center,
+            style: HesakTextStyles.body.copyWith(height: 1.6),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 46,
+            child: TextButton.icon(
+              key: const Key('chats_retry_button'),
+              onPressed: onRetry,
+              style: TextButton.styleFrom(
+                backgroundColor: HesakColors.primary,
+                foregroundColor: HesakColors.onPrimary,
+                shape: const StadiumBorder(),
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+              ),
+              icon: const Icon(Icons.refresh_rounded, size: HesakSizes.iconInChip + 3),
+              label: Text('إعادة المحاولة',
+                  style: HesakTextStyles.itemTitle.copyWith(color: HesakColors.onPrimary)),
+            ),
           ),
         ],
       ),
@@ -939,7 +1045,15 @@ class _ChatsRenameDialog extends StatefulWidget {
 
 class _ChatsRenameDialogState extends State<_ChatsRenameDialog> {
   late final TextEditingController _titleController =
-  TextEditingController(text: widget.currentTitle);
+  TextEditingController(text: widget.currentTitle)
+    ..addListener(() => setState(() {})); // Re-check "حفظ" on every letter
+
+  /// "حفظ" works only when the name really changed (typing it back to the
+  /// old name makes it grey again).
+  bool get _hasNewTitle {
+    final String typed = _titleController.text.trim();
+    return typed.isNotEmpty && typed != widget.currentTitle.trim();
+  }
 
   @override
   void dispose() {
@@ -947,7 +1061,9 @@ class _ChatsRenameDialogState extends State<_ChatsRenameDialog> {
     super.dispose();
   }
 
-  void _submitNewTitle() => Navigator.of(context).pop(_titleController.text);
+  void _submitNewTitle() {
+    if (_hasNewTitle) Navigator.of(context).pop(_titleController.text);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -988,7 +1104,7 @@ class _ChatsRenameDialogState extends State<_ChatsRenameDialog> {
                 key: const Key('chats_rename_save'),
                 label: 'حفظ',
                 isPrimary: true,
-                onPressed: _submitNewTitle,
+                onPressed: _hasNewTitle ? _submitNewTitle : null, // Grey until changed
               ),
             ),
             const SizedBox(width: 10),
@@ -1006,77 +1122,14 @@ class _ChatsRenameDialogState extends State<_ChatsRenameDialog> {
   }
 }
 
-/// "حذف المحادثة؟" — returns true when the user confirms.
-class _ChatsDeleteDialog extends StatelessWidget {
-  const _ChatsDeleteDialog({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return _ChatsDialogFrame(
-      key: const Key('chats_delete_dialog'),
-      isCentered: true,
-      children: <Widget>[
-        Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            color: HesakColors.urgent.withValues(alpha: 0.07),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.delete_outline_rounded,
-              size: HesakSizes.iconInBox, color: HesakColors.urgent),
-        ),
-        const SizedBox(height: 10),
-        Text('هل تريد حذف «$title»؟',
-            textAlign: TextAlign.center, style: HesakTextStyles.cardTitle),
-        const SizedBox(height: 6),
-        Text(
-          'ستُحذف المحادثة نهائيًا ولا يمكن استعادتها.',
-          textAlign: TextAlign.center,
-          style: HesakTextStyles.itemTitle.copyWith(
-            fontWeight: FontWeight.w400,
-            color: HesakColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: _ChatsDialogButton(
-                key: const Key('chats_delete_confirm'),
-                label: 'حذف',
-                isPrimary: true,
-                isDestructive: true,
-                onPressed: () => Navigator.of(context).pop(true),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _ChatsDialogButton(
-                key: const Key('chats_delete_cancel'),
-                label: 'إلغاء',
-                onPressed: () => Navigator.of(context).pop(false),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
 /// Card-style frame shared by the list dialogs.
 class _ChatsDialogFrame extends StatelessWidget {
   const _ChatsDialogFrame({
     super.key,
     required this.children,
-    this.isCentered = false,
   });
 
   final List<Widget> children;
-  final bool isCentered;
 
   @override
   Widget build(BuildContext context) {
@@ -1091,8 +1144,7 @@ class _ChatsDialogFrame extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment:
-          isCentered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: children,
         ),
       ),
@@ -1107,21 +1159,25 @@ class _ChatsDialogButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.isPrimary = false,
-    this.isDestructive = false,
   });
 
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed; // null = disabled (grey)
   final bool isPrimary;
-  final bool isDestructive;
 
   @override
   Widget build(BuildContext context) {
-    final Color background = isPrimary
-        ? (isDestructive ? HesakColors.urgent : HesakColors.primary)
+    final bool isEnabled = onPressed != null;
+    final Color background = !isEnabled
+        ? HesakColors.modeUnselectedFill
+        : isPrimary
+        ? HesakColors.primary
         : HesakColors.primaryLight;
-    final Color foreground =
-    isPrimary ? HesakColors.onPrimary : HesakColors.primary;
+    final Color foreground = !isEnabled
+        ? HesakColors.iconInactive
+        : isPrimary
+        ? HesakColors.onPrimary
+        : HesakColors.primary;
 
     return SizedBox(
       height: 48,
@@ -1130,6 +1186,8 @@ class _ChatsDialogButton extends StatelessWidget {
         style: TextButton.styleFrom(
           backgroundColor: background,
           foregroundColor: foreground,
+          disabledBackgroundColor: background,
+          disabledForegroundColor: foreground,
           shape: const StadiumBorder(),
         ),
         child: Text(label,

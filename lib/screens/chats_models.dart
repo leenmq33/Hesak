@@ -137,6 +137,21 @@ String chatsFormatTime(DateTime date) {
 String chatsDefaultConversationTitle(int number) =>
     'محادثة ${number.toString().padLeft(2, '0')}';
 
+/// The biggest NN among titles like "محادثة NN" (0 when there are none).
+/// Used so a new conversation never reuses a number.
+int chatsHighestDefaultNumber(Iterable<ChatsConversation> conversations) {
+  final RegExp pattern = RegExp(r'^محادثة (\d+)$');
+  int highest = 0;
+  for (final c in conversations) {
+    final Match? match = pattern.firstMatch(c.title.trim());
+    if (match != null) {
+      final int n = int.parse(match.group(1)!);
+      if (n > highest) highest = n;
+    }
+  }
+  return highest;
+}
+
 /// Exact countdown "17:20:30" (hours:minutes:seconds) — used in
 /// "تُحذف بعد ...". Updated every second by the list page.
 String chatsFormatTimeLeft(Duration left) {
