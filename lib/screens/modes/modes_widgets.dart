@@ -159,10 +159,10 @@ class ModesSaveCancelRow extends StatelessWidget {
   }
 }
 
-/// Round star button (الأوضاع المفضلة):
-///  - favorite: deep purple circle + filled white star
-///  - not favorite: light grey circle + grey outlined star
-/// [isOnDark] = see-through white circle, for the purple mode card header.
+/// Star button (الأوضاع المفضلة), no circle behind it:
+///  - favorite: filled yellow star (same on light and purple)
+///  - not favorite: empty star — grey on light, soft white on purple
+/// [isOnDark] = the star sits on a purple background.
 class ModesStarButton extends StatelessWidget {
   final bool isFavorite;
   final VoidCallback onTap;
@@ -172,18 +172,20 @@ class ModesStarButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // No circle behind the star (works on light AND purple backgrounds):
+    //   favorite      -> filled yellow star
+    //   not favorite  -> empty star (grey on light, soft white on purple)
+    final Color emptyStarColor = isOnDark ? HesakColors.onModeHeaderSoft : HesakColors.iconInactive;
     return Tooltip(
       message: isFavorite ? 'إزالة من الأوضاع المفضلة' : 'إضافة إلى الأوضاع المفضلة',
       child: Material(
-        color: isOnDark
-            ? HesakColors.modeHeaderOverlay
-            : (isFavorite ? HesakColors.modeSelected : HesakColors.modeUnselectedFill),
+        color: Colors.transparent,
         shape: const CircleBorder(),
         child: InkWell(
           onTap: onTap,
           customBorder: const CircleBorder(),
           child: SizedBox(
-            width: HesakSizes.modeStarButton,
+            width: HesakSizes.modeStarButton, // Same touch size as before
             height: HesakSizes.modeStarButton,
             // The star pops a little when it changes.
             child: AnimatedSwitcher(
@@ -192,8 +194,8 @@ class ModesStarButton extends StatelessWidget {
               child: Icon(
                 isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
                 key: ValueKey(isFavorite),
-                color: isOnDark || isFavorite ? HesakColors.onPrimary : HesakColors.iconInactive,
-                size: 22,
+                color: isFavorite ? HesakColors.favoriteStar : emptyStarColor,
+                size: 28,
               ),
             ),
           ),

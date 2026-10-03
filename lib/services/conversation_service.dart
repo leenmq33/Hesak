@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -15,6 +18,10 @@ import '../screens/chats_models.dart';
 //    - Saved conversation (isSaved = true): has NO "expireAt",
 //      so it is kept until the user deletes it.
 //
+//  Conversation numbers ("محادثة 05") work like an id: a number is never
+//  given again, even after its conversation is deleted. The last used
+//  number is kept in users/{uid} -> "lastConversationNumber".
+//
 //  The models in chats_models.dart are NOT changed; this file only
 //  converts them to / from Firestore.
 // =====================================================================
@@ -24,6 +31,10 @@ class ConversationService {
   static final ConversationService instance = ConversationService._();
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  /// Goes up by 1 after every save / delete. الرئيسية and المحادثات listen
+  /// to it and reload, so a conversation started on one page shows on the other.
+  final ValueNotifier<int> changeCount = ValueNotifier<int>(0);
 
   /// users/{uid}/conversations of the signed-in user (null = not signed in).
   CollectionReference<Map<String, dynamic>>? get _collection {
@@ -36,15 +47,26 @@ class ConversationService {
   String newConversationId() =>
       _collection?.doc().id ?? 'local_${DateTime.now().millisecondsSinceEpoch}';
 
+  /// How long we wait for Firebase before showing "تعذّر التحميل".
+  static const Duration _loadTimeout = Duration(seconds: 12);
+
   /// Loads all conversations of the user, newest first.
   /// Expired unsaved conversations are deleted here and not returned.
-  Future<List<ChatsConversation>> loadConversations() async {
+  /// Returns null when loading failed (no internet and nothing saved on the
+  /// phone yet, or Firebase error) — the page then shows "إعادة المحاولة".
+  Future<List<ChatsConversation>?> loadConversations() async {
     final collection = _collection;
     if (collection == null) return <ChatsConversation>[];
 
     try {
-      final snap =
-      await collection.orderBy('createdAt', descending: true).get();
+      final snap = await collection
+          .orderBy('createdAt', descending: true)
+          .get()
+          .timeout(_loadTimeout);
+
+      // Offline with nothing cached yet: we don't really know the list.
+      if (snap.metadata.isFromCache && snap.docs.isEmpty) return null;
+
       final DateTime now = DateTime.now();
       final WriteBatch cleanup = _db.batch();
       bool hasExpired = false;
@@ -69,7 +91,75 @@ class ConversationService {
       return result;
     } catch (e) {
       debugPrint('loadConversations error: $e');
-      return <ChatsConversation>[];
+      return null;
+    }
+  }
+
+  // -------------------------------------------------------------------
+  // New conversation + its number (like an id, never reused)
+  // -------------------------------------------------------------------
+
+  /// Highest number this app already gave (kept while the app is open).
+  int _lastUsedNumberOnPhone = 0;
+
+  /// New conversations whose number is not saved yet: id -> number.
+  /// The number is saved only when the conversation is really used
+  /// (first save), so an empty conversation that is closed right away
+  /// does not use up a number.
+  final Map<String, int> _pendingNumbers = <String, int>{};
+
+  /// users/{uid} of the signed-in user (null = not signed in).
+  DocumentReference<Map<String, dynamic>>? get _userDoc {
+    final String? uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return null;
+    return _db.collection('users').doc(uid);
+  }
+
+  /// Creates (does not save yet) a new conversation "محادثة NN".
+  /// [existing] = the conversations already loaded, so the number is
+  /// always bigger than every "محادثة NN" the user has.
+  Future<ChatsConversation> createNewConversation(List<ChatsConversation> existing) async {
+    // Only one new conversation is open at a time: an older one that was
+    // closed without being used gives its number back.
+    _pendingNumbers.clear();
+    int lastSaved = 0;
+    try {
+      final snap = await _userDoc?.get().timeout(const Duration(seconds: 5));
+      lastSaved = (snap?.data()?['lastConversationNumber'] as num?)?.toInt() ?? 0;
+    } catch (e) {
+      debugPrint('read lastConversationNumber error: $e'); // Offline: use what we know
+    }
+    final int number = <int>[
+      lastSaved,
+      _lastUsedNumberOnPhone,
+      chatsHighestDefaultNumber(existing),
+    ].reduce(math.max) + 1;
+
+    final ChatsConversation conversation = ChatsConversation(
+      id: newConversationId(),
+      // Auto name until the user renames it.
+      title: chatsDefaultConversationTitle(number),
+      createdAt: DateTime.now(),
+    );
+    _pendingNumbers[conversation.id] = number;
+    return conversation;
+  }
+
+  /// Saves "this number is used" (only goes up, never down).
+  Future<void> _rememberUsedNumber(int number) async {
+    _lastUsedNumberOnPhone = math.max(_lastUsedNumberOnPhone, number);
+    final ref = _userDoc;
+    if (ref == null) return;
+    try {
+      await _db.runTransaction((tx) async {
+        final snap = await tx.get(ref);
+        final int last = (snap.data()?['lastConversationNumber'] as num?)?.toInt() ?? 0;
+        if (number > last) {
+          tx.set(ref, <String, dynamic>{'lastConversationNumber': number}, SetOptions(merge: true));
+        }
+      });
+    } catch (e) {
+      debugPrint('save lastConversationNumber error: $e');
     }
   }
 
@@ -77,6 +167,10 @@ class ConversationService {
   /// Call it after ANY change: new message, rename, start listening,
   /// save / unsave, accepting an AI enhancement.
   Future<void> saveConversation(ChatsConversation conversation) async {
+    // First save of a new conversation: its number is now used for good.
+    final int? number = _pendingNumbers.remove(conversation.id);
+    if (number != null) unawaited(_rememberUsedNumber(number));
+
     final collection = _collection;
     if (collection == null) return;
 
@@ -84,6 +178,7 @@ class ConversationService {
       await collection
           .doc(conversation.id)
           .set(_conversationToMap(conversation), SetOptions(merge: true));
+      changeCount.value++;
     } catch (e) {
       debugPrint('saveConversation error: $e');
     }
@@ -96,6 +191,7 @@ class ConversationService {
 
     try {
       await collection.doc(conversationId).delete();
+      changeCount.value++;
     } catch (e) {
       debugPrint('deleteConversation error: $e');
     }

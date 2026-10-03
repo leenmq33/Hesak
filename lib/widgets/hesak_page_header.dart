@@ -31,12 +31,17 @@ class HesakPageHeader extends StatelessWidget {
   /// For now only the الإعدادات pages use it; the rest stay light.
   final bool followsAppearance;
 
+  /// true = the header sits on a purple background (home page top):
+  /// white logo, white greeting, soft white waves and divider.
+  final bool isOnPurple;
+
   /// Centered page title (all pages except home).
   const HesakPageHeader({super.key, required this.title, this.onBack, this.followsAppearance = false})
-      : isGreeting = false;
+      : isGreeting = false,
+        isOnPurple = false;
 
   /// Greeting on the right side, used on the home page instead of a title.
-  const HesakPageHeader.greeting({super.key, required String text})
+  const HesakPageHeader.greeting({super.key, required String text, this.isOnPurple = false})
       : title = text,
         isGreeting = true,
         onBack = null,
@@ -60,6 +65,10 @@ class HesakPageHeader extends StatelessWidget {
     // Dark only when this header follows the appearance AND داكن is picked.
     final bool isDark = followsAppearance && HesakThemeController.instance.isDark;
     final HesakPalette palette = isDark ? HesakPalette.dark : HesakPalette.light;
+    // Waves + divider color: purple top (home) > dark appearance > normal.
+    final Color lineColor = isOnPurple
+        ? HesakColors.homeHeaderLinesOnPurple
+        : (isDark ? palette.headerLines : HesakColors.lavenderAccent);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -76,7 +85,11 @@ class HesakPageHeader extends StatelessWidget {
                 top: 0,
                 bottom: 0,
                 child: CustomPaint(
-                  painter: _HesakHeaderWavePainter(color: isDark ? palette.headerLines : HesakColors.headerWaves),
+                  painter: _HesakHeaderWavePainter(
+                    color: isOnPurple
+                        ? HesakColors.homeHeaderLinesOnPurple
+                        : (isDark ? palette.headerLines : HesakColors.headerWaves),
+                  ),
                 ),
               ),
 
@@ -86,7 +99,7 @@ class HesakPageHeader extends StatelessWidget {
                 top: 0,
                 bottom: 6,
                 child: Center(
-                  child: _HesakHeaderLogo(width: screenWidth * 0.36, isOnDark: isDark),
+                  child: _HesakHeaderLogo(width: screenWidth * 0.36, isOnDark: isDark || isOnPurple),
                 ),
               ),
             ],
@@ -105,7 +118,9 @@ class HesakPageHeader extends StatelessWidget {
                     title,
                     key: const Key('header_greeting'),
                     textDirection: TextDirection.rtl,
-                    style: HesakTextStyles.greeting,
+                    style: isOnPurple
+                        ? HesakTextStyles.greeting.copyWith(color: HesakColors.onPrimary)
+                        : HesakTextStyles.greeting,
                   ),
                 )
               // Page title: centered, big title style (+ back arrow on the right if given).
@@ -138,7 +153,7 @@ class HesakPageHeader extends StatelessWidget {
         ),
 
         // ---------- 3) Divider ----------
-        _HesakHeaderDivider(color: isDark ? palette.headerLines : HesakColors.lavenderAccent),
+        _HesakHeaderDivider(color: lineColor),
       ],
     );
   }
@@ -210,12 +225,18 @@ class _HesakHeaderLogo extends StatelessWidget {
   }
 
   /// The full logo as a single transparent PNG.
-  /// If the white logo file isn't in the project yet, the purple one is shown instead.
+  /// If the white logo file isn't in the project yet, the purple logo is
+  /// painted white instead (so it still shows on dark / purple backgrounds).
   Widget _buildLogoImage(String path) {
     return Image.asset(
       path,
       fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) => Image.asset(_purpleLogo, fit: BoxFit.contain),
+      errorBuilder: (context, error, stackTrace) => path == _whiteLogo
+          ? ColorFiltered(
+              colorFilter: const ColorFilter.mode(HesakColors.onPrimary, BlendMode.srcIn),
+              child: Image.asset(_purpleLogo, fit: BoxFit.contain),
+            )
+          : Image.asset(_purpleLogo, fit: BoxFit.contain),
     );
   }
 }

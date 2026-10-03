@@ -14,9 +14,14 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../core/data/hesak_mode_store.dart';
 import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
+import '../services/conversation_service.dart';
+import '../widgets/hesak_confirm_dialog.dart';
+import '../widgets/hesak_listening_required.dart';
+import '../widgets/hesak_toast.dart';
 import 'chats_models.dart';
 
 /// Body text of a chat bubble.
@@ -33,9 +38,6 @@ const LinearGradient _chatsPrimaryGradient = LinearGradient(
   end: Alignment.bottomRight,
   colors: <Color>[HesakColors.primaryMuted, HesakColors.primary],
 );
-
-/// What the user chose in the leave-conversation warning.
-enum _ChatsExitChoice { saveAndLeave, leaveWithoutSaving, stay }
 
 /// What the user chose in the text-enhancement sheet.
 enum _ChatsEnhancementChoice { accept, keepOriginal }
@@ -65,8 +67,6 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   bool _isListening = false;
   bool _isEditingTitle = false;
 
-  /// The 24-hour warning shows only the first time the user presses back.
-  bool _hasShownExitWarning = false;
 
   /// Accepted enhancements whose purple box is currently open.
   final Set<String> _openEnhancedMessageIds = <String>{};
@@ -112,29 +112,31 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   // Back / leave
   // -------------------------------------------------------------------------
 
-  /// First back press on an unsaved conversation shows the 24h warning.
+  /// Brand-new and nothing done yet (only the start card is showing).
+  bool get _isUntouchedNewConversation =>
+      !_conversation.hasStartedListening && _conversation.messages.isEmpty;
+
+  /// Back arrow / phone back:
+  ///   - nothing done yet, or already saved -> leave right away
+  ///   - otherwise -> asks EVERY time (shared HesakConfirmDialog style):
+  ///       "حفظ" = save and leave · "خروج دون حفظ" = leave · tap outside = stay
   Future<void> _handleBackPressed() async {
-    if (_conversation.isSaved || _hasShownExitWarning) {
+    if (_isUntouchedNewConversation || _conversation.isSaved) {
       Navigator.of(context).pop();
       return;
     }
-    _hasShownExitWarning = true;
-    final _ChatsExitChoice? choice = await showDialog<_ChatsExitChoice>(
-      context: context,
-      barrierColor: HesakColors.textPrimary.withValues(alpha: 0.38),
-      builder: (_) => const _ChatsExitDialog(),
+    final bool? shouldSave = await showHesakChoiceDialog(
+      context,
+      title: 'هل تريد حفظ المحادثة؟',
+      message: 'ستُحذف المحادثة تلقائيًا بعد 24 ساعة إذا لم تحفظها',
+      confirmLabel: 'حفظ',
+      cancelLabel: 'خروج دون حفظ',
+      icon: Icons.bookmark_border_rounded,
+      isDanger: false,
     );
-    if (!mounted) return;
-    switch (choice) {
-      case _ChatsExitChoice.saveAndLeave:
-        _conversation.isSaved = true;
-        Navigator.of(context).pop();
-      case _ChatsExitChoice.leaveWithoutSaving:
-        Navigator.of(context).pop();
-      case _ChatsExitChoice.stay:
-      case null:
-        break;
-    }
+    if (!mounted || shouldSave == null) return; // Closed: stay here
+    if (shouldSave) _conversation.isSaved = true;
+    Navigator.of(context).pop();
   }
 
   /// Saves / un-saves this conversation from the header button.
@@ -152,14 +154,25 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
     setState(() => _isEditingTitle = true);
   }
 
-  /// Applies the typed title (empty text keeps the old one).
+  /// true only when the typed name is really different from the current
+  /// one (typing it back to the old name makes ✓ grey again).
+  bool get _hasNewTitle {
+    final String typed = _titleController.text.trim();
+    return typed.isNotEmpty && typed != _conversation.title.trim();
+  }
+
+  /// Applies the typed title. Nothing changed -> just closes the field.
   void _saveEditedTitle() {
-    final String newTitle = _titleController.text.trim();
+    final bool hasChanged = _hasNewTitle;
     setState(() {
-      if (newTitle.isNotEmpty) _conversation.title = newTitle;
+      if (hasChanged) _conversation.title = _titleController.text.trim();
       _isEditingTitle = false;
     });
-    // TODO: persist the new title.
+    // Saved conversations are saved again right away; others are saved
+    // when the user leaves the conversation.
+    if (hasChanged && _conversation.isSaved) {
+      ConversationService.instance.saveConversation(_conversation);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -168,7 +181,10 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
 
   /// Starts / stops listening. While listening, typing is disabled
   /// (the composer is replaced by the listening bar).
-  void _toggleListening() {
+  /// Starting needs the big listen button (الرئيسية) to be on.
+  Future<void> _toggleListening() async {
+    if (!_isListening && !await hesakRequireListening(context)) return;
+    if (!mounted) return;
     setState(() {
       _isListening = !_isListening;
       _conversation.markStarted(); // start time + 24h countdown begin here
@@ -369,10 +385,33 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   // Build
   // -------------------------------------------------------------------------
 
+  /// Typing / the mic below are grey and locked until:
+  ///   1) the big listen button (الرئيسية) is on, AND
+  ///   2) a new conversation was started with "بدء الاستماع" in the middle.
+  /// Reading old messages always works.
+  bool get _isComposerLocked =>
+      !HesakModeStore.instance.isListening || _isUntouchedNewConversation;
+
+  /// Tap on the locked composer: explains what to do.
+  Future<void> _explainLockedComposer() async {
+    if (!HesakModeStore.instance.isListening) {
+      await hesakRequireListening(context);
+      return;
+    }
+    showHesakToast(context, 'اضغط «بدء الاستماع» لبدء المحادثة', icon: Icons.mic_none_rounded);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final bool isShowingStartCard = !_conversation.hasStartedListening &&
-        _conversation.messages.isEmpty;
+    // Rebuilds when listening turns on / off (HesakModeStore).
+    return ListenableBuilder(
+      listenable: HesakModeStore.instance,
+      builder: (context, _) => _buildPage(context),
+    );
+  }
+
+  Widget _buildPage(BuildContext context) {
+    final bool isShowingStartCard = _isUntouchedNewConversation;
 
     return PopScope(
       canPop: false,
@@ -419,6 +458,8 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
               ),
               _ChatsComposerBar(
                 controller: _composerController,
+                isLocked: _isComposerLocked,
+                onLockedTap: _explainLockedComposer,
                 isListening: _isListening,
                 hasText: _hasComposerText,
                 listeningBars: _listeningBarsController,
@@ -443,8 +484,8 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
           padding: const EdgeInsets.all(HesakSizes.pagePadding),
           child: Text(
             _isListening
-                ? 'جارٍ الاستماع… سيظهر الكلام من حولك هنا نصًا.'
-                : 'اضغط زر الاستماع، أو اكتب نصًا ليتحوّل إلى كلام.',
+                ? 'جارٍ الاستماع… سيظهر الكلام من حولك هنا نصًا'
+                : 'اضغط زر الاستماع، أو اكتب نصًا ليتحوّل إلى كلام',
             textAlign: TextAlign.center,
             style: _chatsMessageTextStyle.copyWith(
                 color: HesakColors.textSecondary),
@@ -537,7 +578,9 @@ class _ChatsConversationHeader extends StatelessWidget {
               Expanded(
                 child: isEditingTitle
                     ? _ChatsTitleEditor(
-                        controller: titleController, onSave: onSaveTitle)
+                        controller: titleController,
+                        currentTitle: title,
+                        onSave: onSaveTitle)
                     : _ChatsTitleButton(
                         title: title, onPressed: onStartEditingTitle),
               ),
@@ -604,10 +647,16 @@ class _ChatsTitleButton extends StatelessWidget {
 }
 
 /// Inline text field + ✓ shown while renaming.
+/// ✓ is grey until the name really changes (back to the old name = grey).
 class _ChatsTitleEditor extends StatelessWidget {
-  const _ChatsTitleEditor({required this.controller, required this.onSave});
+  const _ChatsTitleEditor({
+    required this.controller,
+    required this.currentTitle,
+    required this.onSave,
+  });
 
   final TextEditingController controller;
+  final String currentTitle;
   final VoidCallback onSave;
 
   @override
@@ -637,24 +686,39 @@ class _ChatsTitleEditor extends StatelessWidget {
               ),
             ),
           ),
-          Semantics(
-            button: true,
-            label: 'حفظ الاسم',
-            child: GestureDetector(
-              key: const Key('chats_conversation_title_save'),
-              onTap: onSave,
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: const BoxDecoration(
-                  color: HesakColors.primary,
-                  shape: BoxShape.circle,
+          // Rebuilds on every letter to turn ✓ purple / grey.
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, value, _) {
+              final String typed = value.text.trim();
+              final bool hasChanged =
+                  typed.isNotEmpty && typed != currentTitle.trim();
+              return Semantics(
+                button: true,
+                enabled: hasChanged,
+                label: 'حفظ الاسم',
+                child: GestureDetector(
+                  key: const Key('chats_conversation_title_save'),
+                  onTap: onSave, // Nothing changed -> just closes the field
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: hasChanged
+                          ? HesakColors.primary
+                          : HesakColors.modeUnselectedFill,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.check_rounded,
+                        size: HesakSizes.iconInChip + 1,
+                        color: hasChanged
+                            ? HesakColors.onPrimary
+                            : HesakColors.iconInactive),
+                  ),
                 ),
-                child: const Icon(Icons.check_rounded,
-                    size: HesakSizes.iconInChip + 1,
-                    color: HesakColors.onPrimary),
-              ),
-            ),
+              );
+            },
           ),
         ],
       ),
@@ -767,7 +831,7 @@ class _ChatsStartListeningCard extends StatelessWidget {
           Text('محادثة جديدة', style: HesakTextStyles.cardTitle),
           const SizedBox(height: 6),
           Text(
-            'سيظهر الكلام من حولك هنا نصًا، وسيتحوّل ما تكتبه إلى كلام.',
+            'سيظهر الكلام من حولك هنا نصًا، وسيتحوّل ما تكتبه إلى كلام',
             textAlign: TextAlign.center,
             style: HesakTextStyles.body.copyWith(height: 1.7),
           ),
@@ -1446,6 +1510,8 @@ class _ChatsJumpToEndButton extends StatelessWidget {
 class _ChatsComposerBar extends StatelessWidget {
   const _ChatsComposerBar({
     required this.controller,
+    required this.isLocked,
+    required this.onLockedTap,
     required this.isListening,
     required this.hasText,
     required this.listeningBars,
@@ -1455,6 +1521,12 @@ class _ChatsComposerBar extends StatelessWidget {
   });
 
   final TextEditingController controller;
+
+  /// true = grey and not usable yet (see _isComposerLocked).
+  final bool isLocked;
+
+  /// Tap while locked -> explains what to do.
+  final VoidCallback onLockedTap;
   final bool isListening;
   final bool hasText;
   final Animation<double> listeningBars;
@@ -1470,7 +1542,9 @@ class _ChatsComposerBar extends StatelessWidget {
         color: HesakColors.background,
         border: Border(top: BorderSide(color: HesakColors.surfaceBorder)),
       ),
-      child: isListening
+      child: isLocked
+          ? _ChatsLockedComposer(onTap: onLockedTap)
+          : isListening
           ? _ChatsListeningBar(
               bars: listeningBars, onStop: onToggleListening)
           : Row(
@@ -1488,6 +1562,77 @@ class _ChatsComposerBar extends StatelessWidget {
                     : _ChatsListenButton(onPressed: onToggleListening),
               ],
             ),
+    );
+  }
+}
+
+/// Locked composer: same shape, all grey. Tapping anywhere explains why.
+class _ChatsLockedComposer extends StatelessWidget {
+  const _ChatsLockedComposer({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'الكتابة والاستماع غير متاحين قبل بدء الاستماع',
+      child: GestureDetector(
+        key: const Key('chats_composer_locked'),
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Container(
+                height: 52,
+                padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 6, 0),
+                decoration: BoxDecoration(
+                  color: HesakColors.modeUnselectedFill,
+                  border: Border.all(color: HesakColors.surfaceBorder),
+                  borderRadius: BorderRadius.circular(26),
+                ),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        'اكتب نصًا ليتحوّل إلى كلام…',
+                        style: HesakTextStyles.itemTitle.copyWith(
+                          fontWeight: FontWeight.w400,
+                          color: HesakColors.iconInactive,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: HesakColors.surfaceBorder,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.auto_awesome_rounded,
+                          size: HesakSizes.iconInChip + 3,
+                          color: HesakColors.iconInactive),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              width: 52,
+              height: 52,
+              decoration: const BoxDecoration(
+                color: HesakColors.modeUnselectedFill,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.mic_none_rounded,
+                  size: HesakSizes.iconInBox + 1,
+                  color: HesakColors.iconInactive),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1925,107 +2070,6 @@ class _ChatsSheetTextBlock extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// First back press on an unsaved conversation:
-/// "ستُحذف المحادثة بعد 24 ساعة".
-class _ChatsExitDialog extends StatelessWidget {
-  const _ChatsExitDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    void closeWith(_ChatsExitChoice choice) => Navigator.of(context).pop(choice);
-
-    return Dialog(
-      key: const Key('chats_exit_dialog'),
-      backgroundColor: HesakColors.surface,
-      insetPadding: const EdgeInsets.all(HesakSizes.pagePadding),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
-        side: const BorderSide(color: HesakColors.surfaceBorder),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: HesakColors.urgent.withValues(alpha: 0.07),
-                shape: BoxShape.circle,
-                border: Border.all(
-                    color: HesakColors.urgent.withValues(alpha: 0.2)),
-              ),
-              child: const Icon(Icons.schedule_rounded,
-                  size: HesakSizes.iconInBox + 5, color: HesakColors.urgent),
-            ),
-            const SizedBox(height: 12),
-            Text('ستُحذف المحادثة بعد 24 ساعة',
-                textAlign: TextAlign.center, style: HesakTextStyles.cardTitle),
-            const SizedBox(height: 6),
-            Text(
-              'هل تريد حفظها في المحفوظات للرجوع إليها لاحقًا؟',
-              textAlign: TextAlign.center,
-              style: HesakTextStyles.itemTitle.copyWith(
-                  fontWeight: FontWeight.w400,
-                  color: HesakColors.textSecondary),
-            ),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: TextButton.icon(
-                key: const Key('chats_exit_save_button'),
-                onPressed: () => closeWith(_ChatsExitChoice.saveAndLeave),
-                style: TextButton.styleFrom(
-                  backgroundColor: HesakColors.primary,
-                  foregroundColor: HesakColors.onPrimary,
-                  shape: const StadiumBorder(),
-                ),
-                icon: const Icon(Icons.bookmark_rounded,
-                    size: HesakSizes.iconInChip + 3),
-                label: Text('حفظ في المحفوظات',
-                    style: HesakTextStyles.itemTitle
-                        .copyWith(color: HesakColors.onPrimary)),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: OutlinedButton(
-                key: const Key('chats_exit_leave_button'),
-                onPressed: () => closeWith(_ChatsExitChoice.leaveWithoutSaving),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: HesakColors.primary,
-                  side: const BorderSide(
-                      color: HesakColors.primaryLightBorder, width: 1.5),
-                  shape: const StadiumBorder(),
-                ),
-                child: Text('الخروج دون حفظ',
-                    style: HesakTextStyles.itemTitle
-                        .copyWith(color: HesakColors.primary)),
-              ),
-            ),
-            TextButton(
-              key: const Key('chats_exit_stay_button'),
-              onPressed: () => closeWith(_ChatsExitChoice.stay),
-              style: TextButton.styleFrom(
-                foregroundColor: HesakColors.textSecondary,
-                minimumSize: const Size(0, 44),
-              ),
-              child: Text('البقاء في المحادثة',
-                  style: HesakTextStyles.itemTitle.copyWith(
-                      color: HesakColors.textSecondary,
-                      fontWeight: FontWeight.w600)),
-            ),
-          ],
-        ),
       ),
     );
   }

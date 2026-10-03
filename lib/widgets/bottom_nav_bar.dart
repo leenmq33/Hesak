@@ -57,6 +57,11 @@ class HesakBottomNavBar extends StatefulWidget {
   /// shown in the middle button instead of an icon. null = show the icon.
   final String? activeModeLetter;
 
+  /// true while the big listen button (الرئيسية) is on: the middle mode
+  /// button softly pulses with small rings, so the user sees the mode is
+  /// working and that the button can be tapped.
+  final bool isListening;
+
   const HesakBottomNavBar({
     super.key,
     required this.selectedTab,
@@ -67,6 +72,7 @@ class HesakBottomNavBar extends StatefulWidget {
     this.onAddModeTap,
     this.activeModeIcon,
     this.activeModeLetter,
+    this.isListening = false,
   });
 
   @override
@@ -99,6 +105,12 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
   double _wheelRotation = 0; // How far the wheel is turned, in degrees (0 = start)
   double? _lastFingerAngle; // Finger angle on the previous drag update
   late final AnimationController _wheelSnapController; // Smoothly snaps to the nearest mode
+
+  // Soft pulse + rings of the middle button while listening is on.
+  late final AnimationController _modePulseController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  );
   Animation<double>? _wheelSnapAnimation;
 
   // Used to turn the finger's screen position into a position inside this widget.
@@ -129,10 +141,25 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
         final snap = _wheelSnapAnimation;
         if (snap != null) setState(() => _wheelRotation = snap.value);
       });
+    if (widget.isListening) _modePulseController.repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant HesakBottomNavBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isListening == oldWidget.isListening) return;
+    if (widget.isListening) {
+      _modePulseController.repeat();
+    } else {
+      _modePulseController
+        ..stop()
+        ..reset();
+    }
   }
 
   @override
   void dispose() {
+    _modePulseController.dispose();
     _modeMenuController.dispose();
     _wheelSnapController.dispose();
     super.dispose();
@@ -369,6 +396,50 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
   /// The raised round button in the middle. Shows the active mode's icon.
   /// Solid purple circle (no ring), with a soft shadow + gradient so it looks lifted.
   Widget _buildModeButton() {
+    return AnimatedBuilder(
+      animation: _modePulseController,
+      // The button itself is built once and passed in as child.
+      child: _buildModeButtonCircle(),
+      builder: (context, button) {
+        if (!widget.isListening) return button!;
+        final double t = _modePulseController.value; // 0 -> 1, repeats
+        // Gentle "breathing": 1.0 -> 1.05 -> 1.0
+        final double breathe = 1 + 0.05 * math.sin(t * math.pi);
+        return Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            // Two thin rings that grow and fade, one after the other.
+            for (final double offset in const [0.0, 0.5]) _buildPulseRing((t + offset) % 1.0),
+            Transform.scale(scale: breathe, child: button),
+          ],
+        );
+      },
+    );
+  }
+
+  /// One ring around the middle button. [progress] 0 = at the edge, 1 = gone.
+  Widget _buildPulseRing(double progress) {
+    return IgnorePointer(
+      child: Transform.scale(
+        scale: 1 + 0.55 * progress,
+        child: Container(
+          width: _modeButtonSize,
+          height: _modeButtonSize,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: HesakColors.primaryMuted.withValues(alpha: 0.45 * (1 - progress)),
+              width: 2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The purple circle with the active mode's icon.
+  Widget _buildModeButtonCircle() {
     return GestureDetector(
       key: const Key('navbar_mode_button'),
       onTap: _toggleModeMenu,

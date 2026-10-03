@@ -78,7 +78,8 @@ class _HesakMainShellState extends State<HesakMainShell> with WidgetsBindingObse
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: HesakColors.background,
+      // Light lavender behind every tab (same as the end of الرئيسية).
+      backgroundColor: HesakColors.tabPageBackground,
 
       // Lets the pages draw behind the bottom bar, so the transparent area
       // above the bar (used by the mode wheel) doesn't cover the screen.
@@ -94,7 +95,11 @@ class _HesakMainShellState extends State<HesakMainShell> with WidgetsBindingObse
           // when it changes in الإعدادات. Empty = unknown (e.g. after login, for now).
           ListenableBuilder(
             listenable: AuthService.instance,
-            builder: (context, _) => HomeScreen(userName: AuthService.instance.currentUserName ?? ''),
+            builder: (context, _) => HomeScreen(
+              userName: AuthService.instance.currentUserName ?? '',
+              // "عرض الكل" on the conversations card -> المحادثات tab.
+              onShowAllChats: () => setState(() => _selectedTab = HesakNavTab.chats),
+            ),
           ),
           const ChatsScreen(),
           // isActive: the phone back button only goes back inside الأوضاع while it's shown.
@@ -123,6 +128,8 @@ class _HesakMainShellState extends State<HesakMainShell> with WidgetsBindingObse
           activeModeIcon: _modeStore.selectedMode.icon,
           activeModeLetter: _modeStore.selectedMode.toOption().letter, // Mode without an icon
           onModeSelected: _modeStore.selectMode,
+          // Middle button pulses while listening is on (الرئيسية).
+          isListening: _modeStore.isListening,
           onAddModeTap: () {
             // "إضافة" -> go to the الأوضاع tab and open the add-mode page.
             setState(() {
