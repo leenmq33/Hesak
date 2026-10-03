@@ -36,10 +36,38 @@ Future<bool> showHesakConfirmDialog(
   bool isDanger = true, // true = red icon + red confirm button
   bool followsAppearance = false,
 }) async {
+  final bool? result = await showHesakChoiceDialog(
+    context,
+    title: title,
+    message: message,
+    confirmLabel: confirmLabel,
+    icon: icon,
+    isDanger: isDanger,
+    followsAppearance: followsAppearance,
+  );
+  return result ?? false;
+}
+
+/// Same window, but the second button can have its own text and the
+/// answer has 3 cases:
+///   true  = [confirmLabel] tapped
+///   false = [cancelLabel] tapped
+///   null  = closed by tapping outside (nothing chosen)
+/// Example: leaving a conversation — "حفظ" / "خروج دون حفظ" / tap outside = stay.
+Future<bool?> showHesakChoiceDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+  required String confirmLabel,
+  required IconData icon,
+  String cancelLabel = 'إلغاء',
+  bool isDanger = true,
+  bool followsAppearance = false,
+}) async {
   final HesakPalette palette = followsAppearance ? HesakPalette.current : HesakPalette.light;
   final Color confirmColor = isDanger ? palette.danger : palette.accent;
 
-  final bool? result = await showDialog<bool>(
+  return showDialog<bool>(
     context: context,
     builder: (dialogContext) => Dialog(
       backgroundColor: palette.surface,
@@ -71,7 +99,7 @@ Future<bool> showHesakConfirmDialog(
                 Expanded(
                   child: _HesakDialogButton(
                     key: const Key('hesak_dialog_cancel_button'),
-                    label: 'إلغاء',
+                    label: cancelLabel,
                     color: palette.accent,
                     textColor: palette.accent,
                     isFilled: false,
@@ -85,7 +113,6 @@ Future<bool> showHesakConfirmDialog(
       ),
     ),
   );
-  return result ?? false;
 }
 
 /// Rounded button inside the dialog: filled (confirm) or outlined (إلغاء).
