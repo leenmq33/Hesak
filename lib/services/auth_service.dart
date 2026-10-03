@@ -60,6 +60,10 @@ class AuthService extends ChangeNotifier {
   /// The name Hesak listens for (للتنبيه عند النداء). null = not added yet.
   String? currentCallName;
 
+  /// Voice picked at sign up, kept here until the email is verified
+  /// (the profile is saved in Firestore only AFTER verification).
+  HesakVoice? _pendingVoice;
+
   /// True if someone is signed in AND their email is verified.
   bool get isLoggedIn =>
       _auth.currentUser != null && _auth.currentUser!.emailVerified;
@@ -68,7 +72,8 @@ class AuthService extends ChangeNotifier {
   // Sign up / log in / log out
   // ---------------------------------------------------------------------
 
-  /// Creates a new account, saves the profile, and sends the verification email.
+  /// Creates a new account and sends the verification email.
+  /// The profile (users/{uid}) is saved only after the email is verified.
   Future<AuthResult> signUp({
     required String name,
     required String email,
@@ -85,20 +90,9 @@ class AuthService extends ChangeNotifier {
       // Used as %DISPLAY_NAME% inside the verification email.
       await user.updateDisplayName(name.trim());
 
-      // Create the profile in Firestore: users/{uid}
-      await _userDoc(user.uid).set({
-        'displayName': name.trim(),
-        'email': email.trim(),
-        'createdAt': FieldValue.serverTimestamp(),
-        'settings': {
-          'ttsVoice': voice.name, // "male" or "female"
-          'speechRate': 1.0,
-          'pitch': 1.0,
-          'vibrationEnabled': true,
-          'notificationsEnabled': true,
-          'currentModeId': 'general',
-        },
-      });
+      // The profile is NOT saved in Firestore yet: only after the user
+      // opens the verification link (see checkEmailVerified / logIn).
+      _pendingVoice = voice;
 
       // Send the verification email (in Arabic).
       await _auth.setLanguageCode('ar');
@@ -140,7 +134,7 @@ class AuthService extends ChangeNotifier {
         }
         await _auth.signOut();
         return const AuthResult.failure(
-          'لم يتم تأكيد بريدك الإلكتروني بعد، أرسلنا لك رابط التأكيد، افتحه ثم سجّل الدخول',
+          'لم يتم تأكيد بريدك الإلكتروني بعد. أرسلنا لك رابط التأكيد، افتحه ثم سجّل الدخول.',
         );
       }
 
@@ -182,7 +176,7 @@ class AuthService extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------------
-  // Email verification (for a "تحقق من بريدك" screen after sign up)
+  // Email verification
   // ---------------------------------------------------------------------
 
   /// Sends the verification email again.
@@ -201,12 +195,22 @@ class AuthService extends ChangeNotifier {
   }
 
   /// Checks with Firebase whether the user opened the verification link.
+  /// When verified, the profile is saved in Firestore (users/{uid}) and loaded.
   Future<bool> checkEmailVerified() async {
     final user = _auth.currentUser;
     if (user == null) return false;
-    await user.reload();
-    return _auth.currentUser?.emailVerified ?? false;
+    try {
+      await user.reload();
+      final fresh = _auth.currentUser;
+      if (fresh == null || !fresh.emailVerified) return false;
+      await _loadProfile(fresh); // Creates users/{uid} the first time
+      return true;
+    } catch (e) {
+      debugPrint('checkEmailVerified error: $e');
+      return false;
+    }
   }
+
 
   // ---------------------------------------------------------------------
   // Password reset + call name
@@ -342,13 +346,13 @@ class AuthService extends ChangeNotifier {
     final data = snap.data();
 
     if (data == null) {
-      // Profile missing (rare): create a basic one so the app keeps working.
+      // First time after verification (or profile missing): create it now.
       await doc.set({
         'displayName': user.displayName ?? '',
         'email': user.email ?? '',
         'createdAt': FieldValue.serverTimestamp(),
         'settings': {
-          'ttsVoice': HesakVoice.male.name,
+          'ttsVoice': (_pendingVoice ?? HesakVoice.male).name,
           'speechRate': 1.0,
           'pitch': 1.0,
           'vibrationEnabled': true,
@@ -367,9 +371,10 @@ class AuthService extends ChangeNotifier {
 
     currentUserName = (data?['displayName'] as String?) ?? user.displayName;
     currentEmail = user.email;
-    currentVoice = settings?['ttsVoice'] == HesakVoice.female.name
-        ? HesakVoice.female
-        : HesakVoice.male;
+    currentVoice = settings == null
+        ? (_pendingVoice ?? HesakVoice.male)
+        : (settings['ttsVoice'] == HesakVoice.female.name ? HesakVoice.female : HesakVoice.male);
+    _pendingVoice = null;
     currentCallName =
     (names != null && names.isNotEmpty) ? names.first as String : null;
     notifyListeners();
