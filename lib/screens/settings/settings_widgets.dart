@@ -110,7 +110,8 @@ class SettingsSectionTitle extends StatelessWidget {
   }
 }
 
-/// Rounded card holding rows, with thin lines between them.
+/// White rounded card holding rows, with thin lines between them
+/// (purple outline + soft shadow, like the cards on الرئيسية).
 class SettingsCard extends StatelessWidget {
   final List<Widget> children;
 
@@ -124,13 +125,14 @@ class SettingsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: palette.surface,
         borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
-        border: Border.all(color: palette.surfaceBorder),
+        border: Border.all(color: palette.cardBorder),
+        boxShadow: [BoxShadow(color: palette.cardShadow, blurRadius: 18, offset: const Offset(0, 6))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (int i = 0; i < children.length; i++) ...[
-            if (i > 0) Divider(height: 1, thickness: 1, color: palette.divider),
+            if (i > 0) Divider(height: 1, thickness: 1, color: palette.rowLine),
             children[i],
           ],
         ],
@@ -170,7 +172,7 @@ class SettingsRow extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: palette.accentSoft,
+                color: palette.iconBox,
                 borderRadius: BorderRadius.circular(HesakSizes.radiusIconBox),
               ),
               child: Icon(icon, size: 20, color: palette.accent),
@@ -445,8 +447,11 @@ class SettingsPasswordRules extends StatelessWidget {
 // ---------------------------------------------------------------------
 
 /// Bottom sheet with one name field + حفظ / إلغاء.
-/// "حفظ" is faded until the text really changes AND is valid (Arabic letters only,
-/// same rule as sign up). [onSave] does the saving; the sheet closes when it returns true.
+/// "حفظ" is faded until the text really changes AND is valid (same rules as sign up).
+/// [onSave] does the saving; the sheet closes when it returns true.
+/// [problemOf] = other rules (e.g. a conversation name accepts any text);
+/// it returns the red message, or null when the text is OK.
+/// Used by الإعدادات (الاسم، الاسم للنداء) and المحادثات (تعديل اسم المحادثة).
 Future<void> showSettingsNameSheet(
   BuildContext context, {
   required String title,
@@ -456,6 +461,7 @@ Future<void> showSettingsNameSheet(
   required String initialValue,
   required Future<bool> Function(String value) onSave,
   bool isCallName = false, // true = Arabic letters only (الاسم للنداء)
+  String? Function(String value)? problemOf,
 }) {
   final palette = HesakPalette.current;
   return showModalBottomSheet<void>(
@@ -472,6 +478,7 @@ Future<void> showSettingsNameSheet(
       initialValue: initialValue,
       onSave: onSave,
       isCallName: isCallName,
+      problemOf: problemOf,
     ),
   );
 }
@@ -506,6 +513,7 @@ class _SettingsNameSheet extends StatefulWidget {
   final String initialValue;
   final Future<bool> Function(String value) onSave;
   final bool isCallName;
+  final String? Function(String value)? problemOf;
 
   const _SettingsNameSheet({
     required this.title,
@@ -515,6 +523,7 @@ class _SettingsNameSheet extends StatefulWidget {
     required this.initialValue,
     required this.onSave,
     required this.isCallName,
+    required this.problemOf,
   });
 
   @override
@@ -536,10 +545,11 @@ class _SettingsNameSheetState extends State<_SettingsNameSheet> {
   /// Red message while typing something wrong (not shown when empty).
   String? get _error {
     if (_text.isEmpty) return null;
+    if (widget.problemOf != null) return widget.problemOf!(_text);
     return widget.isCallName ? AuthValidators.callNameProblem(_text) : AuthValidators.nameProblem(_text);
   }
 
-  bool get _canSave => _text != widget.initialValue.trim() && _error == null && !_isSaving;
+  bool get _canSave => _text.isNotEmpty && _text != widget.initialValue.trim() && _error == null && !_isSaving;
 
   Future<void> _save() async {
     setState(() => _isSaving = true);

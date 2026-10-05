@@ -56,6 +56,10 @@ class HesakPalette {
   final Color surface; // Cards
   final Color surfaceBorder; // Card outline
   final Color divider; // Thin lines between rows
+  final Color cardBorder; // Outline of the white content cards (الإعدادات)
+  final Color cardShadow; // Soft shadow under those cards
+  final Color rowLine; // Lines between the rows inside those cards
+  final Color iconBox; // Small square behind a row icon
 
   // ---- Text & icons ----
   final Color title; // Page titles
@@ -95,6 +99,10 @@ class HesakPalette {
     required this.surface,
     required this.surfaceBorder,
     required this.divider,
+    required this.cardBorder,
+    required this.cardShadow,
+    required this.rowLine,
+    required this.iconBox,
     required this.title,
     required this.textPrimary,
     required this.textSecondary,
@@ -124,6 +132,11 @@ class HesakPalette {
     surface: HesakColors.surface,
     surfaceBorder: HesakColors.surfaceBorder,
     divider: HesakColors.listDivider,
+    // Same white cards as الرئيسية (purple outline + soft shadow).
+    cardBorder: HesakColors.homeCardBorder,
+    cardShadow: HesakColors.homeCardShadow,
+    rowLine: HesakColors.settingsRowLine,
+    iconBox: HesakColors.settingsIconBox,
     title: HesakColors.primaryDark,
     textPrimary: HesakColors.textPrimary,
     textSecondary: HesakColors.textSecondary,
@@ -154,6 +167,10 @@ class HesakPalette {
     surface: Color(0xFF221B2B),
     surfaceBorder: Color(0xFF342A40),
     divider: Color(0xFF342A40),
+    cardBorder: Color(0xFF342A40),
+    cardShadow: Color(0x33000000),
+    rowLine: Color(0xFF342A40),
+    iconBox: Color(0xFF3A2E4B),
     title: Color(0xFFD9C8F2),
     textPrimary: Color(0xFFF1ECF6),
     textSecondary: Color(0xFFB3A9C1),

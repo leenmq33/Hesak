@@ -46,6 +46,15 @@ String modesSoundsCountText(int count) {
   return '$count صوتًا';
 }
 
+/// "لا توجد فترات" / "فترة واحدة" / "فترتان" / "3 فترات" / "11 فترة" (Arabic counting).
+String modesPeriodsCountText(int count) {
+  if (count == 0) return 'لا توجد فترات';
+  if (count == 1) return 'فترة واحدة';
+  if (count == 2) return 'فترتان';
+  if (count <= 10) return '$count فترات';
+  return '$count فترة';
+}
+
 /// Asks, deletes the mode, shows the message. Returns true if deleted.
 Future<bool> modesDeleteWithConfirm(BuildContext context, HesakModeConfig mode) async {
   final bool isConfirmed = await showHesakConfirmDialog(
@@ -306,13 +315,16 @@ class ModesModeCircle extends StatelessWidget {
 // Section card (opens / closes)
 // ---------------------------------------------------------------------
 
-/// White rounded card with a title; tapping the title opens / closes it.
+/// White card with a title (and an optional icon); tapping the title opens / closes it.
+/// When open: a thin line across the card under the title, then the content.
+/// Same white as the cards on الرئيسية (surface + purple outline + soft shadow).
 class ModesSectionCard extends StatefulWidget {
   final String title;
+  final IconData? icon; // e.g. the calendar next to "جدولة الوضع"
   final Widget child;
   final bool initiallyExpanded;
 
-  const ModesSectionCard({super.key, required this.title, required this.child, this.initiallyExpanded = true});
+  const ModesSectionCard({super.key, required this.title, this.icon, required this.child, this.initiallyExpanded = true});
 
   @override
   State<ModesSectionCard> createState() => _ModesSectionCardState();
@@ -325,10 +337,12 @@ class _ModesSectionCardState extends State<ModesSectionCard> {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: HesakSizes.sectionGap),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: HesakColors.surface,
         borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
-        border: Border.all(color: HesakColors.surfaceBorder),
+        border: Border.all(color: HesakColors.homeCardBorder),
+        boxShadow: const [BoxShadow(color: HesakColors.homeCardShadow, blurRadius: 18, offset: Offset(0, 6))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -336,12 +350,15 @@ class _ModesSectionCardState extends State<ModesSectionCard> {
           // Title row (tap to open / close).
           InkWell(
             onTap: () => setState(() => _isExpanded = !_isExpanded),
-            borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(
                 HesakSizes.cardPaddingHorizontal, 14, HesakSizes.cardPaddingHorizontal, 14),
               child: Row(
                 children: [
+                  if (widget.icon != null) ...[
+                    Icon(widget.icon, size: 20, color: HesakColors.modeSelected),
+                    const SizedBox(width: 8),
+                  ],
                   // Bigger than the labels inside, so it reads as the section title.
                   Expanded(child: Text(widget.title, style: HesakTextStyles.modeSectionTitle)),
                   AnimatedRotation(
@@ -354,16 +371,22 @@ class _ModesSectionCardState extends State<ModesSectionCard> {
             ),
           ),
 
-          // Content (slides open / closed).
+          // Line + content (slides open / closed).
           AnimatedSize(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOut,
             alignment: Alignment.topCenter,
             child: _isExpanded
-                ? Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      HesakSizes.cardPaddingHorizontal, 0, HesakSizes.cardPaddingHorizontal, HesakSizes.cardPaddingBottom),
-                    child: widget.child,
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Divider(height: 1, thickness: 1, color: HesakColors.cardTitleLine),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          HesakSizes.cardPaddingHorizontal, 12, HesakSizes.cardPaddingHorizontal, HesakSizes.cardPaddingBottom),
+                        child: widget.child,
+                      ),
+                    ],
                   )
                 : const SizedBox(width: double.infinity),
           ),
@@ -472,12 +495,29 @@ class ModesDayChip extends StatelessWidget {
 /// "تم حذف الفترة".
 /// [modeId] = the mode these periods belong to. Two modes can't share the same
 /// time, so a new period is also checked against every OTHER mode.
+///
+/// SAME shape in all 3 places (تعديل / إضافة وضع، الأوضاع، الرئيسية): period boxes,
+/// dashed "إضافة فترة", edit box. Only the colors follow the background:
+///  - white card (default): light lavender period boxes
+///  - lavender (الأوضاع): [periodFill] white
+///  - purple glass (الرئيسية): [isOnGlass] true + white period boxes
 class ModesScheduleEditor extends StatefulWidget {
   final String modeId;
   final List<HesakSchedulePeriod> periods;
   final ValueChanged<List<HesakSchedulePeriod>> onChanged;
+  final Color periodFill;
+  final Color periodBorder;
+  final bool isOnGlass;
 
-  const ModesScheduleEditor({super.key, required this.modeId, required this.periods, required this.onChanged});
+  const ModesScheduleEditor({
+    super.key,
+    required this.modeId,
+    required this.periods,
+    required this.onChanged,
+    this.periodFill = HesakColors.schedulePeriodFill,
+    this.periodBorder = HesakColors.schedulePeriodBorder,
+    this.isOnGlass = false,
+  });
 
   @override
   State<ModesScheduleEditor> createState() => _ModesScheduleEditorState();
@@ -623,9 +663,13 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (widget.periods.isEmpty && _editingIndex == null)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 6),
-            child: Text('لا توجد فترات بعد', textAlign: TextAlign.center, style: HesakTextStyles.caption),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Text(
+              'لا توجد فترات بعد',
+              textAlign: TextAlign.center,
+              style: widget.isOnGlass ? HesakTextStyles.caption.copyWith(color: HesakColors.onHomeGlassSoft) : HesakTextStyles.caption,
+            ),
           ),
 
         // Saved periods (the one being edited turns into the edit box).
@@ -640,20 +684,42 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
             padding: const EdgeInsets.only(top: 8),
             child: Opacity(
               opacity: _editingIndex == null ? 1 : 0.4, // Finish the open edit first
-              child: OutlinedButton.icon(
-                key: const Key('modes_schedule_add_period_button'),
-                onPressed: _editingIndex == null ? () => _startEditing(_newPeriodIndex) : null,
-                icon: const Icon(Icons.add_rounded, size: 18, color: HesakColors.modeSelected),
-                label: const Text('إضافة فترة', style: HesakTextStyles.modeLink),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(44),
-                  side: const BorderSide(color: HesakColors.primaryLightBorder, width: 1.3),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard)),
-                ),
-              ),
+              child: _buildAddPeriodButton(),
             ),
           ),
       ],
+    );
+  }
+
+  /// "+ إضافة فترة": dashed outline. White on light backgrounds, see-through on the glass.
+  Widget _buildAddPeriodButton() {
+    final bool isOnGlass = widget.isOnGlass;
+    final Color contentColor = isOnGlass ? HesakColors.onHomeGlass : HesakColors.modeSelected;
+    final radius = BorderRadius.circular(HesakSizes.radiusInnerCard);
+
+    return ModesDashedBorder(
+      color: isOnGlass ? HesakColors.onHomeGlassSoft : HesakColors.scheduleAddBorder,
+      radius: HesakSizes.radiusInnerCard,
+      child: Material(
+        color: isOnGlass ? Colors.transparent : HesakColors.modesDetailsFill,
+        borderRadius: radius,
+        child: InkWell(
+          key: const Key('modes_schedule_add_period_button'),
+          borderRadius: radius,
+          onTap: _editingIndex == null ? () => _startEditing(_newPeriodIndex) : null,
+          child: SizedBox(
+            height: 44,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.add_rounded, size: 18, color: contentColor),
+                const SizedBox(width: 4),
+                Text('إضافة فترة', style: HesakTextStyles.modeLink.copyWith(color: contentColor)),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -665,9 +731,9 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 4, 8),
       decoration: BoxDecoration(
-        color: HesakColors.background,
+        color: widget.periodFill,
         borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard),
-        border: Border.all(color: HesakColors.surfaceBorder),
+        border: Border.all(color: widget.periodBorder),
       ),
       child: Row(
         children: [
@@ -715,7 +781,8 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
       margin: const EdgeInsets.only(bottom: 8, top: 4),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: HesakColors.primaryLight.withOpacity(0.45),
+        // Solid on the purple glass (الرئيسية), so the days and times stay easy to read.
+        color: widget.isOnGlass ? HesakColors.surface : HesakColors.primaryLight.withOpacity(0.45),
         borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard),
         border: Border.all(color: HesakColors.modeSelected, width: 1.5),
       ),
@@ -802,6 +869,54 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
       ),
     );
   }
+}
+
+/// Draws a dashed rounded outline around [child] (e.g. "إضافة فترة").
+class ModesDashedBorder extends StatelessWidget {
+  final Widget child;
+  final Color color;
+  final double radius;
+
+  const ModesDashedBorder({super.key, required this.child, required this.color, required this.radius});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      foregroundPainter: _ModesDashedBorderPainter(color: color, radius: radius),
+      child: child,
+    );
+  }
+}
+
+class _ModesDashedBorderPainter extends CustomPainter {
+  final Color color;
+  final double radius;
+
+  const _ModesDashedBorderPainter({required this.color, required this.radius});
+
+  static const double _dashLength = 5;
+  static const double _gapLength = 4;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3;
+    final outline = Path()
+      ..addRRect(RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)).deflate(0.65));
+    for (final metric in outline.computeMetrics()) {
+      double distance = 0;
+      while (distance < metric.length) {
+        canvas.drawPath(metric.extractPath(distance, distance + _dashLength), paint);
+        distance += _dashLength + _gapLength;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ModesDashedBorderPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.radius != radius;
 }
 
 /// "من:  [🕐 11:00 م]" — tapping the time opens the phone's clock picker.

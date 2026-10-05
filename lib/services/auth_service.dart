@@ -23,11 +23,23 @@ class AuthResult {
   final bool isSuccess;
   final String? errorMessage; // Arabic message shown under the button
 
+  /// true = right email + password, but the email isn't verified yet
+  /// (the login form then moves to the "تأكيد البريد" step).
+  final bool needsEmailVerification;
+
   const AuthResult.success()
       : isSuccess = true,
-        errorMessage = null;
+        errorMessage = null,
+        needsEmailVerification = false;
 
-  const AuthResult.failure(this.errorMessage) : isSuccess = false;
+  const AuthResult.failure(this.errorMessage)
+      : isSuccess = false,
+        needsEmailVerification = false;
+
+  const AuthResult.emailNotVerified()
+      : isSuccess = false,
+        errorMessage = 'لم يتم تأكيد بريدك الإلكتروني بعد',
+        needsEmailVerification = true;
 }
 
 /// Sign up, log in, reset password, the "call name", and the account
@@ -138,10 +150,10 @@ class AuthService extends ChangeNotifier {
         } catch (_) {
           // e.g. too many requests — the old link still works.
         }
-        await _auth.signOut();
-        return const AuthResult.failure(
-          'لم يتم تأكيد بريدك الإلكتروني بعد، أرسلنا لك رابط التأكيد، افتحه ثم سجّل الدخول',
-        );
+        // Stay signed in, so the "تأكيد البريد" step can check and resend.
+        // (isLoggedIn stays false until the email is verified.)
+        currentEmail = user.email ?? email.trim();
+        return const AuthResult.emailNotVerified();
       }
 
       await _loadProfile(user);

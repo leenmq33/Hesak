@@ -5,16 +5,19 @@ import 'package:flutter/material.dart';
 import '../../core/theme/hesak_colors.dart';
 import '../../core/theme/hesak_sizes.dart';
 import '../../core/theme/hesak_text_styles.dart';
+import '../../services/auth_service.dart';
 import '../main_shell.dart';
 import 'auth_widgets.dart';
 import 'call_name_form.dart';
 import 'login_form.dart';
 import 'reset_password_form.dart';
 import 'signup_form.dart';
+import 'verify_email_form.dart';
 
 // =====================================================================
 //  AUTH FLOW — everything between the splash and the app:
-//    welcome (2 buttons) -> login / sign up / reset password -> call name
+//    welcome (2 buttons) -> login / sign up / reset password
+//    -> verify email (تأكيد البريد) -> call name
 //
 //  It's ONE screen on purpose, so the moves between steps are smooth:
 //  - Welcome: logo in the middle, then it rises and 2 buttons slide in.
@@ -30,7 +33,7 @@ import 'signup_form.dart';
 // =====================================================================
 
 /// The steps of the flow, in the order a new user usually sees them.
-enum AuthStep { welcome, login, signUp, resetPassword, callName }
+enum AuthStep { welcome, login, signUp, resetPassword, verifyEmail, callName }
 
 /// Welcome buttons + all sign in / sign up forms.
 class HesakAuthFlowScreen extends StatefulWidget {
@@ -85,6 +88,9 @@ class _HesakAuthFlowScreenState extends State<HesakAuthFlowScreen> {
       case AuthStep.resetPassword:
         _goTo(AuthStep.login);
         break;
+      case AuthStep.verifyEmail:
+        _leaveVerifyEmail();
+        break;
       case AuthStep.welcome:
       case AuthStep.callName: // Must press "تخطي" or "التالي"
         break;
@@ -102,6 +108,23 @@ class _HesakAuthFlowScreenState extends State<HesakAuthFlowScreen> {
             FadeTransition(opacity: animation, child: child),
       ),
     );
+  }
+
+  /// Back from "تأكيد البريد": sign out (the email isn't verified, so the
+  /// app never opens) and return to the welcome screen.
+  Future<void> _leaveVerifyEmail() async {
+    await AuthService.instance.logOut();
+    if (mounted) _goTo(AuthStep.welcome);
+  }
+
+  /// Email verified: new users (no call name yet) go to the call name step,
+  /// others open the app.
+  void _afterEmailVerified() {
+    if (AuthService.instance.currentCallName == null) {
+      _goTo(AuthStep.callName);
+    } else {
+      _openApp();
+    }
   }
 
   @override
@@ -313,6 +336,7 @@ class _HesakAuthFlowScreenState extends State<HesakAuthFlowScreen> {
       case AuthStep.login:
         return LoginForm(
           onLoggedIn: _openApp,
+          onEmailNotVerified: () => _goTo(AuthStep.verifyEmail), // Not verified yet -> تأكيد البريد
           onForgotPassword: () => _goTo(AuthStep.resetPassword),
           onGoToSignUp: () => _goTo(AuthStep.signUp),
           onBack: () => _goTo(AuthStep.welcome),
@@ -320,12 +344,14 @@ class _HesakAuthFlowScreenState extends State<HesakAuthFlowScreen> {
       case AuthStep.signUp:
         return SignUpForm(
           onSignedUp: () =>
-              _goTo(AuthStep.callName), // New account -> ask for the call name
+              _goTo(AuthStep.verifyEmail), // New account -> verify the email first
           onGoToLogin: () => _goTo(AuthStep.login),
           onBack: () => _goTo(AuthStep.welcome),
         );
       case AuthStep.resetPassword:
         return ResetPasswordForm(onBack: () => _goTo(AuthStep.login));
+      case AuthStep.verifyEmail:
+        return VerifyEmailForm(onVerified: _afterEmailVerified, onBack: _leaveVerifyEmail);
       case AuthStep.callName:
         return CallNameForm(onDone: _openApp);
       case AuthStep.welcome:

@@ -138,26 +138,35 @@ class _SettingsPageContent extends StatelessWidget {
 
           // ---------------- التفضيلات ----------------
           const SettingsSectionTitle('التفضيلات'),
-          // Same note as in إنشاء حساب.
-          const SettingsNote('سيستخدم حِسّك اختيارك لقراءة النصوص للآخرين بصوت مناسب'),
-          const SizedBox(height: 10),
           SettingsCard(
             children: [
-              SettingsRow(
-                key: const Key('settings_voice_row'),
-                icon: Icons.record_voice_over_outlined,
-                title: 'الجنس',
-                trailing: SettingsSegmented<HesakVoice>(
-                  keyPrefix: 'settings_voice',
-                  values: HesakVoice.values,
-                  selected: auth.currentVoice,
-                  labelOf: (voice) => voice == HesakVoice.male ? 'ذكر' : 'أنثى',
-                  onChanged: (voice) {
-                    if (voice == auth.currentVoice) return;
-                    auth.updateVoice(voice);
-                    showHesakToast(context, 'تم تغيير الجنس');
-                  },
-                ),
+              // الجنس: the note first (inside the card, so it clearly belongs to
+              // الجنس and not to المظهر), then the row with the choice.
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(12, 12, 12, 0),
+                    // Same note as in إنشاء حساب.
+                    child: SettingsNote('سيستخدم حِسّك اختيارك لقراءة النصوص للآخرين بصوت مناسب'),
+                  ),
+                  SettingsRow(
+                    key: const Key('settings_voice_row'),
+                    icon: Icons.record_voice_over_outlined,
+                    title: 'الجنس',
+                    trailing: SettingsSegmented<HesakVoice>(
+                      keyPrefix: 'settings_voice',
+                      values: HesakVoice.values,
+                      selected: auth.currentVoice,
+                      labelOf: (voice) => voice == HesakVoice.male ? 'ذكر' : 'أنثى',
+                      onChanged: (voice) {
+                        if (voice == auth.currentVoice) return;
+                        auth.updateVoice(voice);
+                        showHesakToast(context, 'تم تغيير الجنس');
+                      },
+                    ),
+                  ),
+                ],
               ),
               SettingsRow(
                 key: const Key('settings_appearance_row'),

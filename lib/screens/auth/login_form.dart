@@ -14,6 +14,7 @@ import 'auth_widgets.dart';
 /// Email + password, "forgot password" link, and a link to sign up.
 class LoginForm extends StatefulWidget {
   final VoidCallback onLoggedIn; // Login worked -> open the app
+  final VoidCallback onEmailNotVerified; // Right password, email not verified -> تأكيد البريد
   final VoidCallback onForgotPassword; // "هل نسيت كلمة المرور؟"
   final VoidCallback onGoToSignUp; // "إنشاء حساب"
   final VoidCallback onBack; // Back arrow -> welcome (the 2 buttons)
@@ -21,6 +22,7 @@ class LoginForm extends StatefulWidget {
   const LoginForm({
     super.key,
     required this.onLoggedIn,
+    required this.onEmailNotVerified,
     required this.onForgotPassword,
     required this.onGoToSignUp,
     required this.onBack,
@@ -79,6 +81,8 @@ class _LoginFormState extends State<LoginForm> {
 
     if (result.isSuccess) {
       widget.onLoggedIn();
+    } else if (result.needsEmailVerification) {
+      widget.onEmailNotVerified(); // A new link was sent; the verify step waits for it
     } else {
       setState(() => _serverError = result.errorMessage);
     }

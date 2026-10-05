@@ -158,6 +158,12 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   /// Saves / un-saves this conversation from the header button.
   void _toggleConversationSaved() {
     setState(() => _conversation.isSaved = !_conversation.isSaved);
+    showHesakToast(
+      context,
+      _conversation.isSaved ? 'تم حفظ المحادثة' : 'تم إلغاء حفظ المحادثة',
+      icon: _conversation.isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+      atTop: true, // The keyboard may cover the bottom here
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -192,6 +198,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
     if (hasChanged && _conversation.isSaved) {
       ConversationService.instance.saveConversation(_conversation);
     }
+    if (hasChanged) showHesakToast(context, 'تم تغيير اسم المحادثة', atTop: true);
   }
 
   // -------------------------------------------------------------------------
