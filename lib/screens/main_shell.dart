@@ -46,6 +46,10 @@ class _HesakMainShellState extends State<HesakMainShell> with WidgetsBindingObse
   // The page that is open now (starts on الرئيسية).
   HesakNavTab _selectedTab = HesakNavTab.home;
 
+  // الرئيسية has its own navigator (like الأوضاع), so تعديل الوضع (the pencil on
+  // the mode card) opens INSIDE the tab: the bottom bar stays, back returns here.
+  final GlobalKey<NavigatorState> _homeNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'home_navigator');
+
   // The user's modes + the active one live in HesakModeStore
   // (lib/core/data/hesak_mode_store.dart), shared with the الأوضاع page.
   final HesakModeStore _modeStore = HesakModeStore.instance;
@@ -116,12 +120,23 @@ class _HesakMainShellState extends State<HesakMainShell> with WidgetsBindingObse
         children: [
           // Home greeting uses the user's name from AuthService, and updates
           // when it changes in الإعدادات. Empty = unknown (e.g. after login, for now).
-          ListenableBuilder(
-            listenable: AuthService.instance,
-            builder: (context, _) => HomeScreen(
-              userName: AuthService.instance.currentUserName ?? '',
-              // "عرض الكل" on the conversations card -> المحادثات tab.
-              onShowAllChats: () => setState(() => _selectedTab = HesakNavTab.chats),
+          // Phone back button: go back inside the tab first (e.g. from تعديل الوضع).
+          NavigatorPopHandler(
+            enabled: _selectedTab == HesakNavTab.home,
+            onPop: () => _homeNavigatorKey.currentState?.maybePop(),
+            child: Navigator(
+              key: _homeNavigatorKey,
+              onGenerateRoute: (settings) => MaterialPageRoute(
+                settings: settings,
+                builder: (_) => ListenableBuilder(
+                  listenable: AuthService.instance,
+                  builder: (context, _) => HomeScreen(
+                    userName: AuthService.instance.currentUserName ?? '',
+                    // "عرض الكل" on the conversations card -> المحادثات tab.
+                    onShowAllChats: () => setState(() => _selectedTab = HesakNavTab.chats),
+                  ),
+                ),
+              ),
             ),
           ),
           const ChatsScreen(),

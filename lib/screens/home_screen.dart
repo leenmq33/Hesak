@@ -729,14 +729,14 @@ class _HomeAlertsCard extends StatelessWidget {
             time: 'منذ دقيقة',
             isUrgent: true,
           ),
-          Divider(height: 18, thickness: 0.8, color: HesakColors.homeCardDivider),
+          SizedBox(height: 8),
           _HomeAlertTile(
             icon: Icons.child_care_outlined,
             title: 'بكاء طفل',
             subtitle: 'تم رصد صوت بكاء طفل',
             time: 'منذ ساعة',
           ),
-          Divider(height: 18, thickness: 0.8, color: HesakColors.homeCardDivider),
+          SizedBox(height: 8),
           _HomeAlertTile(
             icon: Icons.notifications_none_rounded,
             title: 'جرس الباب',
@@ -749,13 +749,15 @@ class _HomeAlertsCard extends StatelessWidget {
   }
 }
 
-/// One alert row: icon box, title + subtitle, time.
+/// One alert: a white box with a colored line on the right (start) side,
+/// icon box, title + subtitle, time.
+/// Urgent (e.g. إنذار حريق) = red line + red icon. Others = purple.
 class _HomeAlertTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
   final String time;
-  final bool isUrgent; // Red icon box + red time
+  final bool isUrgent; // Red line + red icon box
 
   const _HomeAlertTile({
     required this.icon,
@@ -767,30 +769,53 @@ class _HomeAlertTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: HesakSizes.iconBox,
-          height: HesakSizes.iconBox,
-          decoration: BoxDecoration(
-            color: isUrgent ? HesakColors.homeUrgentIconFill : HesakColors.homeItemFill,
-            borderRadius: BorderRadius.circular(HesakSizes.radiusIconBox),
-          ),
-          child: Icon(icon, size: HesakSizes.iconInBox, color: isUrgent ? HesakColors.urgent : HesakColors.primary),
+    final Color lineColor = isUrgent ? HesakColors.urgent : HesakColors.homeAlertLine;
+
+    return Container(
+      clipBehavior: Clip.antiAlias, // Cuts the side line to the rounded corners
+      decoration: BoxDecoration(
+        color: HesakColors.homeAlertFill,
+        borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard),
+        boxShadow: const [BoxShadow(color: HesakColors.homeAlertShadow, blurRadius: 6, offset: Offset(0, 2))],
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(width: 4, color: lineColor), // The colored side line
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Row(
+                  children: [
+                    Container(
+                      width: HesakSizes.iconBox,
+                      height: HesakSizes.iconBox,
+                      decoration: BoxDecoration(
+                        color: isUrgent ? HesakColors.homeUrgentIconFill : HesakColors.homeAlertIconFill,
+                        borderRadius: BorderRadius.circular(HesakSizes.radiusIconBox),
+                      ),
+                      child: Icon(icon, size: HesakSizes.iconInBox, color: isUrgent ? HesakColors.urgent : HesakColors.primary),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title, style: HesakTextStyles.itemTitle),
+                          const SizedBox(height: 2),
+                          Text(subtitle, style: HesakTextStyles.body),
+                        ],
+                      ),
+                    ),
+                    Text(time, style: HesakTextStyles.caption), // Always grey (even urgent)
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: HesakTextStyles.itemTitle),
-              const SizedBox(height: 2),
-              Text(subtitle, style: HesakTextStyles.body),
-            ],
-          ),
-        ),
-        Text(time, style: HesakTextStyles.caption), // Always grey (even urgent)
-      ],
+      ),
     );
   }
 }

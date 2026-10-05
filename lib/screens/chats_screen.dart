@@ -19,6 +19,8 @@ import '../core/theme/hesak_text_styles.dart';
 import '../widgets/hesak_confirm_dialog.dart';
 import '../widgets/hesak_listening_required.dart';
 import '../widgets/hesak_page_header.dart';
+import '../widgets/hesak_toast.dart';
+import 'settings/settings_widgets.dart';
 import 'chats_conversation_screen.dart';
 import 'chats_models.dart';
 import '../services/conversation_service.dart';
@@ -182,21 +184,37 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
   void _toggleConversationSaved(ChatsConversation conversation) {
     setState(() => conversation.isSaved = !conversation.isSaved);
     ConversationService.instance.saveConversation(conversation);
+    // Same messages as inside the conversation.
+    showHesakToast(
+      context,
+      conversation.isSaved ? 'تم حفظ المحادثة' : 'تم إلغاء حفظ المحادثة',
+      icon: conversation.isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+    );
   }
 
   /// Opens the rename dialog and applies the new title.
-  Future<void> _renameConversation(ChatsConversation conversation) async {
-    final String? newTitle = await showDialog<String>(
-      context: context,
-      barrierColor: HesakColors.textPrimary.withValues(alpha: 0.38),
-      builder: (_) => _ChatsRenameDialog(currentTitle: conversation.title),
+  /// Same sheet as editing the name in الإعدادات (rises from the bottom).
+  /// "حفظ" stays grey until the name really changes.
+  Future<void> _renameConversation(ChatsConversation conversation) {
+    return showSettingsNameSheet(
+      context,
+      title: 'تعديل اسم المحادثة',
+      note: null,
+      fieldLabel: 'الاسم:',
+      hint: 'اسم المحادثة',
+      initialValue: conversation.title,
+      problemOf: (_) => null, // Any text is OK (numbers too, e.g. "محادثة 38")
+      onSave: (newTitle) async {
+        if (!mounted) return false;
+        setState(() {
+          conversation.title = newTitle;
+          conversation.markEdited(); // Renaming = a change -> moves to the top
+        });
+        ConversationService.instance.saveConversation(conversation);
+        showHesakToast(context, 'تم تغيير اسم المحادثة');
+        return true;
+      },
     );
-    if (newTitle == null || newTitle.trim().isEmpty) return;
-    setState(() {
-      conversation.title = newTitle.trim();
-      conversation.markEdited(); // Renaming = a change -> moves to the top
-    });
-    ConversationService.instance.saveConversation(conversation);
   }
 
   /// Asks for confirmation, then removes the conversation.
@@ -211,6 +229,7 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
     if (!isConfirmed || !mounted) return;
     ConversationService.instance.deleteConversation(conversation.id);
     setState(() => _conversations.remove(conversation));
+    showHesakToast(context, 'تم حذف المحادثة', icon: Icons.delete_outline_rounded);
   }
 
   /// Opens a conversation full screen (above the bottom bar, which must
@@ -1049,174 +1068,6 @@ class _ChatsNewConversationButton extends StatelessWidget {
           child: const Icon(Icons.add_rounded,
               size: HesakSizes.iconNavTab, color: HesakColors.onPrimary),
         ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Dialogs
-// ---------------------------------------------------------------------------
-
-/// "تعديل اسم المحادثة" — returns the new title, or null when cancelled.
-class _ChatsRenameDialog extends StatefulWidget {
-  const _ChatsRenameDialog({required this.currentTitle});
-
-  final String currentTitle;
-
-  @override
-  State<_ChatsRenameDialog> createState() => _ChatsRenameDialogState();
-}
-
-class _ChatsRenameDialogState extends State<_ChatsRenameDialog> {
-  late final TextEditingController _titleController =
-  TextEditingController(text: widget.currentTitle)
-    ..addListener(() => setState(() {})); // Re-check "حفظ" on every letter
-
-  /// "حفظ" works only when the name really changed (typing it back to the
-  /// old name makes it grey again).
-  bool get _hasNewTitle {
-    final String typed = _titleController.text.trim();
-    return typed.isNotEmpty && typed != widget.currentTitle.trim();
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    super.dispose();
-  }
-
-  void _submitNewTitle() {
-    if (_hasNewTitle) Navigator.of(context).pop(_titleController.text);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _ChatsDialogFrame(
-      key: const Key('chats_rename_dialog'),
-      children: <Widget>[
-        Text('تعديل اسم المحادثة', style: HesakTextStyles.cardTitle),
-        const SizedBox(height: 14),
-        TextField(
-          key: const Key('chats_rename_input'),
-          controller: _titleController,
-          autofocus: true,
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => _submitNewTitle(),
-          style: HesakTextStyles.itemTitle.copyWith(fontWeight: FontWeight.w400),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: HesakColors.surface,
-            contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(
-                  color: HesakColors.primaryLightBorder, width: 1.5),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide:
-              const BorderSide(color: HesakColors.primaryMuted, width: 1.5),
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: _ChatsDialogButton(
-                key: const Key('chats_rename_save'),
-                label: 'حفظ',
-                isPrimary: true,
-                onPressed: _hasNewTitle ? _submitNewTitle : null, // Grey until changed
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _ChatsDialogButton(
-                key: const Key('chats_rename_cancel'),
-                label: 'إلغاء',
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// Card-style frame shared by the list dialogs.
-class _ChatsDialogFrame extends StatelessWidget {
-  const _ChatsDialogFrame({
-    super.key,
-    required this.children,
-  });
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: HesakColors.surface,
-      insetPadding: const EdgeInsets.all(HesakSizes.pagePadding),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
-        side: const BorderSide(color: HesakColors.surfaceBorder),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: children,
-        ),
-      ),
-    );
-  }
-}
-
-/// 48-high rounded button used in the list dialogs.
-class _ChatsDialogButton extends StatelessWidget {
-  const _ChatsDialogButton({
-    super.key,
-    required this.label,
-    required this.onPressed,
-    this.isPrimary = false,
-  });
-
-  final String label;
-  final VoidCallback? onPressed; // null = disabled (grey)
-  final bool isPrimary;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isEnabled = onPressed != null;
-    final Color background = !isEnabled
-        ? HesakColors.modeUnselectedFill
-        : isPrimary
-        ? HesakColors.primary
-        : HesakColors.primaryLight;
-    final Color foreground = !isEnabled
-        ? HesakColors.iconInactive
-        : isPrimary
-        ? HesakColors.onPrimary
-        : HesakColors.primary;
-
-    return SizedBox(
-      height: 48,
-      child: TextButton(
-        onPressed: onPressed,
-        style: TextButton.styleFrom(
-          backgroundColor: background,
-          foregroundColor: foreground,
-          disabledBackgroundColor: background,
-          disabledForegroundColor: foreground,
-          shape: const StadiumBorder(),
-        ),
-        child: Text(label,
-            style: HesakTextStyles.itemTitle.copyWith(color: foreground)),
       ),
     );
   }

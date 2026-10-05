@@ -3,6 +3,7 @@ import '../core/data/hesak_mode_store.dart';
 import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
+import '../services/auth_service.dart';
 import '../widgets/hesak_page_header.dart';
 import 'modes/mode_editor_screen.dart';
 import 'modes/modes_widgets.dart';
@@ -14,14 +15,19 @@ import 'modes/modes_widgets.dart';
 //  open INSIDE the tab and the bottom bar stays visible.
 //
 //  ONE page, top to bottom:
-//   - The SELECTED mode, always on top and NOT draggable: the same row as the
-//     others but purple, with "مفعّل" / "غير مفعّل" (+ a hint line while listening is off).
-//     Its schedule + settings summary are on الرئيسية (screens/home/home_mode_section.dart).
-//   - A small grey hint: "اضغط للتفعيل" · "اسحب للترتيب"
-//   - The other modes as closed rows: drag handle, icon, name, schedule, star, pencil.
-//       tap a row = it becomes the selected mode (moves to the top)
-//       pencil    = edit it WITHOUT selecting it
-//       drag      = change the order (the wheel on the bar follows this order)
+//   - A small grey hint on top: "شغّل المفتاح للاختيار" · "اسحب للترتيب"
+//   - ALL the modes in ONE fixed order. Choosing a mode does NOT move it:
+//     it stays in its place and only turns purple ("مفعّل" deep purple while
+//     listening, "غير مفعّل" lighter + a hint strip at its bottom).
+//     The others are lavender cards (same gradient as المحادثات).
+//     Every card:
+//       line 1: ⋮⋮, icon, name, schedule, the choose switch
+//       line 2: star · pencil · arrow ⌄
+//       switch     = it becomes the selected mode (stays in its place)
+//       pencil     = edit it WITHOUT selecting it
+//       arrow / tap on the card = opens "إعدادات الوضع" (view only) and
+//                    "جدولة الوضع" (add / edit / delete periods) under it
+//       drag       = change the order (the wheel on the bar follows this order)
 //   - "إضافة وضع جديد"
 //
 //  "مفعّل" = the selected mode is really working, which only happens while
@@ -87,7 +93,8 @@ class _ModesHomePage extends StatelessWidget {
             // Rebuilds whenever a mode changes (selected, starred, edited, listening ...).
             Expanded(
               child: ListenableBuilder(
-                listenable: HesakModeStore.instance,
+                // Also AuthService: "نداء اسمك" under the arrow depends on الاسم للنداء.
+                listenable: Listenable.merge([HesakModeStore.instance, AuthService.instance]),
                 // Not const on purpose: a const widget would never rebuild.
                 builder: (context, _) => _ModesPageContent(store: HesakModeStore.instance),
               ),
@@ -118,34 +125,25 @@ class _ModesPageContentState extends State<_ModesPageContent> {
     super.dispose();
   }
 
-  /// Tap on a row: that mode becomes the selected one and the page goes up to show it.
-  void _selectMode(String id) {
-    widget.store.selectMode(id);
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(0, duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
-    }
-  }
+  /// Switch turned on: that mode becomes the selected one. It stays in its
+  /// place in the list (nothing moves) — only its colors change.
+  void _selectMode(String id) => widget.store.selectMode(id);
 
-  /// Drag between the NOT selected modes. The selected mode keeps its place in the order.
-  void _reorderOthers(List<HesakModeConfig> others, int oldIndex, int newIndex) {
+  /// Drag: change the order of ALL the modes (the selected one too).
+  /// The wheel on the bar follows this order.
+  void _reorderModes(List<HesakModeConfig> modes, int oldIndex, int newIndex) {
     if (newIndex > oldIndex) newIndex -= 1; // ReorderableListView counts the moved row
-    final List<String> otherIds = others.map((m) => m.id).toList();
-    final String movedId = otherIds.removeAt(oldIndex);
-    otherIds.insert(newIndex.clamp(0, otherIds.length), movedId);
-
-    final List<HesakModeConfig> all = widget.store.modes;
-    final String selectedId = widget.store.selectedModeId;
-    final int selectedIndex = all.indexWhere((m) => m.id == selectedId);
-    final List<String> orderedIds = [...otherIds];
-    if (selectedIndex != -1) orderedIds.insert(selectedIndex.clamp(0, orderedIds.length), selectedId);
+    final List<String> orderedIds = modes.map((m) => m.id).toList();
+    final String movedId = orderedIds.removeAt(oldIndex);
+    orderedIds.insert(newIndex.clamp(0, orderedIds.length), movedId);
     widget.store.setModesOrder(orderedIds);
   }
 
   @override
   Widget build(BuildContext context) {
     final HesakModeStore store = widget.store;
-    final HesakModeConfig selected = store.selectedMode;
-    final List<HesakModeConfig> others = store.modes.where((m) => m.id != selected.id).toList();
+    final List<HesakModeConfig> modes = store.modes;
+    final String selectedId = store.selectedModeId;
 
     return SingleChildScrollView(
       controller: _scrollController,
@@ -159,44 +157,51 @@ class _ModesPageContentState extends State<_ModesPageContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ---- The selected mode: always on top, not draggable ----
-          _ModesSelectedRow(mode: selected, isListening: store.isListening),
-
-          // ---- Hint + the other modes ----
-          if (others.isNotEmpty) ...[
-            const SizedBox(height: 22),
+          // ---- Hint on top: switch = choose, ⋮⋮ = drag ----
+          if (modes.length > 1) ...[
+            const SizedBox(height: 6),
             const _ModesListHint(),
+            const SizedBox(height: 12),
+          ] else
             const SizedBox(height: 10),
-            ReorderableListView(
-              // Lives inside the page's scroll: not scrollable by itself.
-              shrinkWrap: true,
-              padding: EdgeInsets.zero, // No hidden bottom gap (the bar height) before "إضافة وضع جديد"
-              physics: const NeverScrollableScrollPhysics(),
-              buildDefaultDragHandles: false, // Our own handle (⋮⋮) + long-press on the row
-              onReorder: (oldIndex, newIndex) => _reorderOthers(others, oldIndex, newIndex),
-              // The row being dragged: a little lifted with a soft shadow.
-              proxyDecorator: (child, index, animation) => Material(
-                color: Colors.transparent,
-                elevation: 6,
-                shadowColor: HesakColors.glassShadow,
-                borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
-                child: child,
-              ),
-              children: [
-                for (int i = 0; i < others.length; i++)
-                  ReorderableDelayedDragStartListener(
-                    key: ValueKey('modes_row_${others[i].id}'),
-                    index: i,
-                    child: _ModesModeRow(
-                      mode: others[i],
-                      index: i,
-                      onTap: () => _selectMode(others[i].id),
+
+          // ---- All the modes, in a fixed order (the selected one stays in its place) ----
+          ReorderableListView(
+            // Lives inside the page's scroll: not scrollable by itself.
+            shrinkWrap: true,
+            padding: EdgeInsets.zero, // No hidden bottom gap (the bar height) before "إضافة وضع جديد"
+            physics: const NeverScrollableScrollPhysics(),
+            buildDefaultDragHandles: false, // Our own handle (⋮⋮) + long-press on the card
+            onReorder: (oldIndex, newIndex) => _reorderModes(modes, oldIndex, newIndex),
+            // The card being dragged: a little lifted with a soft shadow.
+            proxyDecorator: (child, index, animation) => Material(
+              color: Colors.transparent,
+              elevation: 6,
+              shadowColor: HesakColors.glassShadow,
+              borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
+              child: child,
+            ),
+            children: [
+              for (int i = 0; i < modes.length; i++)
+                ReorderableDelayedDragStartListener(
+                  key: ValueKey('modes_row_${modes[i].id}'),
+                  index: i,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _ModesModeCard(
+                      // Same key selected or not, so an open card stays open when chosen.
+                      key: ValueKey('modes_card_${modes[i].id}'),
+                      mode: modes[i],
+                      isSelected: modes[i].id == selectedId,
+                      isListening: store.isListening,
+                      dragIndex: i,
+                      onSelect: () => _selectMode(modes[i].id),
                     ),
                   ),
-              ],
-            ),
-          ] else
-            const SizedBox(height: 14),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
 
           // ---- إضافة وضع جديد ----
           const _ModesAddCard(),
@@ -206,7 +211,7 @@ class _ModesPageContentState extends State<_ModesPageContent> {
   }
 }
 
-/// Small grey line: "👆 اضغط للتفعيل   ⋮⋮ اسحب للترتيب".
+/// Small grey line: "⊙ شغّل المفتاح للاختيار   ⋮⋮ اسحب للترتيب".
 class _ModesListHint extends StatelessWidget {
   const _ModesListHint();
 
@@ -215,9 +220,9 @@ class _ModesListHint extends StatelessWidget {
     return const Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.touch_app_outlined, size: 16, color: HesakColors.iconInactive),
+        Icon(Icons.toggle_on_outlined, size: 18, color: HesakColors.iconInactive),
         SizedBox(width: 4),
-        Text('اضغط للتفعيل', style: HesakTextStyles.modeHint),
+        Text('شغّل المفتاح للاختيار', style: HesakTextStyles.modeHint),
         SizedBox(width: 18),
         Icon(Icons.drag_indicator_rounded, size: 16, color: HesakColors.iconInactive),
         SizedBox(width: 2),
@@ -227,85 +232,603 @@ class _ModesListHint extends StatelessWidget {
   }
 }
 
-/// One NOT selected mode: ⋮⋮, circle, name + schedule, star, pencil.
-/// Tap = select it. Pencil = edit it (stays not selected).
-class _ModesModeRow extends StatelessWidget {
-  final HesakModeConfig mode;
-  final int index; // Its place in the list (for the drag handle)
-  final VoidCallback onTap;
+// ---------------------------------------------------------------------
+// One mode card (selected or not)
+// ---------------------------------------------------------------------
 
-  const _ModesModeRow({required this.mode, required this.index, required this.onTap});
+/// One mode:
+///  - selected: purple (deep while listening, lighter + hint strip when not)
+///  - not selected: lavender gradient, icon in a white circle, drag handle
+/// Line 1: icon, name (+ badge), schedule, the choose switch.
+/// Line 2: star · pencil · arrow. The arrow (or a tap on the card) opens
+/// "إعدادات الوضع" + "جدولة الوضع" under it.
+class _ModesModeCard extends StatefulWidget {
+  final HesakModeConfig mode;
+  final bool isSelected;
+  final bool isListening;
+  final int? dragIndex; // Its place in the list (others only, for ⋮⋮)
+  final VoidCallback onSelect;
+
+  const _ModesModeCard({
+    super.key,
+    required this.mode,
+    required this.isSelected,
+    required this.isListening,
+    required this.onSelect,
+    this.dragIndex,
+  });
+
+  @override
+  State<_ModesModeCard> createState() => _ModesModeCardState();
+}
+
+class _ModesModeCardState extends State<_ModesModeCard> {
+  bool _isOpen = false; // Closed when the page opens
+
+  void _toggleOpen() => setState(() => _isOpen = !_isOpen);
+
+  void _openEditor() => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ModeEditorScreen(modeId: widget.mode.id)),
+      );
 
   @override
   Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(HesakSizes.radiusCard);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+    final HesakModeConfig mode = widget.mode;
+    final bool isSelected = widget.isSelected;
+    final bool showListenHint = isSelected && !widget.isListening;
+
+    final BoxDecoration decoration = isSelected
+        ? BoxDecoration(
+            borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
+            gradient: LinearGradient(
+              begin: AlignmentDirectional.topStart,
+              end: AlignmentDirectional.bottomEnd,
+              colors: widget.isListening
+                  ? const [HesakColors.primaryMuted, HesakColors.primary]
+                  : const [HesakColors.modeHeaderIdleStart, HesakColors.modeHeaderIdleEnd],
+            ),
+          )
+        : BoxDecoration(
+            borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
+            border: Border.all(color: HesakColors.modesCardBorder),
+            gradient: const LinearGradient(
+              begin: AlignmentDirectional.centerStart,
+              end: AlignmentDirectional.centerEnd,
+              colors: HesakColors.modesCardGradient,
+            ),
+          );
+
+    return AnimatedContainer(
+      key: Key(isSelected ? 'modes_selected_row' : 'modes_row_${mode.id}_card'),
+      duration: const Duration(milliseconds: 300),
+      clipBehavior: Clip.antiAlias, // The hint strip follows the rounded bottom
+      decoration: decoration,
       child: Material(
-        color: HesakColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: radius, side: const BorderSide(color: HesakColors.surfaceBorder)),
+        color: Colors.transparent,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Tap on the card = same as the arrow.
+            InkWell(
+              key: Key(isSelected ? 'modes_selected_tap' : 'modes_row_tap_${mode.id}'),
+              onTap: _toggleOpen,
+              child: Padding(
+                padding: EdgeInsetsDirectional.fromSTEB(widget.dragIndex == null ? 12 : 2, 10, 0, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildFirstLine(mode, isSelected),
+                    const SizedBox(height: 8),
+                    _buildButtonsLine(mode, isSelected),
+                  ],
+                ),
+              ),
+            ),
+
+            // "إعدادات الوضع" + "جدولة الوضع" (open with the arrow).
+            AnimatedSize(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut,
+              alignment: Alignment.topCenter,
+              child: _isOpen
+                  ? Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _ModesDetailsBox(mode: mode),
+                          const SizedBox(height: 10),
+                          _ModesScheduleBox(mode: mode),
+                        ],
+                      ),
+                    )
+                  : const SizedBox(width: double.infinity),
+            ),
+
+            // Listening is off: how to really turn the selected mode on.
+            if (showListenHint) const _ModesListenHintStrip(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// ⋮⋮ · icon · name (+ badge) / schedule · switch.
+  Widget _buildFirstLine(HesakModeConfig mode, bool isSelected) {
+    return Row(
+      children: [
+        // Drag handle: drag right away (the card itself needs a long press).
+        if (widget.dragIndex != null)
+          ReorderableDragStartListener(
+            index: widget.dragIndex!,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
+              child: Icon(
+                Icons.drag_indicator_rounded,
+                color: isSelected ? HesakColors.onModeHeaderSoft : HesakColors.iconInactive,
+                size: 22,
+              ),
+            ),
+          ),
+
+        // Icon (or first letter): white circle on lavender, see-through on purple.
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isSelected ? HesakColors.modeHeaderOverlay : HesakColors.modesIconCircle,
+          ),
+          child: Center(
+            child: mode.icon != null
+                ? Icon(mode.icon, size: 26, color: isSelected ? HesakColors.onPrimary : HesakColors.modeSelected)
+                : Text(
+                    mode.firstLetter,
+                    style: HesakTextStyles.modeCircleLetter.copyWith(
+                      color: isSelected ? HesakColors.onPrimary : HesakColors.modeSelected,
+                    ),
+                  ),
+          ),
+        ),
+        const SizedBox(width: 12),
+
+        // Name (+ مفعّل / غير مفعّل) and the schedule under it.
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      mode.name,
+                      key: isSelected ? const Key('modes_selected_name') : null,
+                      style: isSelected ? HesakTextStyles.modeHeaderName : HesakTextStyles.modeRowName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (isSelected) ...[
+                    const SizedBox(width: 8),
+                    ModesStateBadge(isListening: widget.isListening),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 3),
+              Text(
+                mode.scheduleSummary,
+                style: isSelected
+                    ? HesakTextStyles.modeHeaderSubtitle.copyWith(height: 1.5)
+                    : HesakTextStyles.modeHint.copyWith(height: 1.5),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+
+        // The choose switch. Selected: a bit further from the edge.
+        _ModesChooseSwitch(
+          key: Key(isSelected ? 'modes_selected_switch' : 'modes_row_switch_${mode.id}'),
+          isOn: isSelected,
+          onTap: isSelected ? null : widget.onSelect,
+        ),
+        SizedBox(width: isSelected ? 14 : 8),
+      ],
+    );
+  }
+
+  /// Star · pencil · arrow, at the end side under the switch.
+  Widget _buildButtonsLine(HesakModeConfig mode, bool isSelected) {
+    final Color fill = isSelected ? HesakColors.modeHeaderOverlay : HesakColors.modesIconCircle;
+    final Color iconColor = isSelected ? HesakColors.onPrimary : HesakColors.modeSelected;
+    final Color emptyStarColor = isSelected ? HesakColors.onModeHeaderSoft : HesakColors.iconInactive;
+    final String keyPart = isSelected ? 'selected' : 'row';
+
+    return Padding(
+      padding: EdgeInsetsDirectional.only(end: isSelected ? 14 : 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          _ModesRoundButton(
+            key: Key('modes_${keyPart}_star_${mode.id}'),
+            tooltip: mode.isFavorite ? 'إزالة من الأوضاع المفضلة' : 'إضافة إلى الأوضاع المفضلة',
+            icon: mode.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+            iconColor: mode.isFavorite ? HesakColors.favoriteStar : emptyStarColor,
+            fill: fill,
+            onTap: () => modesToggleFavorite(context, mode),
+          ),
+          const SizedBox(width: 8),
+          _ModesRoundButton(
+            key: Key('modes_${keyPart}_edit_${mode.id}'),
+            tooltip: 'تعديل',
+            icon: Icons.edit_rounded,
+            iconColor: iconColor,
+            fill: fill,
+            onTap: _openEditor,
+          ),
+          const SizedBox(width: 8),
+          _ModesRoundButton(
+            key: Key('modes_${keyPart}_arrow_${mode.id}'),
+            tooltip: _isOpen ? 'إخفاء التفاصيل' : 'عرض التفاصيل',
+            icon: Icons.keyboard_arrow_down_rounded,
+            iconColor: iconColor,
+            fill: fill,
+            turns: _isOpen ? 0.5 : 0, // ⌄ turns into ⌃
+            onTap: _toggleOpen,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Small round button (star / pencil / arrow) on a mode card.
+class _ModesRoundButton extends StatelessWidget {
+  final String tooltip;
+  final IconData icon;
+  final Color iconColor;
+  final Color fill;
+  final VoidCallback onTap;
+  final double turns; // For the arrow
+
+  const _ModesRoundButton({
+    super.key,
+    required this.tooltip,
+    required this.icon,
+    required this.iconColor,
+    required this.fill,
+    required this.onTap,
+    this.turns = 0,
+  });
+
+  static const double _size = 36;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: fill,
+        shape: const CircleBorder(),
         child: InkWell(
-          key: Key('modes_row_tap_${mode.id}'),
-          borderRadius: radius,
+          customBorder: const CircleBorder(),
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(4, 10, 8, 10),
+          child: SizedBox(
+            width: _size,
+            height: _size,
+            child: AnimatedRotation(
+              turns: turns,
+              duration: const Duration(milliseconds: 250),
+              child: Icon(icon, size: 20, color: iconColor),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The choose switch (no words under it):
+///  on  = white track, purple circle with ✓ (the selected mode)
+///  off = empty track with a grey outline and a grey circle
+/// Turning it on selects the mode. The selected one can't be turned off.
+class _ModesChooseSwitch extends StatelessWidget {
+  final bool isOn;
+  final VoidCallback? onTap; // null = can't be changed (already selected)
+
+  const _ModesChooseSwitch({super.key, required this.isOn, required this.onTap});
+
+  static const double _width = 52;
+  static const double _height = 30;
+  static const double _thumb = 24;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      toggled: isOn,
+      label: isOn ? 'الوضع المختار' : 'اختيار هذا الوضع',
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8), // Easier to tap
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: _width,
+            height: _height,
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: HesakColors.modesIconCircle,
+              borderRadius: BorderRadius.circular(_height / 2),
+              border: Border.all(color: isOn ? HesakColors.modesIconCircle : HesakColors.primaryLightBorder, width: 1.3),
+            ),
+            child: AnimatedAlign(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              alignment: isOn ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
+              child: Container(
+                width: _thumb - 3, // Fits inside the track (padding + border)
+                height: _thumb - 3,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isOn ? HesakColors.modeSelected : HesakColors.modeHeaderIdleStart.withValues(alpha: 0.55),
+                ),
+                child: isOn ? const Icon(Icons.check_rounded, size: 15, color: HesakColors.onPrimary) : null,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Strip stuck to the bottom of the selected card while listening is off:
+/// ⓘ "اضغط زر الاستماع في الرئيسية لتفعيل الوضع".
+class _ModesListenHintStrip extends StatelessWidget {
+  const _ModesListenHintStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('modes_listen_hint'),
+      padding: const EdgeInsets.symmetric(horizontal: HesakSizes.cardPaddingHorizontal, vertical: 10),
+      decoration: const BoxDecoration(
+        color: HesakColors.modesHintStripFill,
+        border: Border(top: BorderSide(color: HesakColors.modesHintStripLine)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded, size: 16, color: HesakColors.modesHintStripText),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'اضغط زر الاستماع في الرئيسية لتفعيل الوضع',
+              style: HesakTextStyles.modeHint.copyWith(color: HesakColors.modesHintStripText),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------
+// Under the arrow: "إعدادات الوضع" + "جدولة الوضع"
+// ---------------------------------------------------------------------
+
+/// White box "إعدادات الوضع": 4 view-only tiles
+/// (نوع التنبيه · الأصوات · نداء اسمك · تكرار التنبيه). Changed in تعديل الوضع.
+class _ModesDetailsBox extends StatelessWidget {
+  final HesakModeConfig mode;
+
+  const _ModesDetailsBox({required this.mode});
+
+  @override
+  Widget build(BuildContext context) {
+    // Works only when the user has a الاسم للنداء; otherwise it shows as off.
+    final bool hasCallName = AuthService.instance.currentCallName != null;
+    final List<HesakAlertType> alertTypes = [
+      for (final type in HesakAlertType.values)
+        if (mode.alertTypes.contains(type)) type,
+    ];
+
+    return Container(
+      key: Key('modes_details_${mode.id}'),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: HesakColors.modesDetailsFill,
+        borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard + 2),
+        border: Border.all(color: HesakColors.modesCardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('إعدادات الوضع', style: HesakTextStyles.itemTitle.copyWith(color: HesakColors.modeSelected)),
+          const SizedBox(height: 10),
+          IntrinsicHeight(
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Drag handle: drag right away (the row itself needs a long press).
-                ReorderableDragStartListener(
-                  index: index,
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 12),
-                    child: Icon(Icons.drag_indicator_rounded, color: HesakColors.iconInactive, size: 22),
-                  ),
-                ),
-                ModesModeCircle.forMode(mode, isSelected: false, size: 50),
-                const SizedBox(width: 12),
-
-                // Name + schedule.
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(mode.name, style: HesakTextStyles.modeRowName, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 3),
-                      Text(mode.scheduleSummary, style: HesakTextStyles.modeHint.copyWith(height: 1.5)),
-                    ],
+                  child: _ModesInfoTile(
+                    icon: Icons.notifications_active_outlined,
+                    label: 'نوع التنبيه',
+                    value: alertTypes.isEmpty ? 'لا يوجد' : alertTypes.map((t) => t.label).join(' + '),
+                    valueIcons: alertTypes.map((t) => t.icon).toList(),
                   ),
-                ),
-
-                ModesStarButton(
-                  key: Key('modes_row_star_${mode.id}'),
-                  isFavorite: mode.isFavorite,
-                  onTap: () => modesToggleFavorite(context, mode),
                 ),
                 const SizedBox(width: 8),
-
-                // Pencil: edit without selecting.
-                Tooltip(
-                  message: 'تعديل',
-                  child: Material(
-                    color: HesakColors.surface,
-                    shape: const CircleBorder(side: BorderSide(color: HesakColors.primaryLightBorder, width: 1.3)),
-                    child: InkWell(
-                      key: Key('modes_row_edit_${mode.id}'),
-                      customBorder: const CircleBorder(),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => ModeEditorScreen(modeId: mode.id)),
-                      ),
-                      child: const SizedBox(
-                        width: HesakSizes.modeStarButton,
-                        height: HesakSizes.modeStarButton,
-                        child: Icon(Icons.edit_rounded, size: 18, color: HesakColors.modeSelected),
-                      ),
-                    ),
+                Expanded(
+                  child: _ModesInfoTile(
+                    icon: Icons.volume_up_outlined,
+                    label: 'الأصوات',
+                    value: modesSoundsCountText(mode.soundIds.length),
                   ),
                 ),
               ],
             ),
           ),
-        ),
+          const SizedBox(height: 8),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: _ModesInfoTile(
+                    icon: Icons.record_voice_over_outlined,
+                    label: 'نداء اسمك',
+                    value: hasCallName && mode.isCallNameAlertOn ? 'مفعّل' : 'غير مفعّل',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _ModesInfoTile(
+                    icon: Icons.repeat_rounded,
+                    label: 'تكرار التنبيه',
+                    value: mode.alertRepeat.label,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One small view-only tile: icon + label on top, the value under it.
+class _ModesInfoTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value; // Also read by screen readers when icons are shown
+  final List<IconData> valueIcons; // When not empty, shown instead of [value]
+
+  const _ModesInfoTile({required this.icon, required this.label, required this.value, this.valueIcons = const []});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: HesakColors.modesInfoTileFill,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: HesakColors.modesCardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: HesakColors.textSecondary),
+              const SizedBox(width: 4),
+              Flexible(child: Text(label, style: HesakTextStyles.modeHint, maxLines: 1, overflow: TextOverflow.ellipsis)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          if (valueIcons.isEmpty)
+            Text(value, style: HesakTextStyles.itemTitle, maxLines: 1, overflow: TextOverflow.ellipsis)
+          else
+            Semantics(
+              label: value,
+              excludeSemantics: true,
+              child: Row(
+                children: [
+                  for (int i = 0; i < valueIcons.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    Icon(valueIcons[i], size: 20, color: HesakColors.textPrimary),
+                  ],
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "جدولة الوضع ⌄": darker lavender header + how many periods. Tap it to see
+/// the periods (add / edit / delete, saved right away) inside the same frame.
+class _ModesScheduleBox extends StatefulWidget {
+  final HesakModeConfig mode;
+
+  const _ModesScheduleBox({required this.mode});
+
+  @override
+  State<_ModesScheduleBox> createState() => _ModesScheduleBoxState();
+}
+
+class _ModesScheduleBoxState extends State<_ModesScheduleBox> {
+  bool _isOpen = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final HesakModeConfig mode = widget.mode;
+    final radius = BorderRadius.circular(HesakSizes.radiusInnerCard + 2);
+
+    return Container(
+      key: Key('modes_schedule_box_${mode.id}'),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(color: HesakColors.modesScheduleBodyFill, borderRadius: radius),
+      // The outline is drawn ON TOP of the header color, so the rounded corners
+      // stay one full frame (before, the header color covered the corners).
+      foregroundDecoration: BoxDecoration(
+        borderRadius: radius,
+        border: Border.all(color: HesakColors.modesScheduleBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Material(
+            color: HesakColors.modesScheduleHeaderFill,
+            child: InkWell(
+              key: Key('modes_schedule_toggle_${mode.id}'),
+              onTap: () => setState(() => _isOpen = !_isOpen),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_month_outlined, size: 19, color: HesakColors.modeSelected),
+                    const SizedBox(width: 8),
+                    const Expanded(child: Text('جدولة الوضع', style: HesakTextStyles.itemTitle)),
+                    Text(modesPeriodsCountText(mode.periods.length), style: HesakTextStyles.caption),
+                    const SizedBox(width: 6),
+                    AnimatedRotation(
+                      turns: _isOpen ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: const Icon(Icons.keyboard_arrow_down_rounded, color: HesakColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: _isOpen
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Divider(height: 1, thickness: 1, color: HesakColors.modesScheduleBorder),
+                      Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: ModesScheduleEditor(
+                          // New key per mode, so an open edit box doesn't carry over to another mode.
+                          key: ValueKey('modes_schedule_${mode.id}'),
+                          modeId: mode.id,
+                          periods: mode.periods,
+                          periodFill: HesakColors.schedulePeriodOnLavenderFill,
+                          onChanged: (periods) => HesakModeStore.instance.updateMode(mode.copyWith(periods: periods)),
+                        ),
+                      ),
+                    ],
+                  )
+                : const SizedBox(width: double.infinity),
+          ),
+        ],
       ),
     );
   }
@@ -348,124 +871,6 @@ class _ModesAddCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------
-// Selected mode row (on top)
-// ---------------------------------------------------------------------
-
-/// The SELECTED mode: same row as the others (circle, name, schedule, star, pencil),
-/// but filled with purple and not draggable.
-///  - listening ON  -> deep purple + "مفعّل"
-///  - listening OFF -> lighter purple + "غير مفعّل" + a hint line under it
-/// Its schedule and settings summary live on الرئيسية now (HomeModeSection).
-class _ModesSelectedRow extends StatelessWidget {
-  final HesakModeConfig mode;
-  final bool isListening;
-
-  const _ModesSelectedRow({required this.mode, required this.isListening});
-
-  @override
-  Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(HesakSizes.radiusCard);
-    return ClipRRect(
-      key: const Key('modes_selected_row'),
-      borderRadius: radius,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            padding: const EdgeInsetsDirectional.fromSTEB(12, 10, 10, 10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: AlignmentDirectional.topStart,
-                end: AlignmentDirectional.bottomEnd,
-                colors: isListening
-                    ? const [HesakColors.primaryMuted, HesakColors.primary]
-                    : const [HesakColors.modeHeaderIdleStart, HesakColors.modeHeaderIdleEnd],
-              ),
-            ),
-            child: Row(
-              children: [
-                // Icon (or first letter) in a see-through white circle.
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: const BoxDecoration(shape: BoxShape.circle, color: HesakColors.modeHeaderOverlay),
-                  child: Center(
-                    child: mode.icon != null
-                        ? Icon(mode.icon, size: 26, color: HesakColors.onPrimary)
-                        : Text(mode.firstLetter, style: HesakTextStyles.modeCircleLetter.copyWith(color: HesakColors.onPrimary)),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              mode.name,
-                              key: const Key('modes_selected_name'),
-                              style: HesakTextStyles.modeHeaderName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          ModesStateBadge(isListening: isListening),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(mode.scheduleSummary, style: HesakTextStyles.modeHeaderSubtitle.copyWith(height: 1.5)),
-                    ],
-                  ),
-                ),
-                ModesStarButton(
-                  key: const Key('modes_selected_star_button'),
-                  isFavorite: mode.isFavorite,
-                  isOnDark: true,
-                  onTap: () => modesToggleFavorite(context, mode),
-                ),
-                const SizedBox(width: 8),
-                // Pencil: edit page.
-                Tooltip(
-                  message: 'تعديل',
-                  child: Material(
-                    color: HesakColors.modeHeaderOverlay,
-                    shape: const CircleBorder(),
-                    child: InkWell(
-                      key: const Key('modes_selected_edit_button'),
-                      customBorder: const CircleBorder(),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => ModeEditorScreen(modeId: mode.id)),
-                      ),
-                      child: const SizedBox(
-                        width: HesakSizes.modeStarButton,
-                        height: HesakSizes.modeStarButton,
-                        child: Icon(Icons.edit_rounded, size: 18, color: HesakColors.onPrimary),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Listening is off: tell the user how to really turn the mode on.
-          if (!isListening)
-            Container(
-              key: const Key('modes_listen_hint'),
-              color: HesakColors.modeTileSelectedFill,
-              padding: const EdgeInsets.symmetric(horizontal: HesakSizes.cardPaddingHorizontal, vertical: 9),
-              child: const Text('اضغط زر الاستماع في الرئيسية لتفعيل الوضع', style: HesakTextStyles.modeHint),
-            ),
-        ],
       ),
     );
   }

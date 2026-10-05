@@ -189,7 +189,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
         if (!didPop) _handleBack();
       },
       child: Scaffold(
-        backgroundColor: HesakColors.background,
+        backgroundColor: HesakColors.tabPageBackground, // Same lavender as the 4 tabs
         body: SafeArea(
           bottom: false, // The bottom bar (from HesakMainShell) covers the bottom edge
           child: Column(
@@ -262,6 +262,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
         // ---- جدولة الوضع (first on the edit page, saved right away) ----
         ModesSectionCard(
           title: 'جدولة الوضع',
+          icon: Icons.calendar_month_outlined,
           child: ModesScheduleEditor(
             modeId: saved.id,
             periods: saved.periods,
@@ -343,8 +344,16 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-        // ---- Icon + name ----
-        ModesIconNamePicker(
+        // ---- Icon + name (in a white card, like the sections under it) ----
+        Container(
+          padding: const EdgeInsets.all(HesakSizes.cardPaddingHorizontal),
+          decoration: BoxDecoration(
+            color: HesakColors.surface,
+            borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
+            border: Border.all(color: HesakColors.homeCardBorder),
+            boxShadow: const [BoxShadow(color: HesakColors.homeCardShadow, blurRadius: 18, offset: Offset(0, 6))],
+          ),
+          child: ModesIconNamePicker(
           icon: _draftIcon,
           isIconPicked: _isIconPicked,
           onIconChanged: (icon) => setState(() {
@@ -358,8 +367,9 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
             _nameError = null;
             _hasTouchedNewMode = true;
           }),
+          ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: HesakSizes.sectionGap),
 
         ModesSectionCard(title: 'الإعدادات العامة', child: _buildGeneralFields()),
         ModesSectionCard(title: 'إعدادات الأصوات', child: _buildSoundsPicker()),
@@ -367,6 +377,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
         // ---- جدولة الوضع (last on the add page) ----
         ModesSectionCard(
           title: 'جدولة الوضع',
+          icon: Icons.calendar_month_outlined,
           child: ModesScheduleEditor(
             modeId: _newModeId,
             periods: _draftPeriods,

@@ -302,6 +302,20 @@ class HesakColors {
   /// Box behind an urgent alert icon (e.g. إنذار حريق).
   static const Color homeUrgentIconFill = Color(0xFFEED5D8);
 
+  // ---- Alerts (التنبيهات): white boxes with a colored line on the side ----
+
+  /// Fill of each alert box.
+  static const Color homeAlertFill = Color(0xFFFFFFFF);
+
+  /// Very soft shadow under each alert box.
+  static const Color homeAlertShadow = Color(0x0F3F2A73);
+
+  /// Box behind a normal alert icon (same light lavender as الإعدادات).
+  static const Color homeAlertIconFill = Color(0xFFEFE8F7);
+
+  /// Side line of a normal alert (urgent ones use [urgent]).
+  static const Color homeAlertLine = primary;
+
   // ---- Mode card ----
 
   /// Mode card while listening is OFF (same light purple as الأوضاع).
@@ -344,4 +358,81 @@ class HesakColors {
   /// Inside one conversation: very light purple (same as the pages), so the
   /// purple voice messages stand out from it.
   static const Color chatsConversationBackground = tabPageBackground;
+
+  // =====================================================================
+  //  ROUND 5 — الأوضاع rows, the details under the arrow, the schedule,
+  //  and the white cards of تعديل / إضافة وضع and الإعدادات.
+  // =====================================================================
+
+  // ---- الأوضاع: the NOT selected modes ----
+
+  /// Lavender gradient of a not selected mode card (start -> end):
+  /// the SAME as the المحادثات cards (lavender on the icon side, fading to light).
+  static const List<Color> modesCardGradient = chatsCardGradient;
+
+  /// Thin outline of the mode cards and of the white boxes under the arrow.
+  static const Color modesCardBorder = Color(0xFFDCD1EA);
+
+  /// White circle behind the icon of a not selected mode (and the small buttons).
+  static const Color modesIconCircle = Color(0xFFFFFFFF);
+
+  // ---- الأوضاع: under the arrow ⌄ ----
+
+  /// "إعدادات الوضع" box (white).
+  static const Color modesDetailsFill = Color(0xFFFFFFFF);
+
+  /// One small view-only tile inside "إعدادات الوضع".
+  static const Color modesInfoTileFill = Color(0xFFF7F3FB);
+
+  /// "جدولة الوضع" header: a darker lavender, so it looks different from the settings.
+  static const Color modesScheduleHeaderFill = Color(0xFFEDE4F7);
+
+  /// Outline of the "جدولة الوضع" box.
+  static const Color modesScheduleBorder = primaryLightBorder;
+
+  /// Inside the open "جدولة الوضع" box.
+  static const Color modesScheduleBodyFill = Color(0xFFF6F1FB);
+
+  // ---- الأوضاع: "اضغط زر الاستماع ..." strip under the selected mode ----
+
+  static const Color modesHintStripFill = Color(0xFFE4D9F1);
+  static const Color modesHintStripLine = primaryLightBorder;
+  static const Color modesHintStripText = primary;
+
+  // ---- The schedule periods (same shape everywhere) ----
+
+  /// A period box inside a WHITE card (تعديل / إضافة وضع).
+  static const Color schedulePeriodFill = Color(0xFFF3EEF9);
+  static const Color schedulePeriodBorder = Color(0xFFD9CCEC);
+
+  /// A period box on a lavender background (الأوضاع) = white.
+  static const Color schedulePeriodOnLavenderFill = Color(0xFFFFFFFF);
+
+  /// Dashed outline of "إضافة فترة".
+  static const Color scheduleAddBorder = primaryLightBorder;
+
+  // ---- White content cards (تعديل / إضافة وضع، الإعدادات) ----
+
+  /// Line under the title of a card that opens (جدولة الوضع، الإعدادات العامة ...).
+  static const Color cardTitleLine = Color(0xFFDCD1EA);
+
+  /// Lines between the rows of الإعدادات.
+  static const Color settingsRowLine = Color(0xFFE6DEF0);
+
+  /// Small square behind a row icon in الإعدادات.
+  static const Color settingsIconBox = Color(0xFFEFE8F7);
+
+  // ---- الرئيسية: mode card tiles + schedule periods ----
+
+  /// Tiles (نوع التنبيه، نداء اسمك) and period boxes while listening is OFF.
+  static const Color homeTileFillIdle = Color(0xFFFFFFFF);
+
+  /// The same while listening is ON (a little lavender on the dark card).
+  static const Color homeTileFillActive = Color(0xFFF1ECF7);
+
+  /// Outline of those tiles / period boxes.
+  static const Color homeTileBorder = Color(0xFFC9B8E0);
+
+  /// Line under "الجدولة" when the glass box is open.
+  static const Color homeGlassLine = Color(0x40FFFFFF);
 }
