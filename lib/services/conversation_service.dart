@@ -13,7 +13,8 @@ import '../screens/chats_models.dart';
 //  Firestore path: users/{uid}/conversations/{conversationId}
 //
 //  24-hour rule:
-//    - Unsaved conversation: has "expireAt" = start time + 24 hours.
+//    - Unsaved conversation: has "expireAt" = LAST change + 24 hours
+//      (a new message or rename starts the 24 hours again).
 //      It is deleted automatically after that.
 //    - Saved conversation (isSaved = true): has NO "expireAt",
 //      so it is kept until the user deletes it.
@@ -22,8 +23,16 @@ import '../screens/chats_models.dart';
 //  given again, even after its conversation is deleted. The last used
 //  number is kept in users/{uid} -> "lastConversationNumber".
 //
-//  The models in chats_models.dart are NOT changed; this file only
-//  converts them to / from Firestore.
+//  Order: the last changed conversation first (new message, rename,
+//  improved text) — "editedAt" keeps the last rename / improve time.
+//
+//  Offline: the project doesn't change Firestore settings (main.dart), so
+//  the default applies — on Android / iOS Firestore keeps a copy on the
+//  phone. Reading works from that copy, and saves / deletes are applied to
+//  it at once and uploaded when the internet returns. Nothing is deleted
+//  because of the internet; only the 24-hour rule deletes (unsaved only).
+//
+//  This file only converts the models (chats_models.dart) to / from Firestore.
 // =====================================================================
 
 class ConversationService {
@@ -50,7 +59,7 @@ class ConversationService {
   /// How long we wait for Firebase before showing "تعذّر التحميل".
   static const Duration _loadTimeout = Duration(seconds: 12);
 
-  /// Loads all conversations of the user, newest first.
+  /// Loads all conversations of the user, the last changed first.
   /// Expired unsaved conversations are deleted here and not returned.
   /// Returns null when loading failed (no internet and nothing saved on the
   /// phone yet, or Firebase error) — the page then shows "إعادة المحاولة".
@@ -84,6 +93,9 @@ class ConversationService {
         }
         result.add(_conversationFromMap(doc.id, data));
       }
+
+      // Newest change first (last message / rename), not the creation time.
+      result.sort((a, b) => b.displayTime.compareTo(a.displayTime));
 
       if (hasExpired) {
         cleanup.commit().catchError((e) => debugPrint('cleanup error: $e'));
@@ -174,14 +186,14 @@ class ConversationService {
     final collection = _collection;
     if (collection == null) return;
 
-    try {
-      await collection
-          .doc(conversation.id)
-          .set(_conversationToMap(conversation), SetOptions(merge: true));
-      changeCount.value++;
-    } catch (e) {
-      debugPrint('saveConversation error: $e');
-    }
+    // Firestore writes to the phone's copy right away and uploads later
+    // when there is internet. Its Future only completes after the server
+    // confirms, so we do NOT wait for it (it would hang while offline).
+    collection
+        .doc(conversation.id)
+        .set(_conversationToMap(conversation), SetOptions(merge: true))
+        .catchError((Object e) => debugPrint('saveConversation error: $e'));
+    changeCount.value++;
   }
 
   /// Deletes a conversation (saved or not).
@@ -189,12 +201,12 @@ class ConversationService {
     final collection = _collection;
     if (collection == null) return;
 
-    try {
-      await collection.doc(conversationId).delete();
-      changeCount.value++;
-    } catch (e) {
-      debugPrint('deleteConversation error: $e');
-    }
+    // Same as saving: applied on the phone now, uploaded later if offline.
+    collection
+        .doc(conversationId)
+        .delete()
+        .catchError((Object e) => debugPrint('deleteConversation error: $e'));
+    changeCount.value++;
   }
 
   // -------------------------------------------------------------------
@@ -207,10 +219,11 @@ class ConversationService {
       'createdAt': Timestamp.fromDate(c.createdAt),
       'startedAt':
       c.startedAt == null ? null : Timestamp.fromDate(c.startedAt!),
+      'editedAt': c.editedAt == null ? null : Timestamp.fromDate(c.editedAt!),
       'updatedAt': FieldValue.serverTimestamp(),
       'isSaved': c.isSaved,
       // Saved → remove expireAt (never deleted automatically).
-      // Unsaved → start time + 24 hours (same countdown shown in the app).
+      // Unsaved → last change + 24 hours (same countdown shown in the app).
       'expireAt': c.isSaved
           ? FieldValue.delete()
           : Timestamp.fromDate(c.displayTime.add(chatsAutoDeleteAfter)),
@@ -226,6 +239,7 @@ class ConversationService {
       createdAt:
       (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       startedAt: (d['startedAt'] as Timestamp?)?.toDate(),
+      editedAt: (d['editedAt'] as Timestamp?)?.toDate(),
       isSaved: d['isSaved'] as bool? ?? false,
       messages: rawMessages
           .map((m) => _messageFromMap(Map<String, dynamic>.from(m as Map)))
@@ -243,6 +257,7 @@ class ConversationService {
       'speakerLabel': m.speakerLabel,
       'sentAt': Timestamp.fromDate(m.sentAt),
       'voiceDurationMs': m.voiceDuration?.inMilliseconds,
+      'audioFileName': m.audioFileName,
     };
   }
 
@@ -260,6 +275,7 @@ class ConversationService {
       isEnhancementAccepted: d['isEnhancementAccepted'] as bool? ?? false,
       voiceDuration:
       voiceMs == null ? null : Duration(milliseconds: voiceMs),
+      audioFileName: d['audioFileName'] as String?,
     );
   }
 }

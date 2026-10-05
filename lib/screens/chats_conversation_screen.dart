@@ -18,6 +18,11 @@ import '../core/data/hesak_mode_store.dart';
 import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
+import '../core/data/hesak_connection.dart';
+import '../services/ai/hesak_online_request.dart';
+import '../services/ai/hesak_speech_to_text_service.dart';
+import '../services/ai/hesak_text_enhance_service.dart';
+import '../services/ai/hesak_tts_service.dart';
 import '../services/conversation_service.dart';
 import '../widgets/hesak_confirm_dialog.dart';
 import '../widgets/hesak_listening_required.dart';
@@ -79,6 +84,13 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   /// Demo only: fake incoming speech while listening.
   Timer? _demoTranscriptTimer;
 
+  /// Requests in progress (show loading, block repeated taps).
+  bool _isSending = false;
+  bool _isStartingListening = false;
+  bool _isEnhancingComposer = false;
+  final Set<String> _enhancingMessageIds = <String>{};
+  final Set<String> _preparingAudioIds = <String>{};
+
   /// Scroll indicator + jump-to-end button state.
   double _scrollProgress = 1.0;
   double _visibleFraction = 1.0;
@@ -93,12 +105,16 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
     super.initState();
     _messagesScrollController.addListener(_updateScrollIndicator);
     _composerController.addListener(() => setState(() {}));
+    // The big listen button turned off (by the user or because the internet
+    // dropped) -> stop listening here too.
+    HesakModeStore.instance.addListener(_stopIfMainListeningOff);
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _updateScrollIndicator());
   }
 
   @override
   void dispose() {
+    HesakModeStore.instance.removeListener(_stopIfMainListeningOff);
     _playbackTimer?.cancel();
     _demoTranscriptTimer?.cancel();
     _listeningBarsController.dispose();
@@ -165,7 +181,10 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   void _saveEditedTitle() {
     final bool hasChanged = _hasNewTitle;
     setState(() {
-      if (hasChanged) _conversation.title = _titleController.text.trim();
+      if (hasChanged) {
+        _conversation.title = _titleController.text.trim();
+        _conversation.markEdited(); // A real change -> new "last change" time
+      }
       _isEditingTitle = false;
     });
     // Saved conversations are saved again right away; others are saved
@@ -179,11 +198,56 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   // Listening (speech → text)
   // -------------------------------------------------------------------------
 
+  /// Stops the listening here when the big listen button is off.
+  void _stopIfMainListeningOff() {
+    if (!mounted || !_isListening || HesakModeStore.instance.isListening) return;
+    setState(() => _isListening = false);
+    _listeningBarsController.stop();
+    _demoTranscriptTimer?.cancel();
+    // TODO: stop the real speech-to-text service.
+  }
+
+  /// Shows the right message for an internet failure.
+  /// [offlineMessage] = no internet before starting (nothing was sent).
+  void _showNetworkError(HesakNetworkException error, String offlineMessage) {
+    if (!mounted) return;
+    showHesakToast(
+      context,
+      error.wasOffline ? offlineMessage : 'انقطع الاتصال بالإنترنت، حاول مرة أخرى',
+      icon: Icons.wifi_off_rounded,
+      atTop: true, // The keyboard covers the bottom here
+    );
+  }
+
+  /// Any other failure (not the internet).
+  void _showFailure(String message) {
+    if (!mounted) return;
+    showHesakToast(context, message, icon: Icons.error_outline_rounded, atTop: true);
+  }
+
   /// Starts / stops listening. While listening, typing is disabled
   /// (the composer is replaced by the listening bar).
-  /// Starting needs the big listen button (الرئيسية) to be on.
+  /// Starting needs the big listen button (الرئيسية) on, and the internet
+  /// because speech-to-text runs on the server.
   Future<void> _toggleListening() async {
-    if (!_isListening && !await hesakRequireListening(context)) return;
+    if (_isStartingListening || _isSending) return; // Block repeated taps
+    if (!_isListening) {
+      _isStartingListening = true;
+      try {
+        if (!await hesakRequireListening(context)) return;
+        if (!mounted) return;
+        final HesakSpeechToTextService stt = HesakSpeechToTextService.instance;
+        if (stt.needsInternet && !await HesakConnection.instance.checkNow()) {
+          _showNetworkError(
+            const HesakNetworkException(wasOffline: true),
+            'يتطلب تحويل الكلام إلى نص اتصالًا بالإنترنت',
+          );
+          return;
+        }
+      } finally {
+        _isStartingListening = false;
+      }
+    }
     if (!mounted) return;
     setState(() {
       _isListening = !_isListening;
@@ -191,9 +255,10 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
     });
     if (_isListening) {
       _listeningBarsController.repeat();
+      // Demo until Faster-Whisper is connected (HesakSpeechToTextService).
+      // TODO(models team): when connected, call
+      // HesakSpeechToTextService.instance.start(onText: _addIncomingMessage).
       _startDemoTranscript();
-      // TODO: start the real speech-to-text service here and add each
-      // result with _addIncomingMessage(text).
     } else {
       _listeningBarsController.stop();
       _demoTranscriptTimer?.cancel();
@@ -228,31 +293,105 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   // -------------------------------------------------------------------------
 
   /// Sends the composer text as a voice message (text shown under it).
-  /// Nothing is sent until the user presses this button.
-  void _sendComposerText() {
+  /// Generating new speech needs the internet. On failure the typed text
+  /// stays in the field so the user can try again.
+  Future<void> _sendComposerText() async {
     final String text = _composerController.text.trim();
-    if (text.isEmpty || _isListening) return;
+    if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
+
+    setState(() => _isSending = true);
+    final String messageId = 'out_${DateTime.now().microsecondsSinceEpoch}';
+    String? audioFileName;
+    try {
+      audioFileName = await hesakRunOnline(() async {
+        final HesakTtsService tts = HesakTtsService.instance;
+        // Not connected yet: no audio file is created (mock playback).
+        if (!tts.isConnected) return null;
+        return tts.generateAndSave(
+          text: text,
+          conversationId: _conversation.id,
+          messageId: messageId,
+        );
+      });
+    } on HesakNetworkException catch (e) {
+      _showNetworkError(e, 'يتطلب تحويل النص إلى صوت اتصالًا بالإنترنت');
+      return;
+    } catch (e) {
+      debugPrint('tts error: $e');
+      _showFailure('تعذّر تحويل النص إلى صوت، حاول مرة أخرى');
+      return;
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
+    if (!mounted) return;
+
     final ChatsMessage message = ChatsMessage(
-      id: 'out_${DateTime.now().microsecondsSinceEpoch}',
+      id: messageId,
       kind: ChatsMessageKind.textToSpeech,
       originalText: text,
       sentAt: DateTime.now(),
       voiceDuration: chatsEstimateVoiceDuration(text),
+      audioFileName: audioFileName,
     );
     setState(() {
       _conversation.messages.add(message);
       _conversation.markStarted();
-      _composerController.clear();
+      // Clear only if the user didn't change the text meanwhile.
+      if (_composerController.text.trim() == text) _composerController.clear();
     });
     _scrollToEnd();
-    _togglePlayback(message); // speak it right away
+    _playMessage(message); // speak it right away
   }
 
   // -------------------------------------------------------------------------
   // Voice playback with spoken-word highlight
   // -------------------------------------------------------------------------
 
-  /// Plays / stops a voice message and moves the word highlight.
+  /// Play button of a voice message.
+  ///   - Saved audio on the phone -> plays it (no internet, no ElevenLabs call).
+  ///   - No saved audio -> must be generated again (needs internet).
+  ///   - TTS not connected yet -> mock playback (word highlight only).
+  Future<void> _playMessage(ChatsMessage message) async {
+    final HesakTtsService tts = HesakTtsService.instance;
+    final bool isStopping = _playingMessageId == message.id;
+    if (isStopping || !tts.isConnected) {
+      _togglePlayback(message);
+      return;
+    }
+    if (_preparingAudioIds.contains(message.id)) return;
+    setState(() => _preparingAudioIds.add(message.id)); // Before any await
+
+    try {
+      final String? fileName = message.audioFileName;
+      if (fileName != null && await tts.hasSavedAudio(fileName)) {
+        if (!mounted) return;
+        // TODO(models team): await tts.playSaved(fileName) here.
+        _togglePlayback(message);
+        return;
+      }
+
+      // Audio missing on this phone: generate it again (needs internet).
+      final String newFileName = await hesakRunOnline(() => tts.generateAndSave(
+            text: message.originalText,
+            conversationId: _conversation.id,
+            messageId: message.id,
+          ));
+      if (!mounted) return;
+      message.audioFileName = newFileName;
+      ConversationService.instance.saveConversation(_conversation);
+      // TODO(models team): play it with tts.playSaved(newFileName).
+      _togglePlayback(message);
+    } on HesakNetworkException catch (e) {
+      _showNetworkError(e, 'يتطلب تحويل النص إلى صوت اتصالًا بالإنترنت');
+    } catch (e) {
+      debugPrint('tts error: $e');
+      _showFailure('تعذّر تحويل النص إلى صوت، حاول مرة أخرى');
+    } finally {
+      if (mounted) setState(() => _preparingAudioIds.remove(message.id));
+    }
+  }
+
+  /// Mock playback: moves the word highlight (no real audio yet).
   void _togglePlayback(ChatsMessage message) {
     _playbackTimer?.cancel();
     if (_playingMessageId == message.id) {
@@ -290,38 +429,73 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   // AI enhancement
   // -------------------------------------------------------------------------
 
-  /// For a heard message: original stays on top; if accepted, the enhanced
-  /// text shows in a purple box under it.
+  /// For a heard message: "تحسين النص" shows the improved text RIGHT AWAY
+  /// in the purple box under the original (no accept / keep window).
+  /// The original always stays on top and is never changed.
   Future<void> _enhanceIncomingMessage(ChatsMessage message) async {
-    message.enhancedText ??= await chatsEnhanceText(message.originalText);
+    if (_enhancingMessageIds.contains(message.id)) return;
+    // Already improved before (saved): show it, no internet needed.
+    if (message.enhancedText == null) {
+      setState(() => _enhancingMessageIds.add(message.id));
+      try {
+        message.enhancedText = await hesakRunOnline(
+            () => HesakTextEnhanceService.instance.enhance(message.originalText));
+      } on HesakNetworkException catch (e) {
+        _showNetworkError(e, 'يتطلب تحسين النص اتصالًا بالإنترنت');
+        return;
+      } catch (e) {
+        debugPrint('enhance error: $e');
+        _showFailure('تعذّر تحسين النص، حاول مرة أخرى');
+        return;
+      } finally {
+        if (mounted) setState(() => _enhancingMessageIds.remove(message.id));
+      }
+    }
     if (!mounted) return;
-    final _ChatsEnhancementChoice? choice = await _showEnhancementSheet(
-      originalText: message.originalText,
-      enhancedText: message.enhancedText!,
-      sourceLabel:
-          'من رسالة ${message.speakerLabel} · ${chatsFormatTime(message.sentAt)}',
-    );
-    if (choice == _ChatsEnhancementChoice.accept) {
-      setState(() {
-        message.isEnhancementAccepted = true;
-        _openEnhancedMessageIds.add(message.id);
-      });
+    setState(() {
+      message.isEnhancementAccepted = true;
+      _openEnhancedMessageIds.add(message.id);
+      _conversation.markEdited();
+    });
+    // Same as renaming: saved conversations are saved again right away.
+    if (_conversation.isSaved) {
+      ConversationService.instance.saveConversation(_conversation);
     }
   }
 
-  /// For the composer: accept puts the enhanced text in the field;
-  /// keep / ✕ leaves the user's text as it is. Nothing is sent.
+  /// For the composer (the ✦ button next to the typing field) — the ONLY
+  /// place with the accept / keep window: accept puts the enhanced text in
+  /// the field; keep / ✕ leaves the user's text as it is. Nothing is sent.
+  /// On failure the typed text is never changed.
   Future<void> _enhanceComposerText() async {
     final String original = _composerController.text.trim();
-    if (original.isEmpty || _isListening) return;
-    final String enhanced = await chatsEnhanceText(original);
+    if (original.isEmpty || _isListening || _isEnhancingComposer) return;
+
+    setState(() => _isEnhancingComposer = true);
+    final String enhanced;
+    try {
+      enhanced = await hesakRunOnline(
+          () => HesakTextEnhanceService.instance.enhance(original));
+    } on HesakNetworkException catch (e) {
+      _showNetworkError(e, 'يتطلب تحسين النص اتصالًا بالإنترنت');
+      return;
+    } catch (e) {
+      debugPrint('enhance error: $e');
+      _showFailure('تعذّر تحسين النص، حاول مرة أخرى');
+      return;
+    } finally {
+      if (mounted) setState(() => _isEnhancingComposer = false);
+    }
     if (!mounted) return;
+
     final _ChatsEnhancementChoice? choice = await _showEnhancementSheet(
       originalText: original,
       enhancedText: enhanced,
       sourceLabel: 'نصك قبل الإرسال',
     );
-    if (choice == _ChatsEnhancementChoice.accept) {
+    // Replace only if the user didn't change the text meanwhile.
+    if (choice == _ChatsEnhancementChoice.accept &&
+        _composerController.text.trim() == original) {
       _composerController.text = enhanced;
       _composerController.selection =
           TextSelection.collapsed(offset: enhanced.length);
@@ -385,21 +559,9 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   // Build
   // -------------------------------------------------------------------------
 
-  /// Typing / the mic below are grey and locked until:
-  ///   1) the big listen button (الرئيسية) is on, AND
-  ///   2) a new conversation was started with "بدء الاستماع" in the middle.
-  /// Reading old messages always works.
-  bool get _isComposerLocked =>
-      !HesakModeStore.instance.isListening || _isUntouchedNewConversation;
-
-  /// Tap on the locked composer: explains what to do.
-  Future<void> _explainLockedComposer() async {
-    if (!HesakModeStore.instance.isListening) {
-      await hesakRequireListening(context);
-      return;
-    }
-    showHesakToast(context, 'اضغط «بدء الاستماع» لبدء المحادثة', icon: Icons.mic_none_rounded);
-  }
+  // Typing always works (even offline). Only actions that need a
+  // server / API check the internet: send (text -> speech), ✦ improve,
+  // and the mic (speech -> text).
 
   @override
   Widget build(BuildContext context) {
@@ -419,7 +581,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
         if (!didPop) _handleBackPressed();
       },
       child: Scaffold(
-        backgroundColor: HesakColors.background,
+        backgroundColor: HesakColors.chatsConversationBackground,
         body: SafeArea(
           child: Column(
             children: <Widget>[
@@ -458,12 +620,12 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
               ),
               _ChatsComposerBar(
                 controller: _composerController,
-                isLocked: _isComposerLocked,
-                onLockedTap: _explainLockedComposer,
                 isListening: _isListening,
                 hasText: _hasComposerText,
                 listeningBars: _listeningBarsController,
                 onEnhance: _enhanceComposerText,
+                isEnhancing: _isEnhancingComposer,
+                isSending: _isSending,
                 onSend: _sendComposerText,
                 onToggleListening: _toggleListening,
               ),
@@ -479,13 +641,13 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
     final List<ChatsMessage> messages = _conversation.messages;
 
     if (messages.isEmpty) {
+      // Nothing written here unless listening is on.
+      if (!_isListening) return const SizedBox.expand();
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(HesakSizes.pagePadding),
           child: Text(
-            _isListening
-                ? 'جارٍ الاستماع… سيظهر الكلام من حولك هنا نصًا'
-                : 'اضغط زر الاستماع، أو اكتب نصًا ليتحوّل إلى كلام',
+            'جارٍ الاستماع… سيظهر الكلام من حولك هنا نصًا',
             textAlign: TextAlign.center,
             style: _chatsMessageTextStyle.copyWith(
                 color: HesakColors.textSecondary),
@@ -494,24 +656,35 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
       );
     }
 
+    // A date line before the first message, and again every time a new day
+    // starts (e.g. 4 أكتوبر 11:50 م … then 5 أكتوبر after midnight).
+    final List<Object> items = <Object>[];
+    for (int i = 0; i < messages.length; i++) {
+      if (i == 0 || !chatsIsSameDay(messages[i - 1].sentAt, messages[i].sentAt)) {
+        items.add(messages[i].sentAt); // DateTime = date line
+      }
+      items.add(messages[i]);
+    }
+
     return ListView.separated(
       key: const Key('chats_messages_list'),
       controller: _messagesScrollController,
       // 22 on the left leaves room for the scroll indicator.
       padding: const EdgeInsets.fromLTRB(22, 14, 20, 24),
-      itemCount: messages.length + 1,
+      itemCount: items.length,
       separatorBuilder: (_, __) => const SizedBox(height: 14),
       itemBuilder: (_, index) {
-        if (index == 0) {
-          return _ChatsDateSeparator(
-              label: chatsFormatDate(_conversation.displayTime));
+        final Object item = items[index];
+        if (item is DateTime) {
+          return _ChatsDateSeparator(label: chatsFormatDate(item));
         }
-        final ChatsMessage message = messages[index - 1];
+        final ChatsMessage message = item as ChatsMessage;
         if (message.kind == ChatsMessageKind.speechToText) {
           return _ChatsIncomingBubble(
             message: message,
             isEnhancedTextOpen: _openEnhancedMessageIds.contains(message.id),
             onEnhance: () => _enhanceIncomingMessage(message),
+            isEnhancing: _enhancingMessageIds.contains(message.id),
             onToggleEnhancedText: () => setState(() {
               if (!_openEnhancedMessageIds.remove(message.id)) {
                 _openEnhancedMessageIds.add(message.id);
@@ -523,7 +696,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
           message: message,
           isPlaying: _playingMessageId == message.id,
           playingWordIndex: _playingWordIndex,
-          onTogglePlayback: () => _togglePlayback(message),
+          onTogglePlayback: () => _playMessage(message),
         );
       },
     );
@@ -831,7 +1004,7 @@ class _ChatsStartListeningCard extends StatelessWidget {
           Text('محادثة جديدة', style: HesakTextStyles.cardTitle),
           const SizedBox(height: 6),
           Text(
-            'سيظهر الكلام من حولك هنا نصًا، وسيتحوّل ما تكتبه إلى كلام',
+            'سيظهر الكلام من حولك هنا نصًا، وسيتحوّل ما تكتبه إلى صوت',
             textAlign: TextAlign.center,
             style: HesakTextStyles.body.copyWith(height: 1.7),
           ),
@@ -879,7 +1052,7 @@ class _ChatsDateSeparator extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 10),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: HesakColors.navBar,
+            color: HesakColors.surface,
             border: Border.all(color: HesakColors.surfaceBorder),
             borderRadius: BorderRadius.circular(12),
           ),
@@ -898,12 +1071,14 @@ class _ChatsIncomingBubble extends StatelessWidget {
     required this.message,
     required this.isEnhancedTextOpen,
     required this.onEnhance,
+    required this.isEnhancing,
     required this.onToggleEnhancedText,
   });
 
   final ChatsMessage message;
   final bool isEnhancedTextOpen;
   final VoidCallback onEnhance;
+  final bool isEnhancing; // Request running -> small loader, taps ignored
   final VoidCallback onToggleEnhancedText;
 
   @override
@@ -945,7 +1120,7 @@ class _ChatsIncomingBubble extends StatelessWidget {
                     Row(
                       children: <Widget>[
                         if (!isAccepted)
-                          _ChatsEnhanceChip(onPressed: onEnhance)
+                          _ChatsEnhanceChip(onPressed: onEnhance, isLoading: isEnhancing)
                         else ...<Widget>[
                           const _ChatsEnhancedTag(),
                           TextButton(
@@ -1023,9 +1198,10 @@ class _ChatsEnhancedTextBox extends StatelessWidget {
 
 /// "✦ تحسين النص" chip inside the bubble.
 class _ChatsEnhanceChip extends StatelessWidget {
-  const _ChatsEnhanceChip({required this.onPressed});
+  const _ChatsEnhanceChip({required this.onPressed, this.isLoading = false});
 
   final VoidCallback onPressed;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -1033,7 +1209,7 @@ class _ChatsEnhanceChip extends StatelessWidget {
       button: true,
       child: InkWell(
         key: const Key('chats_message_enhance_chip'),
-        onTap: onPressed,
+        onTap: isLoading ? null : onPressed,
         borderRadius: BorderRadius.circular(HesakSizes.radiusChip),
         child: Container(
           height: 34,
@@ -1046,8 +1222,10 @@ class _ChatsEnhanceChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              const Icon(Icons.auto_awesome_rounded,
-                  size: HesakSizes.iconInChip - 2, color: HesakColors.primary),
+              isLoading
+                  ? const _ChatsSmallLoader(color: HesakColors.primary)
+                  : const Icon(Icons.auto_awesome_rounded,
+                      size: HesakSizes.iconInChip - 2, color: HesakColors.primary),
               const SizedBox(width: 6),
               Text('تحسين النص', style: HesakTextStyles.chipLabel),
             ],
@@ -1510,27 +1688,23 @@ class _ChatsJumpToEndButton extends StatelessWidget {
 class _ChatsComposerBar extends StatelessWidget {
   const _ChatsComposerBar({
     required this.controller,
-    required this.isLocked,
-    required this.onLockedTap,
     required this.isListening,
     required this.hasText,
     required this.listeningBars,
     required this.onEnhance,
+    required this.isEnhancing,
+    required this.isSending,
     required this.onSend,
     required this.onToggleListening,
   });
 
   final TextEditingController controller;
-
-  /// true = grey and not usable yet (see _isComposerLocked).
-  final bool isLocked;
-
-  /// Tap while locked -> explains what to do.
-  final VoidCallback onLockedTap;
   final bool isListening;
   final bool hasText;
   final Animation<double> listeningBars;
   final VoidCallback onEnhance;
+  final bool isEnhancing; // ✦ request running
+  final bool isSending; // Text -> speech request running
   final VoidCallback onSend;
   final VoidCallback onToggleListening;
 
@@ -1539,12 +1713,10 @@ class _ChatsComposerBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       decoration: const BoxDecoration(
-        color: HesakColors.background,
+        color: HesakColors.chatsConversationBackground,
         border: Border(top: BorderSide(color: HesakColors.surfaceBorder)),
       ),
-      child: isLocked
-          ? _ChatsLockedComposer(onTap: onLockedTap)
-          : isListening
+      child: isListening
           ? _ChatsListeningBar(
               bars: listeningBars, onStop: onToggleListening)
           : Row(
@@ -1554,11 +1726,12 @@ class _ChatsComposerBar extends StatelessWidget {
                     controller: controller,
                     hasText: hasText,
                     onEnhance: onEnhance,
+                    isEnhancing: isEnhancing,
                   ),
                 ),
                 const SizedBox(width: 10),
-                hasText
-                    ? _ChatsSendButton(onPressed: onSend)
+                hasText || isSending
+                    ? _ChatsSendButton(onPressed: onSend, isLoading: isSending)
                     : _ChatsListenButton(onPressed: onToggleListening),
               ],
             ),
@@ -1566,88 +1739,36 @@ class _ChatsComposerBar extends StatelessWidget {
   }
 }
 
-/// Locked composer: same shape, all grey. Tapping anywhere explains why.
-class _ChatsLockedComposer extends StatelessWidget {
-  const _ChatsLockedComposer({required this.onTap});
+/// Small round loader used inside buttons while a request runs.
+class _ChatsSmallLoader extends StatelessWidget {
+  const _ChatsSmallLoader({required this.color, this.size = 16});
 
-  final VoidCallback onTap;
+  final Color color;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'الكتابة والاستماع غير متاحين قبل بدء الاستماع',
-      child: GestureDetector(
-        key: const Key('chats_composer_locked'),
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Row(
-          children: <Widget>[
-            Expanded(
-              child: Container(
-                height: 52,
-                padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 6, 0),
-                decoration: BoxDecoration(
-                  color: HesakColors.modeUnselectedFill,
-                  border: Border.all(color: HesakColors.surfaceBorder),
-                  borderRadius: BorderRadius.circular(26),
-                ),
-                child: Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        'اكتب نصًا ليتحوّل إلى كلام…',
-                        style: HesakTextStyles.itemTitle.copyWith(
-                          fontWeight: FontWeight.w400,
-                          color: HesakColors.iconInactive,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: const BoxDecoration(
-                        color: HesakColors.surfaceBorder,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.auto_awesome_rounded,
-                          size: HesakSizes.iconInChip + 3,
-                          color: HesakColors.iconInactive),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              width: 52,
-              height: 52,
-              decoration: const BoxDecoration(
-                color: HesakColors.modeUnselectedFill,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.mic_none_rounded,
-                  size: HesakSizes.iconInBox + 1,
-                  color: HesakColors.iconInactive),
-            ),
-          ],
-        ),
-      ),
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CircularProgressIndicator(strokeWidth: 2, color: color),
     );
   }
 }
 
-/// "اكتب نصًا ليتحوّل إلى كلام…" + the ✦ enhance button inside.
+/// "اكتب نصًا ليتحوّل إلى صوت…" + the ✦ enhance button inside.
 class _ChatsComposerField extends StatelessWidget {
   const _ChatsComposerField({
     required this.controller,
     required this.hasText,
     required this.onEnhance,
+    required this.isEnhancing,
   });
 
   final TextEditingController controller;
   final bool hasText;
   final VoidCallback onEnhance;
+  final bool isEnhancing;
 
   @override
   Widget build(BuildContext context) {
@@ -1673,7 +1794,7 @@ class _ChatsComposerField extends StatelessWidget {
               decoration: InputDecoration(
                 isCollapsed: true,
                 border: InputBorder.none,
-                hintText: 'اكتب نصًا ليتحوّل إلى كلام…',
+                hintText: 'اكتب نصًا ليتحوّل إلى صوت…',
                 hintStyle: HesakTextStyles.itemTitle.copyWith(
                   fontWeight: FontWeight.w400,
                   color: HesakColors.textSecondary,
@@ -1690,7 +1811,7 @@ class _ChatsComposerField extends StatelessWidget {
                 : 'تحسين النص، اكتب نصًا أولًا',
             child: GestureDetector(
               key: const Key('chats_ai_enhance_button'),
-              onTap: hasText ? onEnhance : null,
+              onTap: hasText && !isEnhancing ? onEnhance : null,
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 150),
                 opacity: hasText ? 1.0 : 0.45,
@@ -1704,12 +1825,16 @@ class _ChatsComposerField extends StatelessWidget {
                     shape: BoxShape.circle,
                     border: Border.all(color: HesakColors.primaryLightBorder),
                   ),
-                  child: Icon(
-                    Icons.auto_awesome_rounded,
-                    size: HesakSizes.iconInChip + 3,
-                    color:
-                        hasText ? HesakColors.onPrimary : HesakColors.primary,
-                  ),
+                  child: isEnhancing
+                      ? const Center(
+                          child: _ChatsSmallLoader(color: HesakColors.onPrimary))
+                      : Icon(
+                          Icons.auto_awesome_rounded,
+                          size: HesakSizes.iconInChip + 3,
+                          color: hasText
+                              ? HesakColors.onPrimary
+                              : HesakColors.primary,
+                        ),
                 ),
               ),
             ),
@@ -1759,18 +1884,19 @@ class _ChatsListenButton extends StatelessWidget {
 
 /// Has text: round send button.
 class _ChatsSendButton extends StatelessWidget {
-  const _ChatsSendButton({required this.onPressed});
+  const _ChatsSendButton({required this.onPressed, this.isLoading = false});
 
   final VoidCallback onPressed;
+  final bool isLoading; // Request running -> loader, taps ignored
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: 'إرسال وتحويل النص إلى كلام',
+      label: 'إرسال وتحويل النص إلى صوت',
       child: GestureDetector(
         key: const Key('chats_send_button'),
-        onTap: onPressed,
+        onTap: isLoading ? null : onPressed,
         child: Container(
           width: 52,
           height: 52,
@@ -1786,8 +1912,11 @@ class _ChatsSendButton extends StatelessWidget {
             ],
           ),
           // send_rounded mirrors in RTL so it points the reading way.
-          child: const Icon(Icons.send_rounded,
-              size: HesakSizes.iconInChip + 5, color: HesakColors.onPrimary),
+          child: isLoading
+              ? const Center(
+                  child: _ChatsSmallLoader(color: HesakColors.onPrimary, size: 20))
+              : const Icon(Icons.send_rounded,
+                  size: HesakSizes.iconInChip + 5, color: HesakColors.onPrimary),
         ),
       ),
     );

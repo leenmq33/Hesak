@@ -48,6 +48,28 @@ Future<bool> showHesakConfirmDialog(
   return result ?? false;
 }
 
+/// Same window with ONE button only (e.g. "لا يوجد اتصال بالإنترنت" + "حسنًا").
+/// Just tells the user something; nothing to choose.
+Future<void> showHesakNoticeDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+  required IconData icon,
+  String buttonLabel = 'حسنًا',
+  bool followsAppearance = false,
+}) async {
+  await showHesakChoiceDialog(
+    context,
+    title: title,
+    message: message,
+    confirmLabel: buttonLabel,
+    icon: icon,
+    cancelLabel: null, // No second button
+    isDanger: false,
+    followsAppearance: followsAppearance,
+  );
+}
+
 /// Same window, but the second button can have its own text and the
 /// answer has 3 cases:
 ///   true  = [confirmLabel] tapped
@@ -60,7 +82,7 @@ Future<bool?> showHesakChoiceDialog(
   required String message,
   required String confirmLabel,
   required IconData icon,
-  String cancelLabel = 'إلغاء',
+  String? cancelLabel = 'إلغاء', // null = only the confirm button
   bool isDanger = true,
   bool followsAppearance = false,
 }) async {
@@ -95,6 +117,7 @@ Future<bool?> showHesakChoiceDialog(
                     onTap: () => Navigator.pop(dialogContext, true),
                   ),
                 ),
+                if (cancelLabel != null) ...[
                 const SizedBox(width: 10),
                 Expanded(
                   child: _HesakDialogButton(
@@ -106,6 +129,7 @@ Future<bool?> showHesakChoiceDialog(
                     onTap: () => Navigator.pop(dialogContext, false),
                   ),
                 ),
+                ],
               ],
             ),
           ],
