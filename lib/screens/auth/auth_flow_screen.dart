@@ -61,7 +61,7 @@ class _HesakAuthFlowScreenState extends State<HesakAuthFlowScreen> {
   @override
   void initState() {
     super.initState();
-    _welcomeButtonsTimer = Timer(const Duration(milliseconds: 500), () {
+    _welcomeButtonsTimer = Timer(Duration(milliseconds: 500), () {
       if (mounted) setState(() => _areWelcomeButtonsVisible = true);
     });
   }
@@ -102,8 +102,8 @@ class _HesakAuthFlowScreenState extends State<HesakAuthFlowScreen> {
   void _openApp() {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 500),
-        pageBuilder: (_, __, ___) => const HesakMainShell(),
+        transitionDuration: Duration(milliseconds: 500),
+        pageBuilder: (_, __, ___) => HesakMainShell(),
         transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
       ),
@@ -188,7 +188,7 @@ class _HesakAuthFlowScreenState extends State<HesakAuthFlowScreen> {
                       ),
                     ),
                     AnimatedContainer(duration: _moveDuration, height: logoGap),
-                    const Text(
+                    Text(
                       'لأن ما لا يُسمع يَستحق أن يُدرك',
                       key: Key('auth_tagline'),
                       textAlign: TextAlign.center,
@@ -206,7 +206,7 @@ class _HesakAuthFlowScreenState extends State<HesakAuthFlowScreen> {
                 child: IgnorePointer(
                   ignoring: !(isWelcome && _areWelcomeButtonsVisible), // Not tappable when hidden
                   child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 450),
+                    duration: Duration(milliseconds: 450),
                     opacity: isWelcome && _areWelcomeButtonsVisible ? 1 : 0,
                     child: AnimatedSlide(
                       duration: _moveDuration,
@@ -214,21 +214,21 @@ class _HesakAuthFlowScreenState extends State<HesakAuthFlowScreen> {
                       // Slides up into place; slides down when leaving.
                       offset: isWelcome && _areWelcomeButtonsVisible
                           ? Offset.zero
-                          : const Offset(0, 0.4),
+                          : Offset(0, 0.4),
                       // Glass buttons: same family, but "إنشاء حساب" is clearly the main one
                       // (thicker glass + dark purple text + shadow), "تسجيل الدخول" is lighter.
                       child: Column(
                         children: [
                           // New users are the most common at first, so "إنشاء حساب" is the main button.
                           AuthGlassButton(
-                            key: const Key('auth_welcome_signup_button'),
+                            key: Key('auth_welcome_signup_button'),
                             label: 'إنشاء حساب',
                             isMain: true,
                             onPressed: () => _goTo(AuthStep.signUp),
                           ),
-                          const SizedBox(height: 24),
+                          SizedBox(height: 24),
                           AuthGlassButton(
-                            key: const Key('auth_welcome_login_button'),
+                            key: Key('auth_welcome_login_button'),
                             label: 'تسجيل الدخول',
                             onPressed: () => _goTo(AuthStep.login),
                           ),
@@ -263,13 +263,13 @@ class _HesakAuthFlowScreenState extends State<HesakAuthFlowScreen> {
                       BoxShadow(
                         color: Colors.black.withOpacity(0.12),
                         blurRadius: 20,
-                        offset: const Offset(0, -4),
+                        offset: Offset(0, -4),
                       ),
                     ],
                   ),
                   // Switching forms: the old one fades out, the new one fades + slides in.
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 350),
+                    duration: Duration(milliseconds: 350),
                     // Every form fills the sheet and starts from the TOP
                     // (by default short forms were centered in the middle).
                     layoutBuilder: (currentChild, previousChildren) => Stack(
@@ -284,7 +284,7 @@ class _HesakAuthFlowScreenState extends State<HesakAuthFlowScreen> {
                       opacity: animation,
                       child: SlideTransition(
                         position: Tween<Offset>(
-                          begin: const Offset(0, 0.04),
+                          begin: Offset(0, 0.04),
                           end: Offset.zero,
                         ).animate(animation),
                         child: child,
@@ -309,14 +309,14 @@ class _HesakAuthFlowScreenState extends State<HesakAuthFlowScreen> {
   /// The form for the current step, scrollable (the sign up form is long,
   /// and the keyboard takes space).
   Widget _buildSheetContent(MediaQueryData media) {
-    if (_step == AuthStep.welcome) return const SizedBox.shrink();
+    if (_step == AuthStep.welcome) return SizedBox.shrink();
 
     // No Android "stretch" effect at the ends: scrolling just stops softly
     // at the top and bottom instead of stretching the form.
     return ScrollConfiguration(
       behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
       child: SingleChildScrollView(
-        physics: const ClampingScrollPhysics(),
+        physics: ClampingScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
           HesakSizes.authSheetPadding,
           20,
@@ -355,7 +355,7 @@ class _HesakAuthFlowScreenState extends State<HesakAuthFlowScreen> {
       case AuthStep.callName:
         return CallNameForm(onDone: _openApp);
       case AuthStep.welcome:
-        return const SizedBox.shrink();
+        return SizedBox.shrink();
     }
   }
 }

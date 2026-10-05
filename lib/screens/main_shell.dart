@@ -139,7 +139,7 @@ class _HesakMainShellState extends State<HesakMainShell> with WidgetsBindingObse
               ),
             ),
           ),
-          const ChatsScreen(),
+          ChatsScreen(),
           // isActive: the phone back button only goes back inside الأوضاع while it's shown.
           ModesScreen(isActive: _selectedTab == HesakNavTab.modes),
           SettingsScreen(isActive: _selectedTab == HesakNavTab.settings),

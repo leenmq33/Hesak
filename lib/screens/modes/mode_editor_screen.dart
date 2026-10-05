@@ -215,23 +215,23 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
 
   Widget _buildEditPage() {
     final saved = _savedMode;
-    if (saved == null) return const SizedBox.shrink(); // Deleted, page is closing
+    if (saved == null) return SizedBox.shrink(); // Deleted, page is closing
 
     final bool isGeneralChanged = _isGeneralChanged(saved);
     final bool isSoundsChanged = _isSoundsChanged(saved);
 
     // Column (not ListView) so the sections keep their state when scrolled off screen.
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(HesakSizes.pagePadding, 4, HesakSizes.pagePadding, HesakSizes.pageBottomSafeSpace),
+      padding: EdgeInsets.fromLTRB(HesakSizes.pagePadding, 4, HesakSizes.pagePadding, HesakSizes.pageBottomSafeSpace),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
         // Space under the header line, so the circle doesn't touch it.
-        const SizedBox(height: 18),
+        SizedBox(height: 18),
         // ---- Circle with pencil (one button edits name + icon) ----
         Center(
           child: GestureDetector(
-            key: const Key('mode_editor_edit_icon_name_button'),
+            key: Key('mode_editor_edit_icon_name_button'),
             onTap: () => showModesIconNameSheet(context, saved),
             child: Stack(
               clipBehavior: Clip.none,
@@ -248,16 +248,16 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
                       color: HesakColors.surface,
                       border: Border.all(color: HesakColors.primaryLightBorder, width: 1.5),
                     ),
-                    child: const Icon(Icons.edit_rounded, size: 16, color: HesakColors.modeSelected),
+                    child: Icon(Icons.edit_rounded, size: 16, color: HesakColors.modeSelected),
                   ),
                 ),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         Text(saved.name, textAlign: TextAlign.center, style: HesakTextStyles.modeName),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
 
         // ---- جدولة الوضع (first on the edit page, saved right away) ----
         ModesSectionCard(
@@ -298,9 +298,9 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
               if (isSoundsChanged) ...[
                 // A line across the section, so "حفظ" / "إلغاء" clearly belong to
                 // ALL the sounds (not only the last category).
-                const SizedBox(height: 22),
-                const Divider(height: 1, thickness: 1.2, color: HesakColors.primaryLightBorder),
-                const SizedBox(height: 4),
+                SizedBox(height: 22),
+                Divider(height: 1, thickness: 1.2, color: HesakColors.primaryLightBorder),
+                SizedBox(height: 4),
                 ModesSaveCancelRow(
                   keyPrefix: 'mode_editor_sounds',
                   onSave: () => _saveSounds(saved),
@@ -312,9 +312,9 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
         ),
 
         // ---- Delete (not for العام) ----
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         if (saved.isGeneral)
-          const Text(
+          Text(
             'الوضع العام هو الوضع الأساسي ولا يمكن حذفه',
             textAlign: TextAlign.center,
             style: HesakTextStyles.caption,
@@ -322,10 +322,10 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
         else
           Center(
             child: TextButton.icon(
-              key: const Key('mode_editor_delete_button'),
+              key: Key('mode_editor_delete_button'),
               onPressed: () => _deleteMode(saved),
-              icon: const Icon(Icons.delete_outline_rounded, color: HesakColors.danger),
-              label: const Text('حذف الوضع', style: HesakTextStyles.modeDanger),
+              icon: Icon(Icons.delete_outline_rounded, color: HesakColors.danger),
+              label: Text('حذف الوضع', style: HesakTextStyles.modeDanger),
             ),
           ),
         ],
@@ -340,18 +340,18 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
   Widget _buildAddPage() {
     // Column (not ListView) so the sections keep their state when scrolled off screen.
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(HesakSizes.pagePadding, 4, HesakSizes.pagePadding, HesakSizes.pageBottomSafeSpace),
+      padding: EdgeInsets.fromLTRB(HesakSizes.pagePadding, 4, HesakSizes.pagePadding, HesakSizes.pageBottomSafeSpace),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
         // ---- Icon + name (in a white card, like the sections under it) ----
         Container(
-          padding: const EdgeInsets.all(HesakSizes.cardPaddingHorizontal),
+          padding: EdgeInsets.all(HesakSizes.cardPaddingHorizontal),
           decoration: BoxDecoration(
             color: HesakColors.surface,
             borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
             border: Border.all(color: HesakColors.homeCardBorder),
-            boxShadow: const [BoxShadow(color: HesakColors.homeCardShadow, blurRadius: 18, offset: Offset(0, 6))],
+            boxShadow: [BoxShadow(color: HesakColors.homeCardShadow, blurRadius: 18, offset: Offset(0, 6))],
           ),
           child: ModesIconNamePicker(
           icon: _draftIcon,
@@ -369,7 +369,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
           }),
           ),
         ),
-        const SizedBox(height: HesakSizes.sectionGap),
+        SizedBox(height: HesakSizes.sectionGap),
 
         ModesSectionCard(title: 'الإعدادات العامة', child: _buildGeneralFields()),
         ModesSectionCard(title: 'إعدادات الأصوات', child: _buildSoundsPicker()),
@@ -388,10 +388,10 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
           ),
         ),
 
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         // Faded until the name, an alert type and the repeat are picked.
         ModesPillButton(
-          key: const Key('mode_editor_create_button'),
+          key: Key('mode_editor_create_button'),
           label: 'إنشاء الوضع',
           height: HesakSizes.buttonHeight,
           onTap: _canCreate ? _createMode : null,
@@ -409,7 +409,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
   /// Grey line under "إنشاء الوضع": what's still missing (the missing parts in bold purple).
   ///  e.g. "اكتب اسم الوضع واختر نوع التنبيه وتكرار التنبيه لإنشاء الوضع"
   Widget _buildMissingHint() {
-    const TextStyle missingStyle = TextStyle(fontWeight: FontWeight.w700, color: HesakColors.modeSelected);
+    final TextStyle missingStyle = TextStyle(fontWeight: FontWeight.w700, color: HesakColors.modeSelected);
     final List<String> toPick = [
       if (_isAlertTypeMissing) 'نوع التنبيه',
       if (_isRepeatMissing) 'تكرار التنبيه',
@@ -417,24 +417,24 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
 
     final List<InlineSpan> spans = [];
     if (_isNameMissing) {
-      spans.add(const TextSpan(text: 'اكتب '));
-      spans.add(const TextSpan(text: 'اسم الوضع', style: missingStyle));
-      if (toPick.isNotEmpty) spans.add(const TextSpan(text: ' و'));
+      spans.add(TextSpan(text: 'اكتب '));
+      spans.add(TextSpan(text: 'اسم الوضع', style: missingStyle));
+      if (toPick.isNotEmpty) spans.add(TextSpan(text: ' و'));
     }
     if (toPick.isNotEmpty) {
-      spans.add(const TextSpan(text: 'اختر '));
+      spans.add(TextSpan(text: 'اختر '));
       for (int i = 0; i < toPick.length; i++) {
-        if (i > 0) spans.add(const TextSpan(text: ' و'));
+        if (i > 0) spans.add(TextSpan(text: ' و'));
         spans.add(TextSpan(text: toPick[i], style: missingStyle));
       }
     }
-    spans.add(const TextSpan(text: ' لإنشاء الوضع'));
+    spans.add(TextSpan(text: ' لإنشاء الوضع'));
 
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: EdgeInsets.only(top: 8),
       child: Text.rich(
         TextSpan(children: spans),
-        key: const Key('mode_editor_missing_hint'),
+        key: Key('mode_editor_missing_hint'),
         textAlign: TextAlign.center,
         style: HesakTextStyles.modeHint.copyWith(height: 1.6),
       ),

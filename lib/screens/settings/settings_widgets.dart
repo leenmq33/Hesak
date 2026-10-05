@@ -74,7 +74,7 @@ class SettingsButton extends StatelessWidget {
                       children: [
                         if (icon != null) ...[
                           Icon(icon, size: 19, color: content),
-                          const SizedBox(width: 6),
+                          SizedBox(width: 6),
                         ],
                         Text(label, style: HesakTextStyles.modeSmallButton.copyWith(color: content, fontSize: 15)),
                       ],
@@ -103,7 +103,7 @@ class SettingsSectionTitle extends StatelessWidget {
     return ListenableBuilder(
       listenable: HesakThemeController.instance,
       builder: (context, _) => Padding(
-        padding: const EdgeInsets.fromLTRB(6, 18, 6, 8),
+        padding: EdgeInsets.fromLTRB(6, 18, 6, 8),
         child: Text(title, style: HesakTextStyles.modeSectionTitle.copyWith(color: HesakPalette.current.textSecondary, fontSize: 14)),
       ),
     );
@@ -126,7 +126,7 @@ class SettingsCard extends StatelessWidget {
         color: palette.surface,
         borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
         border: Border.all(color: palette.cardBorder),
-        boxShadow: [BoxShadow(color: palette.cardShadow, blurRadius: 18, offset: const Offset(0, 6))],
+        boxShadow: [BoxShadow(color: palette.cardShadow, blurRadius: 18, offset: Offset(0, 6))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -164,7 +164,7 @@ class SettingsRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 11),
         child: Row(
           children: [
             // Icon in a soft purple rounded box.
@@ -177,14 +177,14 @@ class SettingsRow extends StatelessWidget {
               ),
               child: Icon(icon, size: 20, color: palette.accent),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title, style: HesakTextStyles.itemTitle.copyWith(color: palette.textPrimary)),
                   if (value != null) ...[
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text(
                       value!,
                       maxLines: 1,
@@ -195,7 +195,7 @@ class SettingsRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (end != null) ...[const SizedBox(width: 8), end],
+            if (end != null) ...[SizedBox(width: 8), end],
           ],
         ),
       ),
@@ -227,7 +227,7 @@ class SettingsSegmented<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = HesakPalette.current;
     return Container(
-      padding: const EdgeInsets.all(3),
+      padding: EdgeInsets.all(3),
       decoration: BoxDecoration(color: palette.fieldFill, borderRadius: BorderRadius.circular(12)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -237,13 +237,13 @@ class SettingsSegmented<T> extends StatelessWidget {
               key: Key('${keyPrefix}_${value is Enum ? value.name : value}'), // e.g. settings_voice_male
               onTap: () => onChanged(value),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                duration: Duration(milliseconds: 200),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
                   color: value == selected ? palette.surface : Colors.transparent,
                   borderRadius: BorderRadius.circular(9),
                   boxShadow: value == selected
-                      ? [BoxShadow(color: Colors.black.withOpacity(0.10), blurRadius: 4, offset: const Offset(0, 1))]
+                      ? [BoxShadow(color: Colors.black.withOpacity(0.10), blurRadius: 4, offset: Offset(0, 1))]
                       : null,
                 ),
                 child: Row(
@@ -251,7 +251,7 @@ class SettingsSegmented<T> extends StatelessWidget {
                   children: [
                     if (iconOf != null) ...[
                       Icon(iconOf!(value), size: 15, color: value == selected ? palette.accent : palette.textSecondary),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                     ],
                     Text(
                       labelOf(value),
@@ -286,7 +286,7 @@ class SettingsNote extends StatelessWidget {
   Widget _buildNote() {
     final palette = HesakPalette.current;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: palette.noteFill,
         borderRadius: BorderRadius.circular(14),
@@ -296,7 +296,7 @@ class SettingsNote extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.info_outline_rounded, size: 16, color: palette.noteText),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           Expanded(child: Text(text, style: HesakTextStyles.infoBanner.copyWith(color: palette.noteText))),
         ],
       ),
@@ -367,7 +367,7 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.only(top: 16, bottom: 8),
+          padding: EdgeInsets.only(top: 16, bottom: 8),
           child: Text(widget.label, style: HesakTextStyles.fieldLabel.copyWith(color: palette.textPrimary)),
         ),
         TextField(
@@ -384,7 +384,7 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
             hintStyle: HesakTextStyles.fieldHint.copyWith(color: palette.fieldHint),
             filled: true,
             fillColor: palette.fieldFill,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             suffixIcon: endIcon,
             border: border(null),
             enabledBorder: border(hasError ? palette.danger : null),
@@ -393,7 +393,7 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
         ),
         if (hasError)
           Padding(
-            padding: const EdgeInsets.only(top: 6, right: 4, left: 4),
+            padding: EdgeInsets.only(top: 6, right: 4, left: 4),
             child: Text(widget.errorText!, style: HesakTextStyles.fieldError.copyWith(color: palette.danger)),
           ),
       ],
@@ -411,17 +411,17 @@ class SettingsPasswordRules extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = HesakPalette.current;
     return Padding(
-      padding: const EdgeInsets.only(top: 10, right: 4),
+      padding: EdgeInsets.only(top: 10, right: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (final rule in AuthValidators.passwordRules(password))
             Padding(
-              padding: const EdgeInsets.only(bottom: 4),
+              padding: EdgeInsets.only(bottom: 4),
               child: Row(
                 children: [
                   AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
+                    duration: Duration(milliseconds: 200),
                     width: 14,
                     height: 14,
                     decoration: BoxDecoration(
@@ -431,7 +431,7 @@ class SettingsPasswordRules extends StatelessWidget {
                     ),
                     child: rule.isMet ? Icon(Icons.check_rounded, size: 10, color: palette.surface) : null,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Text(rule.label, style: HesakTextStyles.passwordRule.copyWith(color: palette.textSecondary)),
                 ],
               ),
@@ -469,7 +469,7 @@ Future<void> showSettingsNameSheet(
     isScrollControlled: true, // Moves up with the keyboard
     useRootNavigator: true, // Above the bottom bar
     backgroundColor: palette.surface,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
     builder: (_) => _SettingsNameSheet(
       title: title,
       note: note,
@@ -570,7 +570,7 @@ class _SettingsNameSheetState extends State<_SettingsNameSheet> {
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          padding: EdgeInsets.fromLTRB(20, 12, 20, 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -582,14 +582,14 @@ class _SettingsNameSheetState extends State<_SettingsNameSheet> {
                   decoration: BoxDecoration(color: palette.accentSoftBorder, borderRadius: BorderRadius.circular(3)),
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               Text(widget.title, textAlign: TextAlign.center, style: HesakTextStyles.dialogTitle.copyWith(color: palette.textPrimary)),
               if (widget.note != null) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 SettingsNote(widget.note!),
               ],
               SettingsTextField(
-                key: const Key('settings_sheet_name_field'),
+                key: Key('settings_sheet_name_field'),
                 label: widget.fieldLabel,
                 controller: _controller,
                 hint: widget.hint,
@@ -597,22 +597,22 @@ class _SettingsNameSheetState extends State<_SettingsNameSheet> {
                 textInputAction: TextInputAction.done,
                 onChanged: (_) => setState(() {}),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               Row(
                 children: [
                   Expanded(
                     child: SettingsButton(
-                      key: const Key('settings_sheet_save_button'),
+                      key: Key('settings_sheet_save_button'),
                       label: 'حفظ',
                       height: 44,
                       isLoading: _isSaving,
                       onTap: _canSave ? _save : null,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: SettingsButton(
-                      key: const Key('settings_sheet_cancel_button'),
+                      key: Key('settings_sheet_cancel_button'),
                       label: 'إلغاء',
                       isFilled: false,
                       height: 44,

@@ -76,7 +76,7 @@ class _HesakToastView extends StatefulWidget {
 class _HesakToastViewState extends State<_HesakToastView> with SingleTickerProviderStateMixin {
   late final AnimationController _fadeController = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 220),
+    duration: Duration(milliseconds: 220),
   );
 
   @override
@@ -87,7 +87,7 @@ class _HesakToastViewState extends State<_HesakToastView> with SingleTickerProvi
 
   Future<void> _run() async {
     await _fadeController.forward();
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(Duration(seconds: 2));
     if (!mounted) return;
     await _fadeController.reverse();
     if (mounted) widget.onFinished();
@@ -108,13 +108,13 @@ class _HesakToastViewState extends State<_HesakToastView> with SingleTickerProvi
         borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard),
         elevation: 4,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Directionality(
             textDirection: TextDirection.rtl,
             child: Row(
               children: [
                 Icon(widget.icon, color: HesakColors.onPrimary, size: 18),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(child: Text(widget.message, style: HesakTextStyles.toast)),
               ],
             ),

@@ -28,7 +28,7 @@ class HesakPageHeader extends StatelessWidget {
   final VoidCallback? onBack;
 
   /// true = follows the appearance (فاتح / داكن) from HesakThemeController.
-  /// For now only the الإعدادات pages use it; the rest stay light.
+  /// Every page follows it now (default true).
   final bool followsAppearance;
 
   /// true = the header sits on a purple background (home page top):
@@ -36,7 +36,7 @@ class HesakPageHeader extends StatelessWidget {
   final bool isOnPurple;
 
   /// Centered page title (all pages except home).
-  const HesakPageHeader({super.key, required this.title, this.onBack, this.followsAppearance = false})
+  const HesakPageHeader({super.key, required this.title, this.onBack, this.followsAppearance = true})
       : isGreeting = false,
         isOnPurple = false;
 
@@ -45,7 +45,7 @@ class HesakPageHeader extends StatelessWidget {
       : title = text,
         isGreeting = true,
         onBack = null,
-        followsAppearance = false;
+        followsAppearance = true;
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +108,7 @@ class HesakPageHeader extends StatelessWidget {
 
         // ---------- 2) Page title OR greeting ----------
         Padding(
-          padding: const EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB(
             HesakSizes.pagePadding, 4, HesakSizes.pagePadding, 14),
           child: isGreeting
               // Greeting: right side (RTL start), greeting style.
@@ -116,7 +116,7 @@ class HesakPageHeader extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   child: Text(
                     title,
-                    key: const Key('header_greeting'),
+                    key: Key('header_greeting'),
                     textDirection: TextDirection.rtl,
                     style: isOnPurple
                         ? HesakTextStyles.greeting.copyWith(color: HesakColors.onPrimary)
@@ -131,7 +131,7 @@ class HesakPageHeader extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        key: const Key('header_page_title'),
+                        key: Key('header_page_title'),
                         textAlign: TextAlign.center,
                         style: HesakTextStyles.pageTitle.copyWith(color: palette.title),
                       ),
@@ -139,10 +139,10 @@ class HesakPageHeader extends StatelessWidget {
                         Positioned(
                           right: 0,
                           child: IconButton(
-                            key: const Key('header_back_button'),
+                            key: Key('header_back_button'),
                             onPressed: onBack,
                             // Points right in Arabic (flips with the text direction).
-                            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 22),
+                            icon: Icon(Icons.arrow_back_ios_new_rounded, size: 22),
                             color: palette.textPrimary,
                             tooltip: 'رجوع',
                           ),
@@ -169,7 +169,7 @@ class _HesakHeaderDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: HesakSizes.pagePadding),
+      padding: EdgeInsets.symmetric(horizontal: HesakSizes.pagePadding),
       child: Container(
         height: 1,
         decoration: BoxDecoration(
@@ -207,7 +207,7 @@ class _HesakHeaderLogo extends StatelessWidget {
         children: [
           // Shadow copy: moved down, blurred, and made transparent.
           Transform.translate(
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
             child: Opacity(
               opacity: isOnDark ? 0.22 : 0.30,
               child: ImageFiltered(
@@ -233,7 +233,7 @@ class _HesakHeaderLogo extends StatelessWidget {
       fit: BoxFit.contain,
       errorBuilder: (context, error, stackTrace) => path == _whiteLogo
           ? ColorFiltered(
-              colorFilter: const ColorFilter.mode(HesakColors.onPrimary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(HesakColors.onPrimary, BlendMode.srcIn),
               child: Image.asset(_purpleLogo, fit: BoxFit.contain),
             )
           : Image.asset(_purpleLogo, fit: BoxFit.contain),
@@ -267,7 +267,7 @@ class _HesakHeaderWavePainter extends CustomPainter {
           color.withOpacity(0.40),
           color.withOpacity(0.40),
         ],
-        stops: const [0.0, 0.25, 1.0],
+        stops: [0.0, 0.25, 1.0],
       ).createShader(Rect.fromLTWH(0, 0, w, h));
 
     const lineCount = 20; // Number of lines in the ribbon

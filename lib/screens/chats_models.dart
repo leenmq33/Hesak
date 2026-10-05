@@ -261,7 +261,7 @@ Future<String> chatsEnhanceText(String text) async {
 /// delete unsaved conversations older than [chatsAutoDeleteAfter].
 List<ChatsConversation> chatsSampleConversations() {
   final DateTime now = DateTime.now();
-  final DateTime meetingStart = now.subtract(const Duration(hours: 6));
+  final DateTime meetingStart = now.subtract(Duration(hours: 6));
 
   return <ChatsConversation>[
     ChatsConversation(
@@ -280,21 +280,21 @@ List<ChatsConversation> chatsSampleConversations() {
         ChatsMessage(
           id: 'm2',
           kind: ChatsMessageKind.speechToText,
-          sentAt: meetingStart.add(const Duration(minutes: 1)),
+          sentAt: meetingStart.add(Duration(minutes: 1)),
           originalText:
               'نعم نحتاج نحدد المهام لكل واحد و نتفق على الجدول الزمني',
         ),
         ChatsMessage(
           id: 'm3',
           kind: ChatsMessageKind.textToSpeech,
-          sentAt: meetingStart.add(const Duration(minutes: 3)),
+          sentAt: meetingStart.add(Duration(minutes: 3)),
           originalText: 'تمام، أنا جاهزة ونقدر نبدأ بمناقشة التفاصيل الآن.',
-          voiceDuration: const Duration(seconds: 5),
+          voiceDuration: Duration(seconds: 5),
         ),
         ChatsMessage(
           id: 'm4',
           kind: ChatsMessageKind.speechToText,
-          sentAt: meetingStart.add(const Duration(minutes: 4)),
+          sentAt: meetingStart.add(Duration(minutes: 4)),
           originalText: 'ممتاز راح ارسل لكم الملفات بعد شوي',
         ),
       ],
@@ -302,28 +302,28 @@ List<ChatsConversation> chatsSampleConversations() {
     ChatsConversation(
       id: 'chats_demo_2',
       title: 'محاضرة التصميم التفاعلي',
-      createdAt: now.subtract(const Duration(hours: 8)),
-      startedAt: now.subtract(const Duration(hours: 8)),
+      createdAt: now.subtract(Duration(hours: 8)),
+      startedAt: now.subtract(Duration(hours: 8)),
     ),
     ChatsConversation(
       id: 'chats_demo_3',
       title: 'موعد العيادة',
-      createdAt: now.subtract(const Duration(days: 1, hours: 2)),
+      createdAt: now.subtract(Duration(days: 1, hours: 2)),
       isSaved: true,
-      startedAt: now.subtract(const Duration(days: 1, hours: 2)),
+      startedAt: now.subtract(Duration(days: 1, hours: 2)),
     ),
     ChatsConversation(
       id: 'chats_demo_4',
       title: 'في المقهى',
-      createdAt: now.subtract(const Duration(hours: 21)),
-      startedAt: now.subtract(const Duration(hours: 21)),
+      createdAt: now.subtract(Duration(hours: 21)),
+      startedAt: now.subtract(Duration(hours: 21)),
     ),
     ChatsConversation(
       id: 'chats_demo_5',
       title: 'اجتماع فريق المشروع',
-      createdAt: now.subtract(const Duration(days: 2, hours: 1)),
+      createdAt: now.subtract(Duration(days: 2, hours: 1)),
       isSaved: true,
-      startedAt: now.subtract(const Duration(days: 2, hours: 1)),
+      startedAt: now.subtract(Duration(days: 2, hours: 1)),
     ),
   ];
 }

@@ -126,9 +126,9 @@ class _SignUpFormState extends State<SignUpForm> {
         // ---- Name (Arabic letters only) ----
         // Plain text keyboard (not "name"), because the "name" keyboard on
         // some phones (e.g. Samsung) is locked to English.
-        const AuthFieldLabel('الاسم:'),
+        AuthFieldLabel('الاسم:'),
         AuthTextField(
-          key: const Key('signup_name_field'),
+          key: Key('signup_name_field'),
           controller: _nameController,
           hint: 'اكتب اسمك',
           icon: Icons.person_outline_rounded,
@@ -138,9 +138,9 @@ class _SignUpFormState extends State<SignUpForm> {
         ),
 
         // ---- Email ----
-        const AuthFieldLabel('البريد الإلكتروني:'),
+        AuthFieldLabel('البريد الإلكتروني:'),
         AuthTextField(
-          key: const Key('signup_email_field'),
+          key: Key('signup_email_field'),
           controller: _emailController,
           hint: 'example@email.com',
           icon: Icons.mail_outline_rounded,
@@ -152,13 +152,13 @@ class _SignUpFormState extends State<SignUpForm> {
         // ---- الجنس (Hesak reads the user's texts to others with a matching voice) ----
         // Clear space after the email, so the pink note box doesn't stick to it.
         // The note belongs to the voice, so it sits close to the voice row.
-        const SizedBox(height: 40),
-        const AuthInfoBanner('سيستخدم حِسّك اختيارك لقراءة النصوص للآخرين بصوت مناسب'),
-        const SizedBox(height: 10),
+        SizedBox(height: 40),
+        AuthInfoBanner('سيستخدم حِسّك اختيارك لقراءة النصوص للآخرين بصوت مناسب'),
+        SizedBox(height: 10),
         Row(
           children: [
-            const Text('الجنس:', style: HesakTextStyles.fieldLabel),
-            const Spacer(),
+            Text('الجنس:', style: HesakTextStyles.fieldLabel),
+            Spacer(),
             AuthVoiceToggle(
               value: _selectedVoice,
               onChanged: (voice) => setState(() => _selectedVoice = voice),
@@ -167,9 +167,9 @@ class _SignUpFormState extends State<SignUpForm> {
         ),
 
         // ---- Password + live rules ----
-        const AuthFieldLabel('كلمة المرور:'),
+        AuthFieldLabel('كلمة المرور:'),
         AuthTextField(
-          key: const Key('signup_password_field'),
+          key: Key('signup_password_field'),
           controller: _passwordController,
           hint: '••••••••',
           isPassword: true,
@@ -179,9 +179,9 @@ class _SignUpFormState extends State<SignUpForm> {
         AuthPasswordRulesList(password: _passwordController.text),
 
         // ---- Confirm password ----
-        const AuthFieldLabel('تأكيد كلمة المرور:'),
+        AuthFieldLabel('تأكيد كلمة المرور:'),
         AuthTextField(
-          key: const Key('signup_confirm_password_field'),
+          key: Key('signup_confirm_password_field'),
           controller: _confirmPasswordController,
           hint: '••••••••',
           isPassword: true,
@@ -191,31 +191,31 @@ class _SignUpFormState extends State<SignUpForm> {
         ),
 
         // ---- Terms ----
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         AuthTermsCheckbox(
           value: _hasAcceptedTerms,
           errorText: _termsError,
           onChanged: (accepted) => setState(() => _hasAcceptedTerms = accepted),
         ),
 
-        const SizedBox(height: 24),
+        SizedBox(height: 24),
 
         if (_serverError != null)
           Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: EdgeInsets.only(bottom: 10),
             child: Text(_serverError!, textAlign: TextAlign.center, style: HesakTextStyles.fieldError),
           ),
 
         AuthPrimaryButton(
-          key: const Key('signup_submit_button'),
+          key: Key('signup_submit_button'),
           label: 'إنشاء حساب',
           isLoading: _isLoading,
           onPressed: _submitSignUp,
         ),
 
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         AuthFooterLink(
-          key: const Key('signup_go_to_login_link'),
+          key: Key('signup_go_to_login_link'),
           question: 'لديك حساب؟',
           linkText: 'تسجيل الدخول',
           onTap: widget.onGoToLogin,

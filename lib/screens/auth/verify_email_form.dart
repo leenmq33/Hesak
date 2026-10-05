@@ -117,7 +117,7 @@ class _VerifyEmailFormState extends State<VerifyEmailForm> with WidgetsBindingOb
     } else {
       setState(() => _secondsLeft = _resendWaitSeconds);
     }
-    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _resendTimer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
@@ -135,43 +135,43 @@ class _VerifyEmailFormState extends State<VerifyEmailForm> with WidgetsBindingOb
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AuthSheetHeader(title: 'تأكيد البريد', onBack: widget.onBack),
-        const SizedBox(height: 28),
+        SizedBox(height: 28),
 
-        const Icon(Icons.mark_email_read_outlined, size: 64, color: HesakColors.primary),
-        const SizedBox(height: 16),
+        Icon(Icons.mark_email_read_outlined, size: 64, color: HesakColors.primary),
+        SizedBox(height: 16),
         Text(
           'تحقق من بريدك',
           textAlign: TextAlign.center,
           style: HesakTextStyles.fieldLabel.copyWith(color: HesakColors.textPrimary),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
 
         // "أرسلنا رابط تأكيد إلى / email / افتح الرابط وبعدها ارجع هنا"
         Text.rich(
           TextSpan(
             style: HesakTextStyles.body.copyWith(color: HesakColors.textSecondary, fontSize: 13, height: 1.7),
             children: [
-              const TextSpan(text: 'أرسلنا رابط تأكيد إلى\n'),
+              TextSpan(text: 'أرسلنا رابط تأكيد إلى\n'),
               TextSpan(
                 text: email,
-                style: const TextStyle(color: HesakColors.primary, fontWeight: FontWeight.w700),
+                style: TextStyle(color: HesakColors.primary, fontWeight: FontWeight.w700),
               ),
-              const TextSpan(text: '\nافتح الرابط وبعدها ارجع هنا'),
+              TextSpan(text: '\nافتح الرابط وبعدها ارجع هنا'),
             ],
           ),
-          key: const Key('verify_email_message'),
+          key: Key('verify_email_message'),
           textAlign: TextAlign.center,
         ),
 
-        const SizedBox(height: 30),
+        SizedBox(height: 30),
         AuthPrimaryButton(
-          key: const Key('verify_email_continue_button'),
+          key: Key('verify_email_continue_button'),
           label: 'متابعة',
           isLoading: _isChecking,
           onPressed: _checkVerified,
         ),
 
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         _buildResendLink(),
       ],
     );
@@ -183,14 +183,14 @@ class _VerifyEmailFormState extends State<VerifyEmailForm> with WidgetsBindingOb
 
     if (isLocked) {
       return Padding(
-        key: const Key('verify_email_resend_wait'),
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        key: Key('verify_email_resend_wait'),
+        padding: EdgeInsets.symmetric(vertical: 10),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('ما وصلك الرابط؟ ', style: HesakTextStyles.authHint),
-            const Icon(Icons.schedule_rounded, size: 15, color: HesakColors.iconInactive),
-            const SizedBox(width: 4),
+            Text('ما وصلك الرابط؟ ', style: HesakTextStyles.authHint),
+            Icon(Icons.schedule_rounded, size: 15, color: HesakColors.iconInactive),
+            SizedBox(width: 4),
             Text(
               'إعادة الإرسال بعد $_secondsLeft ث',
               style: HesakTextStyles.authLink.copyWith(color: HesakColors.iconInactive),
@@ -201,7 +201,7 @@ class _VerifyEmailFormState extends State<VerifyEmailForm> with WidgetsBindingOb
     }
 
     return AuthFooterLink(
-      key: const Key('verify_email_resend_link'),
+      key: Key('verify_email_resend_link'),
       question: 'ما وصلك الرابط؟',
       linkText: 'إعادة إرسال الرابط',
       onTap: _resendLink,
