@@ -95,10 +95,10 @@ class _SettingsEmailScreenState extends State<SettingsEmailScreen> {
                 ),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(
+                    padding: EdgeInsets.fromLTRB(
                         HesakSizes.pagePadding, 0, HesakSizes.pagePadding, HesakSizes.pageBottomSafeSpace),
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 250),
+                      duration: Duration(milliseconds: 250),
                       child: _isSent ? _buildSentStep(palette) : _buildFormStep(palette),
                     ),
                   ),
@@ -114,15 +114,15 @@ class _SettingsEmailScreenState extends State<SettingsEmailScreen> {
   /// Step 1: current email, new email, current password.
   Widget _buildFormStep(HesakPalette palette) {
     return Column(
-      key: const ValueKey('settings_email_form_step'),
+      key: ValueKey('settings_email_form_step'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 8),
-        const SettingsNote('سنرسل رابط تأكيد إلى بريدك الجديد، ولن يتغيّر البريد إلا بعد فتح الرابط'),
+        SizedBox(height: 8),
+        SettingsNote('سنرسل رابط تأكيد إلى بريدك الجديد، ولن يتغيّر البريد إلا بعد فتح الرابط'),
 
         // Current email (read only).
         Padding(
-          padding: const EdgeInsets.only(top: 16, bottom: 8),
+          padding: EdgeInsets.only(top: 16, bottom: 8),
           child: Text('البريد الحالي:', style: HesakTextStyles.fieldLabel.copyWith(color: palette.textPrimary)),
         ),
         Text(
@@ -133,7 +133,7 @@ class _SettingsEmailScreenState extends State<SettingsEmailScreen> {
         ),
 
         SettingsTextField(
-          key: const Key('settings_email_new_field'),
+          key: Key('settings_email_new_field'),
           label: 'البريد الجديد:',
           controller: _emailController,
           hint: 'example@email.com',
@@ -143,7 +143,7 @@ class _SettingsEmailScreenState extends State<SettingsEmailScreen> {
           onChanged: (_) => setState(() => _serverError = null),
         ),
         SettingsTextField(
-          key: const Key('settings_email_password_field'),
+          key: Key('settings_email_password_field'),
           label: 'كلمة المرور الحالية:',
           controller: _passwordController,
           hint: '••••••••',
@@ -152,14 +152,14 @@ class _SettingsEmailScreenState extends State<SettingsEmailScreen> {
           onChanged: (_) => setState(() => _serverError = null),
         ),
 
-        const SizedBox(height: 24),
+        SizedBox(height: 24),
         if (_serverError != null)
           Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: EdgeInsets.only(bottom: 10),
             child: Text(_serverError!, textAlign: TextAlign.center, style: HesakTextStyles.fieldError.copyWith(color: palette.danger)),
           ),
         SettingsButton(
-          key: const Key('settings_email_submit_button'),
+          key: Key('settings_email_submit_button'),
           label: 'إرسال رابط التأكيد',
           isLoading: _isLoading,
           onTap: _canSubmit ? _submit : null,
@@ -171,22 +171,22 @@ class _SettingsEmailScreenState extends State<SettingsEmailScreen> {
   /// Step 2: the link was sent.
   Widget _buildSentStep(HesakPalette palette) {
     return Column(
-      key: const ValueKey('settings_email_sent_step'),
+      key: ValueKey('settings_email_sent_step'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 32),
+        SizedBox(height: 32),
         Icon(Icons.mark_email_read_outlined, size: 64, color: palette.accent),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         Text('تحقق من بريدك الجديد', textAlign: TextAlign.center, style: HesakTextStyles.fieldLabel.copyWith(color: palette.textPrimary)),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           'أرسلنا رابط تأكيد إلى\n$_newEmail\nافتح الرابط لتأكيد بريدك الجديد، وبعدها يتغيّر في حسابك',
           textAlign: TextAlign.center,
           style: HesakTextStyles.body.copyWith(color: palette.textSecondary, fontSize: 13, height: 1.6),
         ),
-        const SizedBox(height: 32),
+        SizedBox(height: 32),
         SettingsButton(
-          key: const Key('settings_email_done_button'),
+          key: Key('settings_email_done_button'),
           label: 'تم',
           onTap: () => Navigator.pop(context),
         ),

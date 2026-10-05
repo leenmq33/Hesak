@@ -65,15 +65,15 @@ class _CallNameFormState extends State<CallNameForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const AuthSheetHeader(title: 'للتنبيه عند النداء'),
+        AuthSheetHeader(title: 'للتنبيه عند النداء'),
 
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         // Same note as in الإعدادات (الاسم للنداء).
-        const AuthInfoBanner('سيُنبّهك حِسّك عند سماع هذا الاسم، لتعرف أن أحدًا يناديك'),
+        AuthInfoBanner('سيُنبّهك حِسّك عند سماع هذا الاسم، لتعرف أن أحدًا يناديك'),
 
-        const AuthFieldLabel('الاسم:'),
+        AuthFieldLabel('الاسم:'),
         AuthTextField(
-          key: const Key('call_name_field'),
+          key: Key('call_name_field'),
           controller: _callNameController,
           hint: 'اكتب الاسم بالعربي',
           // Plain text keyboard: the "name" keyboard can be locked to English.
@@ -83,17 +83,17 @@ class _CallNameFormState extends State<CallNameForm> {
           onChanged: (_) => setState(() {}), // Enables "التالي" once a valid name is typed
         ),
 
-        const SizedBox(height: 44),
+        SizedBox(height: 44),
 
         if (_serverError != null)
           Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: EdgeInsets.only(bottom: 10),
             child: Text(_serverError!, textAlign: TextAlign.center, style: HesakTextStyles.fieldError),
           ),
 
         // Greyed out until a valid name is typed.
         AuthPrimaryButton(
-          key: const Key('call_name_next_button'),
+          key: Key('call_name_next_button'),
           label: 'التالي',
           isLoading: _isLoading,
           onPressed: _canContinue ? _submitCallName : null,
@@ -101,9 +101,9 @@ class _CallNameFormState extends State<CallNameForm> {
 
         // "يمكنك إضافته لاحقًا. تخطي" under the button — same style as the
         // other links ("ليس لديك حساب؟ إنشاء حساب"). Skips this step.
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         AuthFooterLink(
-          key: const Key('call_name_skip_link'),
+          key: Key('call_name_skip_link'),
           question: 'يمكنك إضافته لاحقًا',
           linkText: 'تخطي',
           onTap: () {

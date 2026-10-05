@@ -22,8 +22,7 @@ import '../core/theme/hesak_text_styles.dart';
 //      icon: Icons.delete_outline_rounded,
 //    );
 //
-//  [followsAppearance]: true only on pages that follow فاتح / داكن
-//  (الإعدادات for now). Other pages stay light.
+//  [followsAppearance]: true (default) = follows فاتح / داكن like the whole app.
 // =====================================================================
 
 /// Asks the user to confirm. Returns true when the user taps [confirmLabel].
@@ -34,7 +33,7 @@ Future<bool> showHesakConfirmDialog(
   required String confirmLabel,
   required IconData icon,
   bool isDanger = true, // true = red icon + red confirm button
-  bool followsAppearance = false,
+  bool followsAppearance = true,
 }) async {
   final bool? result = await showHesakChoiceDialog(
     context,
@@ -56,7 +55,7 @@ Future<void> showHesakNoticeDialog(
   required String message,
   required IconData icon,
   String buttonLabel = 'حسنًا',
-  bool followsAppearance = false,
+  bool followsAppearance = true,
 }) async {
   await showHesakChoiceDialog(
     context,
@@ -84,7 +83,7 @@ Future<bool?> showHesakChoiceDialog(
   required IconData icon,
   String? cancelLabel = 'إلغاء', // null = only the confirm button
   bool isDanger = true,
-  bool followsAppearance = false,
+  bool followsAppearance = true,
 }) async {
   final HesakPalette palette = followsAppearance ? HesakPalette.current : HesakPalette.light;
   final Color confirmColor = isDanger ? palette.danger : palette.accent;
@@ -95,21 +94,21 @@ Future<bool?> showHesakChoiceDialog(
       backgroundColor: palette.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(HesakSizes.radiusCard)),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 18),
+        padding: EdgeInsets.fromLTRB(20, 24, 20, 18),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 40, color: confirmColor),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(title, textAlign: TextAlign.center, style: HesakTextStyles.dialogTitle.copyWith(color: palette.textPrimary)),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             Text(message, textAlign: TextAlign.center, style: HesakTextStyles.dialogBody.copyWith(color: palette.textSecondary)),
-            const SizedBox(height: 18),
+            SizedBox(height: 18),
             Row(
               children: [
                 Expanded(
                   child: _HesakDialogButton(
-                    key: const Key('hesak_dialog_confirm_button'),
+                    key: Key('hesak_dialog_confirm_button'),
                     label: confirmLabel,
                     color: confirmColor,
                     textColor: isDanger ? palette.surface : palette.onAccent,
@@ -118,10 +117,10 @@ Future<bool?> showHesakChoiceDialog(
                   ),
                 ),
                 if (cancelLabel != null) ...[
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(
                   child: _HesakDialogButton(
-                    key: const Key('hesak_dialog_cancel_button'),
+                    key: Key('hesak_dialog_cancel_button'),
                     label: cancelLabel,
                     color: palette.accent,
                     textColor: palette.accent,

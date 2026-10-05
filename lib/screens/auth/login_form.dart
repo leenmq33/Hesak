@@ -94,12 +94,12 @@ class _LoginFormState extends State<LoginForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AuthSheetHeader(title: 'تسجيل الدخول', onBack: widget.onBack),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
 
         // ---- Email ----
-        const AuthFieldLabel('البريد الإلكتروني:'),
+        AuthFieldLabel('البريد الإلكتروني:'),
         AuthTextField(
-          key: const Key('login_email_field'),
+          key: Key('login_email_field'),
           controller: _emailController,
           hint: 'example@email.com',
           icon: Icons.mail_outline_rounded,
@@ -109,9 +109,9 @@ class _LoginFormState extends State<LoginForm> {
         ),
 
         // ---- Password ----
-        const AuthFieldLabel('كلمة المرور:'),
+        AuthFieldLabel('كلمة المرور:'),
         AuthTextField(
-          key: const Key('login_password_field'),
+          key: Key('login_password_field'),
           controller: _passwordController,
           hint: '••••••••',
           isPassword: true,
@@ -124,7 +124,7 @@ class _LoginFormState extends State<LoginForm> {
         Align(
           alignment: AlignmentDirectional.centerEnd,
           child: TextButton(
-            key: const Key('login_forgot_password_button'),
+            key: Key('login_forgot_password_button'),
             onPressed: widget.onForgotPassword,
             // Same purple as "إنشاء حساب", but not bold.
             child: Text(
@@ -134,25 +134,25 @@ class _LoginFormState extends State<LoginForm> {
           ),
         ),
 
-        const SizedBox(height: 28),
+        SizedBox(height: 28),
 
         // Error from the server (e.g. wrong password), above the button.
         if (_serverError != null)
           Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: EdgeInsets.only(bottom: 10),
             child: Text(_serverError!, textAlign: TextAlign.center, style: HesakTextStyles.fieldError),
           ),
 
         AuthPrimaryButton(
-          key: const Key('login_submit_button'),
+          key: Key('login_submit_button'),
           label: 'تسجيل الدخول',
           isLoading: _isLoading,
           onPressed: _submitLogin,
         ),
 
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         AuthFooterLink(
-          key: const Key('login_go_to_signup_link'),
+          key: Key('login_go_to_signup_link'),
           question: 'ليس لديك حساب؟',
           linkText: 'إنشاء حساب',
           onTap: widget.onGoToSignUp,

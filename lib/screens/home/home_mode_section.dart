@@ -48,9 +48,9 @@ class _HomeModeSectionState extends State<HomeModeSection> {
         final bool isListening = store.isListening;
 
         return AnimatedContainer(
-          key: const Key('home_mode_card'),
-          duration: const Duration(milliseconds: 300),
-          padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+          key: Key('home_mode_card'),
+          duration: Duration(milliseconds: 300),
+          padding: EdgeInsets.fromLTRB(12, 14, 12, 12),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topRight,
@@ -63,7 +63,7 @@ class _HomeModeSectionState extends State<HomeModeSection> {
               BoxShadow(
                 color: HesakColors.primaryDark.withValues(alpha: isListening ? 0.35 : 0.18),
                 blurRadius: 28,
-                offset: const Offset(0, 12),
+                offset: Offset(0, 12),
               ),
             ],
           ),
@@ -71,9 +71,9 @@ class _HomeModeSectionState extends State<HomeModeSection> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildHeader(mode, isListening),
-              const SizedBox(height: 12),
-              _HomeModeSettingsTiles(key: const Key('home_mode_settings'), mode: mode, isListening: isListening),
-              const SizedBox(height: 10),
+              SizedBox(height: 12),
+              _HomeModeSettingsTiles(key: Key('home_mode_settings'), mode: mode, isListening: isListening),
+              SizedBox(height: 10),
               _buildScheduleBox(mode, isListening),
             ],
           ),
@@ -86,7 +86,7 @@ class _HomeModeSectionState extends State<HomeModeSection> {
   /// Line 2: star · pencil, at the end side — same order as on الأوضاع.
   Widget _buildHeader(HesakModeConfig mode, bool isListening) {
     return Padding(
-      padding: const EdgeInsetsDirectional.only(start: 4),
+      padding: EdgeInsetsDirectional.only(start: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -106,42 +106,42 @@ class _HomeModeSectionState extends State<HomeModeSection> {
                       : Text(mode.firstLetter, style: HesakTextStyles.modeCircleLetter.copyWith(color: HesakColors.onHomeGlass)),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Row(
                   children: [
                     Flexible(
                       child: Text(
                         'وضع ${mode.name}',
-                        key: const Key('home_mode_name'),
+                        key: Key('home_mode_name'),
                         style: HesakTextStyles.modeHeaderName.copyWith(color: HesakColors.onHomeGlass),
                         maxLines: 2, // A long name goes to a 2nd line instead of being cut
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     ModesStateBadge(isListening: isListening),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               // Star (add to / remove from الأوضاع المفضلة) + pencil, same small glass circles.
               _HomeGlassRoundButton(
-                key: const Key('home_mode_star_button'),
+                key: Key('home_mode_star_button'),
                 tooltip: mode.isFavorite ? 'إزالة من الأوضاع المفضلة' : 'إضافة إلى الأوضاع المفضلة',
                 icon: mode.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
                 iconColor: mode.isFavorite ? HesakColors.favoriteStar : HesakColors.onHomeGlassSoft,
                 onTap: () => modesToggleFavorite(context, mode),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               // Opens تعديل الوضع inside the الرئيسية tab (back returns here).
               _HomeGlassRoundButton(
-                key: const Key('home_mode_edit_button'),
+                key: Key('home_mode_edit_button'),
                 tooltip: 'تعديل',
                 icon: Icons.edit_rounded,
                 iconColor: HesakColors.onHomeGlass,
@@ -159,7 +159,7 @@ class _HomeModeSectionState extends State<HomeModeSection> {
   /// Glass box: "الجدولة · بدون جدولة" + round arrow. Opens جدولة الوضع.
   Widget _buildScheduleBox(HesakModeConfig mode, bool isListening) {
     return Container(
-      key: const Key('home_mode_schedule_box'),
+      key: Key('home_mode_schedule_box'),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: HesakColors.homeGlassFill,
@@ -171,14 +171,14 @@ class _HomeModeSectionState extends State<HomeModeSection> {
         children: [
           // The whole row is tappable, not only the arrow.
           InkWell(
-            key: const Key('home_mode_schedule_toggle'),
+            key: Key('home_mode_schedule_toggle'),
             onTap: () => setState(() => _isScheduleOpen = !_isScheduleOpen),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
                 children: [
-                  const Icon(Icons.calendar_month_outlined, size: 20, color: HesakColors.onHomeGlass),
-                  const SizedBox(width: 10),
+                  Icon(Icons.calendar_month_outlined, size: 20, color: HesakColors.onHomeGlass),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Text.rich(
                       TextSpan(
@@ -202,11 +202,11 @@ class _HomeModeSectionState extends State<HomeModeSection> {
                     child: Container(
                       width: 32,
                       height: 32,
-                      decoration: const BoxDecoration(shape: BoxShape.circle, color: HesakColors.homeGlassIcon),
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: HesakColors.homeGlassIcon),
                       child: AnimatedRotation(
                         turns: _isScheduleOpen ? 0.5 : 0, // ⌄ turns into ⌃
-                        duration: const Duration(milliseconds: 250),
-                        child: const Icon(Icons.keyboard_arrow_down_rounded, size: 22, color: HesakColors.onHomeGlass),
+                        duration: Duration(milliseconds: 250),
+                        child: Icon(Icons.keyboard_arrow_down_rounded, size: 22, color: HesakColors.onHomeGlass),
                       ),
                     ),
                   ),
@@ -217,16 +217,16 @@ class _HomeModeSectionState extends State<HomeModeSection> {
           // جدولة الوضع (opens with the arrow): a thin line, then the periods on
           // the glass. Saved right away, like on الأوضاع. Same editor as everywhere.
           AnimatedSize(
-            duration: const Duration(milliseconds: 250),
+            duration: Duration(milliseconds: 250),
             alignment: Alignment.topCenter,
             child: !_isScheduleOpen
-                ? const SizedBox(width: double.infinity)
+                ? SizedBox(width: double.infinity)
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Divider(height: 1, thickness: 1, color: HesakColors.homeGlassLine),
+                      Divider(height: 1, thickness: 1, color: HesakColors.homeGlassLine),
                       Padding(
-                        padding: const EdgeInsets.all(10),
+                        padding: EdgeInsets.all(10),
                         child: ModesScheduleEditor(
                           // New key per mode, so an open edit box doesn't carry over to another mode.
                           key: ValueKey('home_schedule_${mode.id}'),
@@ -273,7 +273,7 @@ class _HomeModeSettingsTiles extends StatelessWidget {
       children: [
         Expanded(
           child: _HomeSettingTile(
-            key: const Key('home_tile_alert_types'),
+            key: Key('home_tile_alert_types'),
             icon: Icons.vibration_rounded,
             label: 'نوع التنبيه',
             // Icons instead of words (اهتزاز / إشعار / وميض). None -> "لا يوجد".
@@ -282,10 +282,10 @@ class _HomeModeSettingsTiles extends StatelessWidget {
             isListening: isListening,
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Expanded(
           child: _HomeSettingTile(
-            key: const Key('home_tile_call_name'),
+            key: Key('home_tile_call_name'),
             icon: Icons.person_outline_rounded,
             label: 'نداء اسمك',
             value: callNameText,
@@ -321,8 +321,8 @@ class _HomeSettingTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300), // Soft change when listening turns on / off
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+      duration: Duration(milliseconds: 300), // Soft change when listening turns on / off
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 14),
       decoration: BoxDecoration(
         color: isListening ? HesakColors.homeTileFillActive : HesakColors.homeTileFillIdle,
         borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard + 2),
@@ -331,7 +331,7 @@ class _HomeSettingTile extends StatelessWidget {
       child: Column(
         children: [
           AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
+            duration: Duration(milliseconds: 300),
             width: 40,
             height: 40,
             decoration: BoxDecoration(
@@ -340,13 +340,13 @@ class _HomeSettingTile extends StatelessWidget {
             ),
             child: Icon(icon, size: 20, color: HesakColors.onHomeGlass),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             label,
             textAlign: TextAlign.center,
             style: HesakTextStyles.modeHint,
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           if (valueIcons.isEmpty)
             Text(
               value,
@@ -363,7 +363,7 @@ class _HomeSettingTile extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   for (int i = 0; i < valueIcons.length; i++) ...[
-                    if (i > 0) const SizedBox(width: 10),
+                    if (i > 0) SizedBox(width: 10),
                     Icon(valueIcons[i], size: 24, color: HesakColors.textPrimary),
                   ],
                 ],
@@ -398,16 +398,16 @@ class _HomeGlassRoundButton extends StatelessWidget {
       message: tooltip,
       child: Material(
         color: HesakColors.homeGlassIcon,
-        shape: const CircleBorder(),
+        shape: CircleBorder(),
         child: InkWell(
-          customBorder: const CircleBorder(),
+          customBorder: CircleBorder(),
           onTap: onTap,
           child: SizedBox(
             width: _size,
             height: _size,
             // The star pops a little when it changes.
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
+              duration: Duration(milliseconds: 250),
               transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
               child: Icon(icon, key: ValueKey(icon), size: 20, color: iconColor),
             ),

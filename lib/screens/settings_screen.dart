@@ -53,7 +53,7 @@ class SettingsScreen extends StatelessWidget {
         key: navigatorKey,
         onGenerateRoute: (settings) => MaterialPageRoute(
           settings: settings,
-          builder: (_) => const _SettingsHomePage(),
+          builder: (_) => _SettingsHomePage(),
         ),
       ),
     );
@@ -77,7 +77,7 @@ class _SettingsHomePage extends StatelessWidget {
             child: Column(
               children: [
                 // Shared Hesak header (follows فاتح / داكن on this page).
-                const HesakPageHeader(title: 'الإعدادات', followsAppearance: true),
+                HesakPageHeader(title: 'الإعدادات', followsAppearance: true),
                 Expanded(child: _SettingsPageContent(auth: AuthService.instance)),
               ],
             ),
@@ -100,44 +100,44 @@ class _SettingsPageContent extends StatelessWidget {
     final theme = HesakThemeController.instance;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
           HesakSizes.pagePadding, 0, HesakSizes.pagePadding, HesakSizes.pageBottomSafeSpace),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ---------------- الحساب ----------------
-          const SettingsSectionTitle('الحساب'),
+          SettingsSectionTitle('الحساب'),
           SettingsCard(
             children: [
               SettingsRow(
-                key: const Key('settings_name_row'),
+                key: Key('settings_name_row'),
                 icon: Icons.person_outline_rounded,
                 title: 'الاسم',
                 value: auth.currentUserName ?? 'غير محدد',
                 onTap: () => _editName(context),
               ),
               SettingsRow(
-                key: const Key('settings_email_row'),
+                key: Key('settings_email_row'),
                 icon: Icons.mail_outline_rounded,
                 title: 'البريد الإلكتروني',
                 value: auth.currentEmail ?? 'غير محدد',
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SettingsEmailScreen()),
+                  MaterialPageRoute(builder: (_) => SettingsEmailScreen()),
                 ),
               ),
               SettingsRow(
-                key: const Key('settings_password_row'),
+                key: Key('settings_password_row'),
                 icon: Icons.lock_outline_rounded,
                 title: 'تغيير كلمة المرور',
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SettingsPasswordScreen()),
+                  MaterialPageRoute(builder: (_) => SettingsPasswordScreen()),
                 ),
               ),
             ],
           ),
 
           // ---------------- التفضيلات ----------------
-          const SettingsSectionTitle('التفضيلات'),
+          SettingsSectionTitle('التفضيلات'),
           SettingsCard(
             children: [
               // الجنس: the note first (inside the card, so it clearly belongs to
@@ -145,13 +145,13 @@ class _SettingsPageContent extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.fromLTRB(12, 12, 12, 0),
                     // Same note as in إنشاء حساب.
                     child: SettingsNote('سيستخدم حِسّك اختيارك لقراءة النصوص للآخرين بصوت مناسب'),
                   ),
                   SettingsRow(
-                    key: const Key('settings_voice_row'),
+                    key: Key('settings_voice_row'),
                     icon: Icons.record_voice_over_outlined,
                     title: 'الجنس',
                     trailing: SettingsSegmented<HesakVoice>(
@@ -169,7 +169,7 @@ class _SettingsPageContent extends StatelessWidget {
                 ],
               ),
               SettingsRow(
-                key: const Key('settings_appearance_row'),
+                key: Key('settings_appearance_row'),
                 icon: Icons.contrast_rounded,
                 title: 'المظهر',
                 trailing: SettingsSegmented<HesakAppearance>(
@@ -179,18 +179,18 @@ class _SettingsPageContent extends StatelessWidget {
                   labelOf: (appearance) => appearance == HesakAppearance.light ? 'فاتح' : 'داكن',
                   iconOf: (appearance) =>
                       appearance == HesakAppearance.light ? Icons.wb_sunny_outlined : Icons.nightlight_round,
-                  onChanged: theme.setAppearance,
+                  onChanged: auth.updateAppearance, // Changes the whole app + saves it
                 ),
               ),
             ],
           ),
 
           // ---------------- للتنبيه عند النداء ----------------
-          const SettingsSectionTitle('للتنبيه عند النداء'),
+          SettingsSectionTitle('للتنبيه عند النداء'),
           SettingsCard(
             children: [
               SettingsRow(
-                key: const Key('settings_call_name_row'),
+                key: Key('settings_call_name_row'),
                 icon: Icons.campaign_outlined,
                 title: 'الاسم للنداء',
                 value: auth.currentCallName ?? 'لم تتم إضافته بعد',
@@ -202,9 +202,9 @@ class _SettingsPageContent extends StatelessWidget {
           ),
 
           // ---------------- تسجيل الخروج ----------------
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           SettingsButton(
-            key: const Key('settings_logout_button'),
+            key: Key('settings_logout_button'),
             label: 'تسجيل الخروج',
             icon: Icons.logout_rounded,
             isFilled: false,
@@ -220,7 +220,7 @@ class _SettingsPageContent extends StatelessWidget {
   /// Small outlined "+ إضافة" pill.
   Widget _addPill(HesakPalette palette) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: palette.accent, width: 1.3),
@@ -229,7 +229,7 @@ class _SettingsPageContent extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.add_rounded, size: 15, color: palette.accent),
-          const SizedBox(width: 2),
+          SizedBox(width: 2),
           Text('إضافة', style: HesakTextStyles.modeChipSelected.copyWith(color: palette.accent)),
         ],
       ),
@@ -273,8 +273,8 @@ class _SettingsPageContent extends StatelessWidget {
     // Back to the welcome screen, and remove everything behind it (no going back).
     Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
       PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 500),
-        pageBuilder: (_, __, ___) => const HesakAuthFlowScreen(),
+        transitionDuration: Duration(milliseconds: 500),
+        pageBuilder: (_, __, ___) => HesakAuthFlowScreen(),
         transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
       ),
       (_) => false,

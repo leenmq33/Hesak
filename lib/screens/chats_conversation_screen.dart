@@ -32,13 +32,13 @@ import 'chats_models.dart';
 /// Body text of a chat bubble.
 /// TODO: ask the team to add `HesakTextStyles.chatMessage` (14.5, w400,
 /// height 1.7, textPrimary) and use it here instead of this copyWith.
-final TextStyle _chatsMessageTextStyle = HesakTextStyles.itemTitle.copyWith(
+TextStyle get _chatsMessageTextStyle => HesakTextStyles.itemTitle.copyWith(
   fontWeight: FontWeight.w400,
   height: 1.7,
 );
 
 /// Gradient of the bar's centre button, reused for the main chat actions.
-const LinearGradient _chatsPrimaryGradient = LinearGradient(
+LinearGradient get _chatsPrimaryGradient => LinearGradient(
   begin: Alignment.topLeft,
   end: Alignment.bottomRight,
   colors: <Color>[HesakColors.primaryMuted, HesakColors.primary],
@@ -67,7 +67,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
 
   /// Drives the moving bars while listening.
   late final AnimationController _listeningBarsController =
-      AnimationController(vsync: this, duration: const Duration(seconds: 1));
+      AnimationController(vsync: this, duration: Duration(seconds: 1));
 
   bool _isListening = false;
   bool _isEditingTitle = false;
@@ -246,7 +246,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
         final HesakSpeechToTextService stt = HesakSpeechToTextService.instance;
         if (stt.needsInternet && !await HesakConnection.instance.checkNow()) {
           _showNetworkError(
-            const HesakNetworkException(wasOffline: true),
+            HesakNetworkException(wasOffline: true),
             'يتطلب تحويل الكلام إلى نص اتصالًا بالإنترنت',
           );
           return;
@@ -276,7 +276,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   /// Demo only: adds one heard sentence after a short delay.
   void _startDemoTranscript() {
     _demoTranscriptTimer?.cancel();
-    _demoTranscriptTimer = Timer(const Duration(milliseconds: 2600), () {
+    _demoTranscriptTimer = Timer(Duration(milliseconds: 2600), () {
       if (!mounted || !_isListening) return;
       _addIncomingMessage('مرحبا كيف اقدر اساعدك اليوم');
     });
@@ -556,7 +556,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
       if (!_messagesScrollController.hasClients) return;
       _messagesScrollController.animateTo(
         _messagesScrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 350),
+        duration: Duration(milliseconds: 350),
         curve: Curves.easeOut,
       );
     });
@@ -649,10 +649,10 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
 
     if (messages.isEmpty) {
       // Nothing written here unless listening is on.
-      if (!_isListening) return const SizedBox.expand();
+      if (!_isListening) return SizedBox.expand();
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(HesakSizes.pagePadding),
+          padding: EdgeInsets.all(HesakSizes.pagePadding),
           child: Text(
             'جارٍ الاستماع… سيظهر الكلام من حولك هنا نصًا',
             textAlign: TextAlign.center,
@@ -674,12 +674,12 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
     }
 
     return ListView.separated(
-      key: const Key('chats_messages_list'),
+      key: Key('chats_messages_list'),
       controller: _messagesScrollController,
       // 22 on the left leaves room for the scroll indicator.
-      padding: const EdgeInsets.fromLTRB(22, 14, 20, 24),
+      padding: EdgeInsets.fromLTRB(22, 14, 20, 24),
       itemCount: items.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 14),
+      separatorBuilder: (_, __) => SizedBox(height: 14),
       itemBuilder: (_, index) {
         final Object item = items[index];
         if (item is DateTime) {
@@ -739,17 +739,17 @@ class _ChatsConversationHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Column(
         children: <Widget>[
           Row(
             children: <Widget>[
               IconButton(
-                key: const Key('chats_conversation_back_button'),
+                key: Key('chats_conversation_back_button'),
                 tooltip: 'رجوع إلى المحادثات',
                 onPressed: onBack,
                 // Mirrors in RTL, so it points right (">") like the design.
-                icon: const Icon(
+                icon: Icon(
                   Icons.arrow_back_ios_new_rounded,
                   size: HesakSizes.iconNavTab,
                   color: HesakColors.textPrimary,
@@ -765,7 +765,7 @@ class _ChatsConversationHeader extends StatelessWidget {
                         title: title, onPressed: onStartEditingTitle),
               ),
               _ChatsCircleIconButton(
-                key: const Key('chats_conversation_save_button'),
+                key: Key('chats_conversation_save_button'),
                 tooltip: isSaved ? 'إلغاء حفظ المحادثة' : 'حفظ المحادثة',
                 icon: isSaved
                     ? Icons.bookmark_rounded
@@ -778,8 +778,8 @@ class _ChatsConversationHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          const _ChatsFadingDivider(),
+          SizedBox(height: 10),
+          _ChatsFadingDivider(),
         ],
       ),
     );
@@ -799,11 +799,11 @@ class _ChatsTitleButton extends StatelessWidget {
       button: true,
       label: 'اسم المحادثة: $title. اضغط لتعديله',
       child: InkWell(
-        key: const Key('chats_conversation_title'),
+        key: Key('chats_conversation_title'),
         onTap: onPressed,
         borderRadius: BorderRadius.circular(14),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 44),
+          constraints: BoxConstraints(minHeight: 44),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
@@ -815,8 +815,8 @@ class _ChatsTitleButton extends StatelessWidget {
                   style: HesakTextStyles.greeting,
                 ),
               ),
-              const SizedBox(width: 6),
-              const Icon(Icons.edit_outlined,
+              SizedBox(width: 6),
+              Icon(Icons.edit_outlined,
                   size: HesakSizes.iconInChip, color: HesakColors.textSecondary),
             ],
           ),
@@ -843,7 +843,7 @@ class _ChatsTitleEditor extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 44,
-      padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 4, 0),
+      padding: EdgeInsetsDirectional.fromSTEB(12, 0, 4, 0),
       decoration: BoxDecoration(
         color: HesakColors.surface,
         borderRadius: BorderRadius.circular(22),
@@ -853,14 +853,14 @@ class _ChatsTitleEditor extends StatelessWidget {
         children: <Widget>[
           Expanded(
             child: TextField(
-              key: const Key('chats_conversation_title_input'),
+              key: Key('chats_conversation_title_input'),
               controller: controller,
               autofocus: true,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => onSave(),
               style: HesakTextStyles.cardTitle
                   .copyWith(color: HesakColors.primaryDark),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 isCollapsed: true,
                 border: InputBorder.none,
               ),
@@ -878,10 +878,10 @@ class _ChatsTitleEditor extends StatelessWidget {
                 enabled: hasChanged,
                 label: 'حفظ الاسم',
                 child: GestureDetector(
-                  key: const Key('chats_conversation_title_save'),
+                  key: Key('chats_conversation_title_save'),
                   onTap: onSave, // Nothing changed -> just closes the field
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
+                    duration: Duration(milliseconds: 150),
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
@@ -929,10 +929,10 @@ class _ChatsCircleIconButton extends StatelessWidget {
       message: tooltip,
       child: Material(
         color: background,
-        shape: const CircleBorder(
+        shape: CircleBorder(
             side: BorderSide(color: HesakColors.surfaceBorder)),
         child: InkWell(
-          customBorder: const CircleBorder(),
+          customBorder: CircleBorder(),
           onTap: onPressed,
           child: SizedBox(
             width: 44,
@@ -953,7 +953,7 @@ class _ChatsFadingDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 1,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
+      margin: EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: <Color>[
@@ -979,9 +979,9 @@ class _ChatsStartListeningCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      key: const Key('chats_start_card'),
+      key: Key('chats_start_card'),
       width: 300, // comfortable reading width on phones
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+      padding: EdgeInsets.fromLTRB(20, 22, 20, 20),
       decoration: BoxDecoration(
         color: HesakColors.surface,
         border: Border.all(color: HesakColors.surfaceBorder),
@@ -990,7 +990,7 @@ class _ChatsStartListeningCard extends StatelessWidget {
           BoxShadow(
             color: HesakColors.primary.withValues(alpha: 0.06),
             blurRadius: 16,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -1004,30 +1004,30 @@ class _ChatsStartListeningCard extends StatelessWidget {
               color: HesakColors.primaryLight,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Icon(Icons.mic_none_rounded,
+            child: Icon(Icons.mic_none_rounded,
                 size: HesakSizes.iconInBox + 5, color: HesakColors.primary),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text('محادثة جديدة', style: HesakTextStyles.cardTitle),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             'سيظهر الكلام من حولك هنا نصًا، وسيتحوّل ما تكتبه إلى صوت',
             textAlign: TextAlign.center,
             style: HesakTextStyles.body.copyWith(height: 1.7),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             height: 50,
             child: TextButton.icon(
-              key: const Key('chats_start_listening_button'),
+              key: Key('chats_start_listening_button'),
               onPressed: onStart,
               style: TextButton.styleFrom(
                 backgroundColor: HesakColors.primary,
                 foregroundColor: HesakColors.onPrimary,
-                shape: const StadiumBorder(),
+                shape: StadiumBorder(),
               ),
-              icon: const Icon(Icons.mic_none_rounded,
+              icon: Icon(Icons.mic_none_rounded,
                   size: HesakSizes.iconInChip + 3),
               label: Text('بدء الاستماع',
                   style: HesakTextStyles.itemTitle
@@ -1054,10 +1054,10 @@ class _ChatsDateSeparator extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: <Widget>[
-        const Expanded(child: Divider(color: HesakColors.listDivider)),
+        Expanded(child: Divider(color: HesakColors.listDivider)),
         Container(
-          margin: const EdgeInsets.symmetric(horizontal: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          margin: EdgeInsets.symmetric(horizontal: 10),
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
             color: HesakColors.surface,
             border: Border.all(color: HesakColors.surfaceBorder),
@@ -1065,7 +1065,7 @@ class _ChatsDateSeparator extends StatelessWidget {
           ),
           child: Text(label, style: HesakTextStyles.modeLabel),
         ),
-        const Expanded(child: Divider(color: HesakColors.listDivider)),
+        Expanded(child: Divider(color: HesakColors.listDivider)),
       ],
     );
   }
@@ -1097,15 +1097,15 @@ class _ChatsIncomingBubble extends StatelessWidget {
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
-        padding: const EdgeInsets.only(left: 8),
+        padding: EdgeInsets.only(left: 8),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 230, maxWidth: 290),
+          constraints: BoxConstraints(minWidth: 230, maxWidth: 290),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               Padding(
-                padding: const EdgeInsetsDirectional.only(start: 8, bottom: 5),
+                padding: EdgeInsetsDirectional.only(start: 8, bottom: 5),
                 child: Text(message.speakerLabel,
                     style: HesakTextStyles.chipLabel
                         .copyWith(color: HesakColors.primaryMuted)),
@@ -1120,24 +1120,24 @@ class _ChatsIncomingBubble extends StatelessWidget {
                     // The original text always stays on top.
                     Text(message.originalText, style: _chatsMessageTextStyle),
                     if (isAccepted && isEnhancedTextOpen) ...<Widget>[
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       _ChatsEnhancedTextBox(text: message.enhancedText ?? ''),
                     ],
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Row(
                       children: <Widget>[
                         if (!isAccepted)
                           _ChatsEnhanceChip(onPressed: onEnhance, isLoading: isEnhancing)
                         else ...<Widget>[
-                          const _ChatsEnhancedTag(),
+                          _ChatsEnhancedTag(),
                           TextButton(
                             key: Key('chats_toggle_enhanced_${message.id}'),
                             onPressed: onToggleEnhancedText,
                             style: TextButton.styleFrom(
                               foregroundColor: HesakColors.primary,
-                              minimumSize: const Size(0, 36),
+                              minimumSize: Size(0, 36),
                               padding:
-                                  const EdgeInsets.symmetric(horizontal: 6),
+                                  EdgeInsets.symmetric(horizontal: 6),
                             ),
                             child: Text(
                               isEnhancedTextOpen
@@ -1148,7 +1148,7 @@ class _ChatsIncomingBubble extends StatelessWidget {
                             ),
                           ),
                         ],
-                        const Spacer(),
+                        Spacer(),
                         Text(chatsFormatTime(message.sentAt),
                             style: HesakTextStyles.caption
                                 .copyWith(color: HesakColors.textSecondary)),
@@ -1175,7 +1175,7 @@ class _ChatsEnhancedTextBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: HesakColors.primaryLight,
         border: Border.all(color: HesakColors.primaryLightBorder),
@@ -1186,16 +1186,16 @@ class _ChatsEnhancedTextBox extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              const Icon(Icons.auto_awesome_rounded,
+              Icon(Icons.auto_awesome_rounded,
                   size: 12, color: HesakColors.primary),
-              const SizedBox(width: 4),
+              SizedBox(width: 4),
               Text('النص المحسّن',
                   style: HesakTextStyles.caption.copyWith(
                       color: HesakColors.primary,
                       fontWeight: FontWeight.w700)),
             ],
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: 2),
           Text(text, style: _chatsMessageTextStyle),
         ],
       ),
@@ -1215,12 +1215,12 @@ class _ChatsEnhanceChip extends StatelessWidget {
     return Semantics(
       button: true,
       child: InkWell(
-        key: const Key('chats_message_enhance_chip'),
+        key: Key('chats_message_enhance_chip'),
         onTap: isLoading ? null : onPressed,
         borderRadius: BorderRadius.circular(HesakSizes.radiusChip),
         child: Container(
           height: 34,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: HesakColors.primaryLight,
             border: Border.all(color: HesakColors.primaryLightBorder),
@@ -1230,10 +1230,10 @@ class _ChatsEnhanceChip extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               isLoading
-                  ? const _ChatsSmallLoader(color: HesakColors.primary)
-                  : const Icon(Icons.auto_awesome_rounded,
+                  ? _ChatsSmallLoader(color: HesakColors.primary)
+                  : Icon(Icons.auto_awesome_rounded,
                       size: HesakSizes.iconInChip - 2, color: HesakColors.primary),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Text('تحسين النص', style: HesakTextStyles.chipLabel),
             ],
           ),
@@ -1251,7 +1251,7 @@ class _ChatsEnhancedTag extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 26,
-      padding: const EdgeInsets.symmetric(horizontal: 9),
+      padding: EdgeInsets.symmetric(horizontal: 9),
       decoration: BoxDecoration(
         color: HesakColors.primaryLight,
         border: Border.all(color: HesakColors.primaryLightBorder),
@@ -1260,9 +1260,9 @@ class _ChatsEnhancedTag extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          const Icon(Icons.auto_awesome_rounded,
+          Icon(Icons.auto_awesome_rounded,
               size: 13, color: HesakColors.primary),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           Text('محسّن',
               style: HesakTextStyles.caption.copyWith(
                   color: HesakColors.primary, fontWeight: FontWeight.w700)),
@@ -1296,7 +1296,7 @@ class _ChatsOutgoingVoiceBubble extends StatelessWidget {
     return Align(
       alignment: Alignment.centerRight,
       child: Padding(
-        padding: const EdgeInsets.only(right: 8),
+        padding: EdgeInsets.only(right: 8),
         child: SizedBox(
           width: 282, // fits the player comfortably on 360px phones
           child: _ChatsBubbleWithTail(
@@ -1316,7 +1316,7 @@ class _ChatsOutgoingVoiceBubble extends StatelessWidget {
                         isPlaying: isPlaying,
                         onPressed: onTogglePlayback,
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Expanded(
                         child: _ChatsVoiceWaveform(
                           seed: message.id.hashCode,
@@ -1324,7 +1324,7 @@ class _ChatsOutgoingVoiceBubble extends StatelessWidget {
                           isPlaying: isPlaying,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Text(
                         chatsFormatVoiceDuration(message.voiceDuration ??
                             chatsEstimateVoiceDuration(message.originalText)),
@@ -1335,9 +1335,9 @@ class _ChatsOutgoingVoiceBubble extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Container(height: 0.8, color: HesakColors.primaryLightBorder),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Semantics(
                   label: message.originalText,
                   excludeSemantics: true,
@@ -1359,15 +1359,15 @@ class _ChatsOutgoingVoiceBubble extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: <Widget>[
                     Text(chatsFormatTime(message.sentAt),
                         style: HesakTextStyles.caption
                             .copyWith(color: HesakColors.primaryMuted)),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.done_all_rounded,
+                    SizedBox(width: 4),
+                    Icon(Icons.done_all_rounded,
                         size: 16, color: HesakColors.primaryMuted),
                   ],
                 ),
@@ -1394,8 +1394,8 @@ class _ChatsSpokenWord extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isCurrent = state == _ChatsWordState.current;
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      padding: const EdgeInsets.symmetric(horizontal: 3),
+      duration: Duration(milliseconds: 150),
+      padding: EdgeInsets.symmetric(horizontal: 3),
       decoration: BoxDecoration(
         color: isCurrent ? HesakColors.primary : Colors.transparent,
         borderRadius: BorderRadius.circular(6),
@@ -1443,7 +1443,7 @@ class _ChatsPlayButton extends StatelessWidget {
               BoxShadow(
                 color: HesakColors.primary.withValues(alpha: 0.25),
                 blurRadius: 10,
-                offset: const Offset(0, 4),
+                offset: Offset(0, 4),
               ),
             ],
           ),
@@ -1522,7 +1522,7 @@ class _ChatsBubbleWithTail extends StatelessWidget {
           BoxShadow(
             color: HesakColors.primary.withValues(alpha: 0.10),
             blurRadius: 6,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
         borderRadius: BorderRadius.circular(18),
@@ -1531,12 +1531,12 @@ class _ChatsBubbleWithTail extends StatelessWidget {
         clipBehavior: Clip.none,
         children: <Widget>[
           Container(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+            padding: EdgeInsets.fromLTRB(14, 10, 14, 10),
             decoration: BoxDecoration(
               color: color,
               borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(18),
-                topRight: const Radius.circular(18),
+                topLeft: Radius.circular(18),
+                topRight: Radius.circular(18),
                 bottomLeft: Radius.circular(isTailOnLeft ? 4 : 18),
                 bottomRight: Radius.circular(isTailOnLeft ? 18 : 4),
               ),
@@ -1548,7 +1548,7 @@ class _ChatsBubbleWithTail extends StatelessWidget {
             left: isTailOnLeft ? -7 : null,
             right: isTailOnLeft ? null : -7,
             child: CustomPaint(
-              size: const Size(_tailWidth, _tailHeight),
+              size: Size(_tailWidth, _tailHeight),
               painter: _ChatsBubbleTailPainter(
                   color: color, isTailOnLeft: isTailOnLeft),
             ),
@@ -1661,7 +1661,7 @@ class _ChatsJumpToEndButton extends StatelessWidget {
       button: true,
       label: 'الانتقال إلى آخر المحادثة',
       child: GestureDetector(
-        key: const Key('chats_jump_to_end_button'),
+        key: Key('chats_jump_to_end_button'),
         onTap: onPressed,
         child: Container(
           width: 48,
@@ -1674,11 +1674,11 @@ class _ChatsJumpToEndButton extends StatelessWidget {
               BoxShadow(
                 color: HesakColors.primaryDark.withValues(alpha: 0.16),
                 blurRadius: 20,
-                offset: const Offset(0, 8),
+                offset: Offset(0, 8),
               ),
             ],
           ),
-          child: const Icon(Icons.arrow_downward_rounded,
+          child: Icon(Icons.arrow_downward_rounded,
               size: HesakSizes.iconInBox, color: HesakColors.primary),
         ),
       ),
@@ -1718,8 +1718,8 @@ class _ChatsComposerBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      decoration: const BoxDecoration(
+      padding: EdgeInsets.fromLTRB(16, 10, 16, 10),
+      decoration: BoxDecoration(
         color: HesakColors.chatsConversationBackground,
         border: Border(top: BorderSide(color: HesakColors.surfaceBorder)),
       ),
@@ -1736,7 +1736,7 @@ class _ChatsComposerBar extends StatelessWidget {
                     isEnhancing: isEnhancing,
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 hasText || isSending
                     ? _ChatsSendButton(onPressed: onSend, isLoading: isSending)
                     : _ChatsListenButton(onPressed: onToggleListening),
@@ -1781,7 +1781,7 @@ class _ChatsComposerField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 52,
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 6, 0),
+      padding: EdgeInsetsDirectional.fromSTEB(16, 0, 6, 0),
       decoration: BoxDecoration(
         color: HesakColors.surface,
         border: Border.all(color: HesakColors.surfaceBorder),
@@ -1791,7 +1791,7 @@ class _ChatsComposerField extends StatelessWidget {
         children: <Widget>[
           Expanded(
             child: TextField(
-              key: const Key('chats_message_input'),
+              key: Key('chats_message_input'),
               controller: controller,
               textInputAction: TextInputAction.newline,
               minLines: 1,
@@ -1817,13 +1817,13 @@ class _ChatsComposerField extends StatelessWidget {
                 ? 'تحسين النص المكتوب بالذكاء الاصطناعي'
                 : 'تحسين النص، اكتب نصًا أولًا',
             child: GestureDetector(
-              key: const Key('chats_ai_enhance_button'),
+              key: Key('chats_ai_enhance_button'),
               onTap: hasText && !isEnhancing ? onEnhance : null,
               child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 150),
+                duration: Duration(milliseconds: 150),
                 opacity: hasText ? 1.0 : 0.45,
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
+                  duration: Duration(milliseconds: 150),
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
@@ -1833,7 +1833,7 @@ class _ChatsComposerField extends StatelessWidget {
                     border: Border.all(color: HesakColors.primaryLightBorder),
                   ),
                   child: isEnhancing
-                      ? const Center(
+                      ? Center(
                           child: _ChatsSmallLoader(color: HesakColors.onPrimary))
                       : Icon(
                           Icons.auto_awesome_rounded,
@@ -1865,7 +1865,7 @@ class _ChatsListenButton extends StatelessWidget {
       button: true,
       label: 'استماع: تحويل الكلام من حولك إلى نص',
       child: GestureDetector(
-        key: const Key('chats_listen_button'),
+        key: Key('chats_listen_button'),
         onTap: onPressed,
         child: Container(
           width: 52, // same size as the send button it turns into
@@ -1877,11 +1877,11 @@ class _ChatsListenButton extends StatelessWidget {
               BoxShadow(
                 color: HesakColors.primary.withValues(alpha: 0.28),
                 blurRadius: 18,
-                offset: const Offset(0, 8),
+                offset: Offset(0, 8),
               ),
             ],
           ),
-          child: const Icon(Icons.mic_none_rounded,
+          child: Icon(Icons.mic_none_rounded,
               size: HesakSizes.iconInBox + 1, color: HesakColors.onPrimary),
         ),
       ),
@@ -1902,7 +1902,7 @@ class _ChatsSendButton extends StatelessWidget {
       button: true,
       label: 'إرسال وتحويل النص إلى صوت',
       child: GestureDetector(
-        key: const Key('chats_send_button'),
+        key: Key('chats_send_button'),
         onTap: isLoading ? null : onPressed,
         child: Container(
           width: 52,
@@ -1914,15 +1914,15 @@ class _ChatsSendButton extends StatelessWidget {
               BoxShadow(
                 color: HesakColors.primary.withValues(alpha: 0.28),
                 blurRadius: 18,
-                offset: const Offset(0, 8),
+                offset: Offset(0, 8),
               ),
             ],
           ),
           // send_rounded mirrors in RTL so it points the reading way.
           child: isLoading
-              ? const Center(
+              ? Center(
                   child: _ChatsSmallLoader(color: HesakColors.onPrimary, size: 20))
-              : const Icon(Icons.send_rounded,
+              : Icon(Icons.send_rounded,
                   size: HesakSizes.iconInChip + 5, color: HesakColors.onPrimary),
         ),
       ),
@@ -1942,9 +1942,9 @@ class _ChatsListeningBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      key: const Key('chats_listening_bar'),
+      key: Key('chats_listening_bar'),
       height: 52,
-      padding: const EdgeInsets.fromLTRB(6, 0, 16, 0),
+      padding: EdgeInsets.fromLTRB(6, 0, 16, 0),
       decoration: BoxDecoration(
         gradient: _chatsPrimaryGradient,
         borderRadius: BorderRadius.circular(26),
@@ -1952,7 +1952,7 @@ class _ChatsListeningBar extends StatelessWidget {
           BoxShadow(
             color: HesakColors.primary.withValues(alpha: 0.28),
             blurRadius: 18,
-            offset: const Offset(0, 8),
+            offset: Offset(0, 8),
           ),
         ],
       ),
@@ -1964,12 +1964,12 @@ class _ChatsListeningBar extends StatelessWidget {
               button: true,
               label: 'إيقاف الاستماع',
               child: GestureDetector(
-                key: const Key('chats_listening_stop_button'),
+                key: Key('chats_listening_stop_button'),
                 onTap: onStop,
                 child: Container(
                   width: 40,
                   height: 40,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: HesakColors.onPrimary,
                     shape: BoxShape.circle,
                   ),
@@ -1985,7 +1985,7 @@ class _ChatsListeningBar extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: ExcludeSemantics(
                 child: AnimatedBuilder(
@@ -2002,7 +2002,7 @@ class _ChatsListeningBar extends StatelessWidget {
                         return Container(
                           width: 3,
                           height: height,
-                          margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                          margin: EdgeInsets.symmetric(horizontal: 1.5),
                           decoration: BoxDecoration(
                             color: HesakColors.onPrimary.withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(2),
@@ -2014,7 +2014,7 @@ class _ChatsListeningBar extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Text('يستمع…',
                 style: HesakTextStyles.itemTitle
                     .copyWith(color: HesakColors.onPrimary)),
@@ -2048,17 +2048,17 @@ class _ChatsEnhancementSheet extends StatelessWidget {
         Navigator.of(context).pop(choice);
 
     return Container(
-      key: const Key('chats_enhance_sheet'),
+      key: Key('chats_enhance_sheet'),
       padding: EdgeInsets.fromLTRB(
           20, 10, 20, 24 + MediaQuery.of(context).padding.bottom),
       decoration: BoxDecoration(
         color: HesakColors.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         boxShadow: <BoxShadow>[
           BoxShadow(
             color: HesakColors.primaryDark.withValues(alpha: 0.12),
             blurRadius: 30,
-            offset: const Offset(0, -10),
+            offset: Offset(0, -10),
           ),
         ],
       ),
@@ -2076,13 +2076,13 @@ class _ChatsEnhancementSheet extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           Row(
             children: <Widget>[
-              const Icon(Icons.auto_awesome_rounded,
+              Icon(Icons.auto_awesome_rounded,
                   size: HesakSizes.iconInChip + 3,
                   color: HesakColors.primaryMuted),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2095,37 +2095,37 @@ class _ChatsEnhancementSheet extends StatelessWidget {
                 ),
               ),
               IconButton(
-                key: const Key('chats_enhance_close'),
+                key: Key('chats_enhance_close'),
                 tooltip: 'إغلاق',
                 onPressed: () => closeWith(_ChatsEnhancementChoice.keepOriginal),
-                icon: const Icon(Icons.close_rounded,
+                icon: Icon(Icons.close_rounded,
                     size: HesakSizes.iconInChip + 3,
                     color: HesakColors.iconInactive),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           _ChatsSheetTextBlock(
             label: 'النص الأصلي',
             text: originalText,
             isEnhanced: false,
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           _ChatsSheetTextBlock(
             label: 'النص المحسّن',
             text: enhancedText,
             isEnhanced: true,
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           SizedBox(
             height: 52,
             child: TextButton(
-              key: const Key('chats_enhance_accept'),
+              key: Key('chats_enhance_accept'),
               onPressed: () => closeWith(_ChatsEnhancementChoice.accept),
               style: TextButton.styleFrom(
                 backgroundColor: HesakColors.primaryMuted,
                 foregroundColor: HesakColors.onPrimary,
-                shape: const StadiumBorder(),
+                shape: StadiumBorder(),
               ),
               child: Text('قبول النص المحسّن',
                   style: HesakTextStyles.itemTitle
@@ -2135,11 +2135,11 @@ class _ChatsEnhancementSheet extends StatelessWidget {
           SizedBox(
             height: 44,
             child: TextButton(
-              key: const Key('chats_enhance_keep_original'),
+              key: Key('chats_enhance_keep_original'),
               onPressed: () => closeWith(_ChatsEnhancementChoice.keepOriginal),
               style: TextButton.styleFrom(
                 foregroundColor: HesakColors.primary,
-                shape: const StadiumBorder(),
+                shape: StadiumBorder(),
               ),
               child: Text('إبقاء الأصلي',
                   style: HesakTextStyles.itemTitle
@@ -2167,7 +2167,7 @@ class _ChatsSheetTextBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: isEnhanced
             ? HesakColors.primaryLight.withValues(alpha: 0.6)
@@ -2180,9 +2180,9 @@ class _ChatsSheetTextBlock extends StatelessWidget {
           Row(
             children: <Widget>[
               if (isEnhanced) ...<Widget>[
-                const Icon(Icons.auto_awesome_rounded,
+                Icon(Icons.auto_awesome_rounded,
                     size: 12, color: HesakColors.primaryMuted),
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
               ],
               Text(
                 label,
@@ -2195,7 +2195,7 @@ class _ChatsSheetTextBlock extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: 2),
           Text(
             text,
             style: _chatsMessageTextStyle.copyWith(

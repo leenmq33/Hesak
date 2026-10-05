@@ -80,11 +80,11 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AuthSheetHeader(title: 'استعادة كلمة المرور', onBack: widget.onBack),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
 
         // Soft switch between "enter email" and "check your email".
         AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
+          duration: Duration(milliseconds: 300),
           child: _isEmailSent ? _buildEmailSentStep() : _buildEnterEmailStep(),
         ),
       ],
@@ -94,15 +94,15 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
   /// Step 1: type the email.
   Widget _buildEnterEmailStep() {
     return Column(
-      key: const ValueKey('reset_password_enter_email_step'),
+      key: ValueKey('reset_password_enter_email_step'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 8),
-        const AuthInfoBanner('أدخل بريدك الإلكتروني المسجّل، وسنرسل لك رابطًا لإنشاء كلمة مرور جديدة'),
+        SizedBox(height: 8),
+        AuthInfoBanner('أدخل بريدك الإلكتروني المسجّل، وسنرسل لك رابطًا لإنشاء كلمة مرور جديدة'),
 
-        const AuthFieldLabel('البريد الإلكتروني:'),
+        AuthFieldLabel('البريد الإلكتروني:'),
         AuthTextField(
-          key: const Key('reset_password_email_field'),
+          key: Key('reset_password_email_field'),
           controller: _emailController,
           hint: 'example@email.com',
           icon: Icons.mail_outline_rounded,
@@ -112,16 +112,16 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
           onChanged: (_) => setState(() {}),
         ),
 
-        const SizedBox(height: 40),
+        SizedBox(height: 40),
 
         if (_serverError != null)
           Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: EdgeInsets.only(bottom: 10),
             child: Text(_serverError!, textAlign: TextAlign.center, style: HesakTextStyles.fieldError),
           ),
 
         AuthPrimaryButton(
-          key: const Key('reset_password_send_button'),
+          key: Key('reset_password_send_button'),
           label: 'إرسال رابط الاستعادة',
           isLoading: _isLoading,
           onPressed: _sendResetLink,
@@ -133,18 +133,18 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
   /// Step 2: the email was sent.
   Widget _buildEmailSentStep() {
     return Column(
-      key: const ValueKey('reset_password_email_sent_step'),
+      key: ValueKey('reset_password_email_sent_step'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 24),
-        const Icon(Icons.mark_email_read_outlined, size: 64, color: HesakColors.primaryMuted),
-        const SizedBox(height: 16),
-        const Text(
+        SizedBox(height: 24),
+        Icon(Icons.mark_email_read_outlined, size: 64, color: HesakColors.primaryMuted),
+        SizedBox(height: 16),
+        Text(
           'تحقق من بريدك الإلكتروني',
           textAlign: TextAlign.center,
           style: HesakTextStyles.fieldLabel,
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           'أرسلنا رابط استعادة كلمة المرور إلى\n${_emailController.text.trim()}\n'
           'افتح الرابط واختر كلمة مرور جديدة، ثم ارجع لتسجيل الدخول',
@@ -152,17 +152,17 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
           style: HesakTextStyles.body.copyWith(fontSize: 13, height: 1.6),
         ),
 
-        const SizedBox(height: 40),
+        SizedBox(height: 40),
         AuthPrimaryButton(
-          key: const Key('reset_password_back_to_login_button'),
+          key: Key('reset_password_back_to_login_button'),
           label: 'العودة لتسجيل الدخول',
           onPressed: widget.onBack,
         ),
 
         // Didn't get it? Go back to step 1 to send again.
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         AuthFooterLink(
-          key: const Key('reset_password_resend_link'),
+          key: Key('reset_password_resend_link'),
           question: 'لم يصلك البريد؟',
           linkText: 'إعادة الإرسال',
           onTap: () => setState(() => _isEmailSent = false),

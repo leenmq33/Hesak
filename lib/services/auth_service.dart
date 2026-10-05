@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../core/theme/hesak_palette.dart';
+
 // =====================================================================
 //  AUTH SERVICE — the ONLY place that talks to the account system.
 //
@@ -191,6 +193,7 @@ class AuthService extends ChangeNotifier {
     currentCallName = null;
     currentVoice = HesakVoice.male;
     notifyListeners();
+    // فاتح / داكن stays as it is: the sign-in pages keep the phone's last choice.
   }
 
   // ---------------------------------------------------------------------
@@ -296,6 +299,23 @@ class AuthService extends ChangeNotifier {
     );
   }
 
+  /// Changes the appearance (فاتح / داكن) right away, and saves it in
+  /// users/{uid}.settings.appearance ("light" / "dark"), so it comes back
+  /// after a new login or on another phone.
+  void updateAppearance(HesakAppearance appearance) {
+    final theme = HesakThemeController.instance;
+    if (appearance == theme.appearance) return;
+    theme.setAppearance(appearance);
+
+    final user = _auth.currentUser;
+    if (user == null) return;
+    unawaited(
+      _userDoc(user.uid)
+          .update({'settings.appearance': appearance.name})
+          .catchError((e) => debugPrint('updateAppearance error: $e')),
+    );
+  }
+
   /// Changes the password. The current password is checked first.
   Future<AuthResult> changePassword({
     required String currentPassword,
@@ -385,6 +405,15 @@ class AuthService extends ChangeNotifier {
     currentCallName =
     (names != null && names.isNotEmpty) ? names.first as String : null;
     notifyListeners();
+
+    // فاتح / داكن saved in the account (follows the user to another phone).
+    // Not saved yet -> keep the phone's current choice.
+    final savedAppearance = settings?['appearance'];
+    if (savedAppearance == HesakAppearance.dark.name) {
+      HesakThemeController.instance.setAppearance(HesakAppearance.dark);
+    } else if (savedAppearance == HesakAppearance.light.name) {
+      HesakThemeController.instance.setAppearance(HesakAppearance.light);
+    }
   }
 
   /// Checks the current password again (Firebase requires it before

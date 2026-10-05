@@ -54,7 +54,7 @@ class ModesScreen extends StatelessWidget {
   /// Opens "إضافة وضع" inside this tab (used by "إضافة +" on the bar wheel).
   static void openAddModePage() {
     navigatorKey.currentState?.push(
-      MaterialPageRoute(builder: (_) => const ModeEditorScreen()),
+      MaterialPageRoute(builder: (_) => ModeEditorScreen()),
     );
   }
 
@@ -68,7 +68,7 @@ class ModesScreen extends StatelessWidget {
         key: navigatorKey,
         onGenerateRoute: (settings) => MaterialPageRoute(
           settings: settings,
-          builder: (_) => const _ModesHomePage(),
+          builder: (_) => _ModesHomePage(),
         ),
       ),
     );
@@ -88,7 +88,7 @@ class _ModesHomePage extends StatelessWidget {
         child: Column(
           children: [
             // Shared header: logo + waves + page title + divider.
-            const HesakPageHeader(title: 'الأوضاع'),
+            HesakPageHeader(title: 'الأوضاع'),
 
             // Rebuilds whenever a mode changes (selected, starred, edited, listening ...).
             Expanded(
@@ -148,7 +148,7 @@ class _ModesPageContentState extends State<_ModesPageContent> {
     return SingleChildScrollView(
       controller: _scrollController,
       // Bottom space keeps the content above the bottom bar.
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
         HesakSizes.pagePadding,
         4,
         HesakSizes.pagePadding,
@@ -159,18 +159,18 @@ class _ModesPageContentState extends State<_ModesPageContent> {
         children: [
           // ---- Hint on top: switch = choose, ⋮⋮ = drag ----
           if (modes.length > 1) ...[
-            const SizedBox(height: 6),
-            const _ModesListHint(),
-            const SizedBox(height: 12),
+            SizedBox(height: 6),
+            _ModesListHint(),
+            SizedBox(height: 12),
           ] else
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
 
           // ---- All the modes, in a fixed order (the selected one stays in its place) ----
           ReorderableListView(
             // Lives inside the page's scroll: not scrollable by itself.
             shrinkWrap: true,
             padding: EdgeInsets.zero, // No hidden bottom gap (the bar height) before "إضافة وضع جديد"
-            physics: const NeverScrollableScrollPhysics(),
+            physics: NeverScrollableScrollPhysics(),
             buildDefaultDragHandles: false, // Our own handle (⋮⋮) + long-press on the card
             onReorder: (oldIndex, newIndex) => _reorderModes(modes, oldIndex, newIndex),
             // The card being dragged: a little lifted with a soft shadow.
@@ -187,7 +187,7 @@ class _ModesPageContentState extends State<_ModesPageContent> {
                   key: ValueKey('modes_row_${modes[i].id}'),
                   index: i,
                   child: Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
+                    padding: EdgeInsets.only(bottom: 10),
                     child: _ModesModeCard(
                       // Same key selected or not, so an open card stays open when chosen.
                       key: ValueKey('modes_card_${modes[i].id}'),
@@ -201,10 +201,10 @@ class _ModesPageContentState extends State<_ModesPageContent> {
                 ),
             ],
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
 
           // ---- إضافة وضع جديد ----
-          const _ModesAddCard(),
+          _ModesAddCard(),
         ],
       ),
     );
@@ -217,7 +217,7 @@ class _ModesListHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(Icons.toggle_on_outlined, size: 18, color: HesakColors.iconInactive),
@@ -284,14 +284,14 @@ class _ModesModeCardState extends State<_ModesModeCard> {
               begin: AlignmentDirectional.topStart,
               end: AlignmentDirectional.bottomEnd,
               colors: widget.isListening
-                  ? const [HesakColors.primaryMuted, HesakColors.primary]
-                  : const [HesakColors.modeHeaderIdleStart, HesakColors.modeHeaderIdleEnd],
+                  ? [HesakColors.primaryMuted, HesakColors.primary]
+                  : [HesakColors.modeHeaderIdleStart, HesakColors.modeHeaderIdleEnd],
             ),
           )
         : BoxDecoration(
             borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
             border: Border.all(color: HesakColors.modesCardBorder),
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: AlignmentDirectional.centerStart,
               end: AlignmentDirectional.centerEnd,
               colors: HesakColors.modesCardGradient,
@@ -300,7 +300,7 @@ class _ModesModeCardState extends State<_ModesModeCard> {
 
     return AnimatedContainer(
       key: Key(isSelected ? 'modes_selected_row' : 'modes_row_${mode.id}_card'),
-      duration: const Duration(milliseconds: 300),
+      duration: Duration(milliseconds: 300),
       clipBehavior: Clip.antiAlias, // The hint strip follows the rounded bottom
       decoration: decoration,
       child: Material(
@@ -318,7 +318,7 @@ class _ModesModeCardState extends State<_ModesModeCard> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildFirstLine(mode, isSelected),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     _buildButtonsLine(mode, isSelected),
                   ],
                 ),
@@ -327,26 +327,26 @@ class _ModesModeCardState extends State<_ModesModeCard> {
 
             // "إعدادات الوضع" + "جدولة الوضع" (open with the arrow).
             AnimatedSize(
-              duration: const Duration(milliseconds: 250),
+              duration: Duration(milliseconds: 250),
               curve: Curves.easeOut,
               alignment: Alignment.topCenter,
               child: _isOpen
                   ? Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                      padding: EdgeInsets.fromLTRB(10, 0, 10, 10),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _ModesDetailsBox(mode: mode),
-                          const SizedBox(height: 10),
+                          SizedBox(height: 10),
                           _ModesScheduleBox(mode: mode),
                         ],
                       ),
                     )
-                  : const SizedBox(width: double.infinity),
+                  : SizedBox(width: double.infinity),
             ),
 
             // Listening is off: how to really turn the selected mode on.
-            if (showListenHint) const _ModesListenHintStrip(),
+            if (showListenHint) _ModesListenHintStrip(),
           ],
         ),
       ),
@@ -362,7 +362,7 @@ class _ModesModeCardState extends State<_ModesModeCard> {
           ReorderableDragStartListener(
             index: widget.dragIndex!,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 12),
               child: Icon(
                 Icons.drag_indicator_rounded,
                 color: isSelected ? HesakColors.onModeHeaderSoft : HesakColors.iconInactive,
@@ -390,7 +390,7 @@ class _ModesModeCardState extends State<_ModesModeCard> {
                   ),
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
 
         // Name (+ مفعّل / غير مفعّل) and the schedule under it.
         Expanded(
@@ -402,19 +402,19 @@ class _ModesModeCardState extends State<_ModesModeCard> {
                   Flexible(
                     child: Text(
                       mode.name,
-                      key: isSelected ? const Key('modes_selected_name') : null,
+                      key: isSelected ? Key('modes_selected_name') : null,
                       style: isSelected ? HesakTextStyles.modeHeaderName : HesakTextStyles.modeRowName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (isSelected) ...[
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     ModesStateBadge(isListening: widget.isListening),
                   ],
                 ],
               ),
-              const SizedBox(height: 3),
+              SizedBox(height: 3),
               Text(
                 mode.scheduleSummary,
                 style: isSelected
@@ -424,7 +424,7 @@ class _ModesModeCardState extends State<_ModesModeCard> {
             ],
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
 
         // The choose switch. Selected: a bit further from the edge.
         _ModesChooseSwitch(
@@ -457,7 +457,7 @@ class _ModesModeCardState extends State<_ModesModeCard> {
             fill: fill,
             onTap: () => modesToggleFavorite(context, mode),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           _ModesRoundButton(
             key: Key('modes_${keyPart}_edit_${mode.id}'),
             tooltip: 'تعديل',
@@ -466,7 +466,7 @@ class _ModesModeCardState extends State<_ModesModeCard> {
             fill: fill,
             onTap: _openEditor,
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           _ModesRoundButton(
             key: Key('modes_${keyPart}_arrow_${mode.id}'),
             tooltip: _isOpen ? 'إخفاء التفاصيل' : 'عرض التفاصيل',
@@ -509,16 +509,16 @@ class _ModesRoundButton extends StatelessWidget {
       message: tooltip,
       child: Material(
         color: fill,
-        shape: const CircleBorder(),
+        shape: CircleBorder(),
         child: InkWell(
-          customBorder: const CircleBorder(),
+          customBorder: CircleBorder(),
           onTap: onTap,
           child: SizedBox(
             width: _size,
             height: _size,
             child: AnimatedRotation(
               turns: turns,
-              duration: const Duration(milliseconds: 250),
+              duration: Duration(milliseconds: 250),
               child: Icon(icon, size: 20, color: iconColor),
             ),
           ),
@@ -551,19 +551,19 @@ class _ModesChooseSwitch extends StatelessWidget {
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8), // Easier to tap
+          padding: EdgeInsets.symmetric(vertical: 8), // Easier to tap
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
+            duration: Duration(milliseconds: 200),
             width: _width,
             height: _height,
-            padding: const EdgeInsets.all(3),
+            padding: EdgeInsets.all(3),
             decoration: BoxDecoration(
               color: HesakColors.modesIconCircle,
               borderRadius: BorderRadius.circular(_height / 2),
               border: Border.all(color: isOn ? HesakColors.modesIconCircle : HesakColors.primaryLightBorder, width: 1.3),
             ),
             child: AnimatedAlign(
-              duration: const Duration(milliseconds: 200),
+              duration: Duration(milliseconds: 200),
               curve: Curves.easeOut,
               alignment: isOn ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
               child: Container(
@@ -573,7 +573,7 @@ class _ModesChooseSwitch extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: isOn ? HesakColors.modeSelected : HesakColors.modeHeaderIdleStart.withValues(alpha: 0.55),
                 ),
-                child: isOn ? const Icon(Icons.check_rounded, size: 15, color: HesakColors.onPrimary) : null,
+                child: isOn ? Icon(Icons.check_rounded, size: 15, color: HesakColors.onPrimary) : null,
               ),
             ),
           ),
@@ -591,16 +591,16 @@ class _ModesListenHintStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      key: const Key('modes_listen_hint'),
-      padding: const EdgeInsets.symmetric(horizontal: HesakSizes.cardPaddingHorizontal, vertical: 10),
-      decoration: const BoxDecoration(
+      key: Key('modes_listen_hint'),
+      padding: EdgeInsets.symmetric(horizontal: HesakSizes.cardPaddingHorizontal, vertical: 10),
+      decoration: BoxDecoration(
         color: HesakColors.modesHintStripFill,
         border: Border(top: BorderSide(color: HesakColors.modesHintStripLine)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, size: 16, color: HesakColors.modesHintStripText),
-          const SizedBox(width: 6),
+          Icon(Icons.info_outline_rounded, size: 16, color: HesakColors.modesHintStripText),
+          SizedBox(width: 6),
           Expanded(
             child: Text(
               'اضغط زر الاستماع في الرئيسية لتفعيل الوضع',
@@ -635,7 +635,7 @@ class _ModesDetailsBox extends StatelessWidget {
 
     return Container(
       key: Key('modes_details_${mode.id}'),
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: HesakColors.modesDetailsFill,
         borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard + 2),
@@ -645,7 +645,7 @@ class _ModesDetailsBox extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text('إعدادات الوضع', style: HesakTextStyles.itemTitle.copyWith(color: HesakColors.modeSelected)),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -658,7 +658,7 @@ class _ModesDetailsBox extends StatelessWidget {
                     valueIcons: alertTypes.map((t) => t.icon).toList(),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: _ModesInfoTile(
                     icon: Icons.volume_up_outlined,
@@ -669,7 +669,7 @@ class _ModesDetailsBox extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -681,7 +681,7 @@ class _ModesDetailsBox extends StatelessWidget {
                     value: hasCallName && mode.isCallNameAlertOn ? 'مفعّل' : 'غير مفعّل',
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: _ModesInfoTile(
                     icon: Icons.repeat_rounded,
@@ -710,7 +710,7 @@ class _ModesInfoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
         color: HesakColors.modesInfoTileFill,
         borderRadius: BorderRadius.circular(12),
@@ -722,11 +722,11 @@ class _ModesInfoTile extends StatelessWidget {
           Row(
             children: [
               Icon(icon, size: 14, color: HesakColors.textSecondary),
-              const SizedBox(width: 4),
+              SizedBox(width: 4),
               Flexible(child: Text(label, style: HesakTextStyles.modeHint, maxLines: 1, overflow: TextOverflow.ellipsis)),
             ],
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           if (valueIcons.isEmpty)
             Text(value, style: HesakTextStyles.itemTitle, maxLines: 1, overflow: TextOverflow.ellipsis)
           else
@@ -736,7 +736,7 @@ class _ModesInfoTile extends StatelessWidget {
               child: Row(
                 children: [
                   for (int i = 0; i < valueIcons.length; i++) ...[
-                    if (i > 0) const SizedBox(width: 8),
+                    if (i > 0) SizedBox(width: 8),
                     Icon(valueIcons[i], size: 20, color: HesakColors.textPrimary),
                   ],
                 ],
@@ -786,18 +786,18 @@ class _ModesScheduleBoxState extends State<_ModesScheduleBox> {
               key: Key('modes_schedule_toggle_${mode.id}'),
               onTap: () => setState(() => _isOpen = !_isOpen),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 11),
                 child: Row(
                   children: [
-                    const Icon(Icons.calendar_month_outlined, size: 19, color: HesakColors.modeSelected),
-                    const SizedBox(width: 8),
-                    const Expanded(child: Text('جدولة الوضع', style: HesakTextStyles.itemTitle)),
+                    Icon(Icons.calendar_month_outlined, size: 19, color: HesakColors.modeSelected),
+                    SizedBox(width: 8),
+                    Expanded(child: Text('جدولة الوضع', style: HesakTextStyles.itemTitle)),
                     Text(modesPeriodsCountText(mode.periods.length), style: HesakTextStyles.caption),
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
                     AnimatedRotation(
                       turns: _isOpen ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 200),
-                      child: const Icon(Icons.keyboard_arrow_down_rounded, color: HesakColors.textSecondary),
+                      duration: Duration(milliseconds: 200),
+                      child: Icon(Icons.keyboard_arrow_down_rounded, color: HesakColors.textSecondary),
                     ),
                   ],
                 ),
@@ -805,16 +805,16 @@ class _ModesScheduleBoxState extends State<_ModesScheduleBox> {
             ),
           ),
           AnimatedSize(
-            duration: const Duration(milliseconds: 220),
+            duration: Duration(milliseconds: 220),
             curve: Curves.easeOut,
             alignment: Alignment.topCenter,
             child: _isOpen
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Divider(height: 1, thickness: 1, color: HesakColors.modesScheduleBorder),
+                      Divider(height: 1, thickness: 1, color: HesakColors.modesScheduleBorder),
                       Padding(
-                        padding: const EdgeInsets.all(10),
+                        padding: EdgeInsets.all(10),
                         child: ModesScheduleEditor(
                           // New key per mode, so an open edit box doesn't carry over to another mode.
                           key: ValueKey('modes_schedule_${mode.id}'),
@@ -826,7 +826,7 @@ class _ModesScheduleBoxState extends State<_ModesScheduleBox> {
                       ),
                     ],
                   )
-                : const SizedBox(width: double.infinity),
+                : SizedBox(width: double.infinity),
           ),
         ],
       ),
@@ -845,16 +845,16 @@ class _ModesAddCard extends StatelessWidget {
       color: HesakColors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: radius,
-        side: const BorderSide(color: HesakColors.primaryLightBorder, width: 1.3),
+        side: BorderSide(color: HesakColors.primaryLightBorder, width: 1.3),
       ),
       child: InkWell(
-        key: const Key('modes_add_card'),
+        key: Key('modes_add_card'),
         borderRadius: radius,
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const ModeEditorScreen()),
+          MaterialPageRoute(builder: (_) => ModeEditorScreen()),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12),
           child: Row(
             children: [
               Container(
@@ -864,10 +864,10 @@ class _ModesAddCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: HesakColors.primaryLightBorder, width: 1.5),
                 ),
-                child: const Icon(Icons.add_rounded, color: HesakColors.iconInactive, size: 26),
+                child: Icon(Icons.add_rounded, color: HesakColors.iconInactive, size: 26),
               ),
-              const SizedBox(width: 12),
-              const Text('إضافة وضع جديد', style: HesakTextStyles.modeLink),
+              SizedBox(width: 12),
+              Text('إضافة وضع جديد', style: HesakTextStyles.modeLink),
             ],
           ),
         ),
