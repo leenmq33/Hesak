@@ -5,6 +5,8 @@ import '../../core/theme/hesak_colors.dart';
 import '../../core/theme/hesak_sizes.dart';
 import '../../core/theme/hesak_text_styles.dart';
 import '../../services/auth_service.dart';
+import '../../core/data/hesak_legal_texts.dart';
+import '../../widgets/hesak_legal_sheet.dart';
 
 // =====================================================================
 //  AUTH WIDGETS — small building blocks shared by the sign in / sign up
@@ -666,7 +668,10 @@ class AuthVoiceToggle extends StatelessWidget {
   }
 }
 
-/// "أوافق على الشروط والأحكام" with a checkbox. Shows [errorText] under it when set.
+/// "أوافق على الشروط والأحكام وسياسة الخصوصية" with a checkbox.
+/// The 2 purple words are links: each opens its text (showHesakLegalSheet)
+/// without ticking the box. Tapping anywhere else on the row ticks / unticks it.
+/// Shows [errorText] under it when set.
 class AuthTermsCheckbox extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
@@ -700,7 +705,28 @@ class AuthTermsCheckbox extends StatelessWidget {
                 ),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
               ),
-              Text('أوافق على الشروط والأحكام', style: HesakTextStyles.authHint),
+              // Wraps to a 2nd line on small phones.
+              Expanded(
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text('أوافق على ', style: HesakTextStyles.authHint),
+                    HesakLegalLink(
+                      key: Key('auth_terms_link'),
+                      label: 'الشروط والأحكام',
+                      doc: hesakTermsDoc,
+                      style: HesakTextStyles.authLink,
+                    ),
+                    Text(' و', style: HesakTextStyles.authHint),
+                    HesakLegalLink(
+                      key: Key('auth_privacy_link'),
+                      label: 'سياسة الخصوصية',
+                      doc: hesakPrivacyDoc,
+                      style: HesakTextStyles.authLink,
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
