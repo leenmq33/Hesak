@@ -7,17 +7,18 @@ import '../../services/auth_service.dart';
 import '../modes/modes_widgets.dart';
 
 // =====================================================================
-//  HOME — CURRENT MODE CARD (الرئيسية, under the listen button)
+//  HOME — CURRENT MODE CARD (الرئيسية, under الأصوات الحالية)
 //
-//  ONE card that belongs to the mode:
+//  ONE purple card that belongs to the mode:
 //    1) Header: icon · "وضع X" + مفعّل / غير مفعّل · star (yellow when favorite)
-//    2) 4 settings tiles, always shown (view only — changed on الأوضاع):
-//         نوع التنبيه · الأصوات · نداء اسمك · التكرار
-//    3) "الجدولة · <line>" box with an arrow ⌄ that opens جدولة الوضع
+//    2) 2 matte white tiles, view only — changed on الأوضاع:
+//         نوع التنبيه · نداء اسمك (purple round icon in the middle)
+//    3) Glass "الجدولة · <line>" box with an arrow ⌄ that opens جدولة الوضع
 //       (add / edit / delete periods, saved right away).
 //
-//  Listening OFF -> light lavender card (the mode is not on yet).
-//  Listening ON  -> dark purple card (the mode is on). Tiles stay white.
+//  Listening OFF -> light purple card (same purple as الأوضاع).
+//  Listening ON  -> very dark purple card.
+//  The schedule box is see-through purple; the 2 tiles are matte white.
 //
 //  Data: HesakModeStore (mode + listening) and AuthService (call name).
 //  NAMING: everything here starts with "Home". Keys: 'home_<name>'.
@@ -48,21 +49,18 @@ class _HomeModeSectionState extends State<HomeModeSection> {
           duration: const Duration(milliseconds: 300),
           padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
           decoration: BoxDecoration(
-            color: isListening ? null : HesakColors.homeModeCardIdle,
-            gradient: isListening
-                ? const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [HesakColors.buttonPrimary, HesakColors.primary],
-                  )
-                : null,
+            gradient: LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: isListening ? HesakColors.homeModeCardActive : HesakColors.homeModeCardIdle,
+            ),
             borderRadius: BorderRadius.circular(HesakSizes.radiusCard + 2),
-            border: Border.all(color: isListening ? HesakColors.primary : HesakColors.homeModeCardIdleBorder),
+            border: Border.all(color: HesakColors.homeModeCardBorder),
             boxShadow: [
               BoxShadow(
-                color: HesakColors.primary.withOpacity(isListening ? 0.30 : 0.08),
-                blurRadius: isListening ? 26 : 20,
-                offset: const Offset(0, 10),
+                color: HesakColors.primaryDark.withValues(alpha: isListening ? 0.35 : 0.18),
+                blurRadius: 28,
+                offset: const Offset(0, 12),
               ),
             ],
           ),
@@ -71,7 +69,7 @@ class _HomeModeSectionState extends State<HomeModeSection> {
             children: [
               _buildHeader(mode, isListening),
               const SizedBox(height: 12),
-              _HomeModeSettingsTiles(key: const Key('home_mode_settings'), mode: mode),
+              _HomeModeSettingsTiles(key: const Key('home_mode_settings'), mode: mode, isListening: isListening),
               const SizedBox(height: 10),
               _buildScheduleBox(mode),
             ],
@@ -83,55 +81,47 @@ class _HomeModeSectionState extends State<HomeModeSection> {
 
   /// Icon · "وضع X" + badge · star.
   Widget _buildHeader(HesakModeConfig mode, bool isListening) {
-    final Color mainText = isListening ? HesakColors.onPrimary : HesakColors.textPrimary;
-
     return Padding(
       padding: const EdgeInsetsDirectional.only(start: 4),
       child: Row(
         children: [
-          // Icon (or first letter) in a rounded square.
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
+          // Icon (or first letter) in a see-through rounded square.
+          Container(
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: isListening ? HesakColors.modeHeaderOverlay : HesakColors.primary,
+              color: HesakColors.homeGlassIcon,
               borderRadius: BorderRadius.circular(15),
             ),
             child: Center(
               child: mode.icon != null
-                  ? Icon(mode.icon, size: 24, color: HesakColors.onPrimary)
-                  : Text(mode.firstLetter, style: HesakTextStyles.modeCircleLetter.copyWith(color: HesakColors.onPrimary)),
+                  ? Icon(mode.icon, size: 24, color: HesakColors.onHomeGlass)
+                  : Text(mode.firstLetter, style: HesakTextStyles.modeCircleLetter.copyWith(color: HesakColors.onHomeGlass)),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        'وضع ${mode.name}',
-                        key: const Key('home_mode_name'),
-                        style: HesakTextStyles.modeHeaderName.copyWith(color: mainText),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ModesStateBadge(isListening: isListening),
-                  ],
+                Flexible(
+                  child: Text(
+                    'وضع ${mode.name}',
+                    key: const Key('home_mode_name'),
+                    style: HesakTextStyles.modeHeaderName.copyWith(color: HesakColors.onHomeGlass),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
+                const SizedBox(width: 8),
+                ModesStateBadge(isListening: isListening),
               ],
             ),
           ),
-          // Star (add to / remove from الأوضاع المفضلة).
+          // Star (add to / remove from الأوضاع المفضلة). Always on purple here.
           ModesStarButton(
             key: const Key('home_mode_star_button'),
             isFavorite: mode.isFavorite,
-            isOnDark: isListening,
+            isOnDark: true,
             onTap: () => modesToggleFavorite(context, mode),
           ),
         ],
@@ -139,15 +129,15 @@ class _HomeModeSectionState extends State<HomeModeSection> {
     );
   }
 
-  /// White box: "الجدولة · بدون جدولة" + round arrow. Opens جدولة الوضع.
+  /// Glass box: "الجدولة · بدون جدولة" + round arrow. Opens جدولة الوضع.
   Widget _buildScheduleBox(HesakModeConfig mode) {
     return Container(
       key: const Key('home_mode_schedule_box'),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: HesakColors.surface,
+        color: HesakColors.homeGlassFill,
         borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard + 2),
-        border: Border.all(color: HesakColors.homeModeCardIdleBorder),
+        border: Border.all(color: HesakColors.homeGlassBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -160,14 +150,20 @@ class _HomeModeSectionState extends State<HomeModeSection> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
                 children: [
-                  const Icon(Icons.calendar_month_outlined, size: 20, color: HesakColors.primary),
+                  const Icon(Icons.calendar_month_outlined, size: 20, color: HesakColors.onHomeGlass),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text.rich(
                       TextSpan(
                         children: [
-                          const TextSpan(text: 'الجدولة', style: HesakTextStyles.itemTitle),
-                          TextSpan(text: '  ·  ${mode.scheduleLine}', style: HesakTextStyles.modeHint),
+                          TextSpan(
+                            text: 'الجدولة',
+                            style: HesakTextStyles.itemTitle.copyWith(color: HesakColors.onHomeGlass),
+                          ),
+                          TextSpan(
+                            text: '  ·  ${mode.scheduleLine}',
+                            style: HesakTextStyles.modeHint.copyWith(color: HesakColors.onHomeGlassSoft),
+                          ),
                         ],
                       ),
                       maxLines: 1,
@@ -179,11 +175,11 @@ class _HomeModeSectionState extends State<HomeModeSection> {
                     child: Container(
                       width: 32,
                       height: 32,
-                      decoration: const BoxDecoration(shape: BoxShape.circle, color: HesakColors.primaryLight),
+                      decoration: const BoxDecoration(shape: BoxShape.circle, color: HesakColors.homeGlassIcon),
                       child: AnimatedRotation(
                         turns: _isScheduleOpen ? 0.5 : 0, // ⌄ turns into ⌃
                         duration: const Duration(milliseconds: 250),
-                        child: const Icon(Icons.keyboard_arrow_down_rounded, size: 22, color: HesakColors.primary),
+                        child: const Icon(Icons.keyboard_arrow_down_rounded, size: 22, color: HesakColors.onHomeGlass),
                       ),
                     ),
                   ),
@@ -192,13 +188,19 @@ class _HomeModeSectionState extends State<HomeModeSection> {
             ),
           ),
           // جدولة الوضع (opens with the arrow). Saved right away, like on الأوضاع.
+          // Shown on a soft lavender panel so the editor stays easy to read.
           AnimatedSize(
             duration: const Duration(milliseconds: 250),
             alignment: Alignment.topCenter,
             child: !_isScheduleOpen
                 ? const SizedBox(width: double.infinity)
-                : Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                : Container(
+                    margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: HesakColors.homeCardGradient.last,
+                      borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard),
+                    ),
                     child: ModesScheduleEditor(
                       // New key per mode, so an open edit box doesn't carry over to another mode.
                       key: ValueKey('home_schedule_${mode.id}'),
@@ -214,11 +216,12 @@ class _HomeModeSectionState extends State<HomeModeSection> {
   }
 }
 
-/// The mode's 4 view-only settings (2 x 2).
+/// The mode's 2 view-only settings: نوع التنبيه · نداء اسمك.
 class _HomeModeSettingsTiles extends StatelessWidget {
   final HesakModeConfig mode;
+  final bool isListening; // Darker icon circles while listening
 
-  const _HomeModeSettingsTiles({super.key, required this.mode});
+  const _HomeModeSettingsTiles({super.key, required this.mode, required this.isListening});
 
   @override
   Widget build(BuildContext context) {
@@ -226,107 +229,114 @@ class _HomeModeSettingsTiles extends StatelessWidget {
     final bool hasCallName = AuthService.instance.currentCallName != null;
     final String callNameText = hasCallName && mode.isCallNameAlertOn ? 'مفعّل' : 'غير مفعّل';
 
-    final alertTypes = [
+    // The chosen alert types (fixed order of HesakAlertType), shown as icons.
+    final List<HesakAlertType> alertTypes = [
       for (final type in HesakAlertType.values)
         if (mode.alertTypes.contains(type)) type,
     ];
 
-    return Column(
+    // Same height for both tiles (icons vs. text).
+    return IntrinsicHeight(
+      child: Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _HomeSettingTile(
-                key: const Key('home_tile_alert_types'),
-                icon: Icons.vibration_rounded,
-                label: 'نوع التنبيه',
-                value: alertTypes.isEmpty
-                    ? const Text('لا يوجد', style: HesakTextStyles.cardTitle)
-                    : Row(
-                        children: [
-                          for (final type in alertTypes)
-                            Padding(
-                              padding: const EdgeInsetsDirectional.only(end: 6),
-                              child: Tooltip(
-                                message: type.label,
-                                child: Icon(type.icon, size: 20, color: HesakColors.modeSelected),
-                              ),
-                            ),
-                        ],
-                      ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _HomeSettingTile(
-                key: const Key('home_tile_sounds'),
-                icon: Icons.graphic_eq_rounded,
-                label: 'الأصوات',
-                value: Text(modesSoundsCountText(mode.soundIds.length), style: HesakTextStyles.cardTitle),
-              ),
-            ),
-          ],
+        Expanded(
+          child: _HomeSettingTile(
+            key: const Key('home_tile_alert_types'),
+            icon: Icons.vibration_rounded,
+            label: 'نوع التنبيه',
+            // Icons instead of words (اهتزاز / إشعار / وميض). None -> "لا يوجد".
+            value: alertTypes.isEmpty ? 'لا يوجد' : alertTypes.map((t) => t.label).join(' + '),
+            valueIcons: alertTypes.map((t) => t.icon).toList(),
+            isListening: isListening,
+          ),
         ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _HomeSettingTile(
-                key: const Key('home_tile_call_name'),
-                icon: Icons.person_outline_rounded,
-                label: 'نداء اسمك',
-                value: Text(callNameText, style: HesakTextStyles.cardTitle),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _HomeSettingTile(
-                key: const Key('home_tile_repeat'),
-                icon: Icons.repeat_rounded,
-                label: 'التكرار',
-                value: Text(mode.alertRepeat.label, style: HesakTextStyles.cardTitle),
-              ),
-            ),
-          ],
+        const SizedBox(width: 8),
+        Expanded(
+          child: _HomeSettingTile(
+            key: const Key('home_tile_call_name'),
+            icon: Icons.person_outline_rounded,
+            label: 'نداء اسمك',
+            value: callNameText,
+            isListening: isListening,
+          ),
         ),
       ],
+      ),
     );
   }
 }
 
-/// One white tile: small icon box, grey label, the value under it.
+/// One matte white tile: purple round icon in the middle, then the small
+/// label ("نوع التنبيه"), then its value under it ("اهتزاز + وميض").
 class _HomeSettingTile extends StatelessWidget {
   final IconData icon;
   final String label;
-  final Widget value;
+  final String value; // Also read by screen readers when icons are shown
 
-  const _HomeSettingTile({super.key, required this.icon, required this.label, required this.value});
+  /// When not empty, these icons are shown instead of [value] (نوع التنبيه).
+  final List<IconData> valueIcons;
+  final bool isListening;
+
+  const _HomeSettingTile({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.valueIcons = const [],
+    required this.isListening,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
       decoration: BoxDecoration(
-        color: HesakColors.surface,
+        color: HesakColors.surface, // Matte white
         borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard + 2),
-        border: Border.all(color: HesakColors.homeModeCardIdleBorder),
+        border: Border.all(color: HesakColors.surfaceBorder),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 30,
-            height: 30,
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: HesakColors.primaryLight,
-              borderRadius: BorderRadius.circular(10),
+              shape: BoxShape.circle,
+              color: isListening ? HesakColors.primary : HesakColors.modeHeaderIdleEnd,
             ),
-            child: Icon(icon, size: 17, color: HesakColors.primary),
+            child: Icon(icon, size: 20, color: HesakColors.onHomeGlass),
           ),
           const SizedBox(height: 8),
-          Text(label, style: HesakTextStyles.modeHint, maxLines: 1, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 2),
-          value,
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: HesakTextStyles.modeHint,
+          ),
+          const SizedBox(height: 4),
+          if (valueIcons.isEmpty)
+            Text(
+              value,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: HesakTextStyles.cardTitle,
+            )
+          else
+            Semantics(
+              label: value,
+              excludeSemantics: true,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (int i = 0; i < valueIcons.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 10),
+                    Icon(valueIcons[i], size: 24, color: HesakColors.textPrimary),
+                  ],
+                ],
+              ),
+            ),
         ],
       ),
     );

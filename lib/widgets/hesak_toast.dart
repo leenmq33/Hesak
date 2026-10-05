@@ -12,17 +12,25 @@ import '../core/theme/hesak_text_styles.dart';
 //
 //  Drawn on top of everything (not a SnackBar), so it sits just above the
 //  bottom bar instead of floating in the middle of the page.
+//  atTop: true -> shown at the TOP instead (e.g. inside a conversation,
+//  where the keyboard covers the bottom).
 //  Only one message is shown at a time (a new one replaces the old one).
 // =====================================================================
 
 OverlayEntry? _hesakCurrentToast;
 
-/// Shows [message] for 2 seconds, just above the bottom bar.
-void showHesakToast(BuildContext context, String message, {IconData icon = Icons.check_circle_rounded}) {
+/// Shows [message] for 2 seconds, just above the bottom bar
+/// (or at the top of the screen when [atTop] is true).
+void showHesakToast(
+  BuildContext context,
+  String message, {
+  IconData icon = Icons.check_circle_rounded,
+  bool atTop = false,
+}) {
   final overlay = Overlay.maybeOf(context, rootOverlay: true);
   if (overlay == null) return;
   // Read from the root overlay: a page inside a tab sees the bottom bar's height here instead.
-  final double bottomInset = MediaQuery.of(overlay.context).padding.bottom;
+  final EdgeInsets safePadding = MediaQuery.of(overlay.context).padding;
 
   // Only one message at a time.
   _hesakCurrentToast?.remove();
@@ -33,7 +41,8 @@ void showHesakToast(BuildContext context, String message, {IconData icon = Icons
     builder: (_) => Positioned(
       left: 16,
       right: 16,
-      bottom: 110 + bottomInset, // Just above the bottom bar
+      top: atTop ? safePadding.top + 12 : null, // Under the status bar
+      bottom: atTop ? null : 110 + safePadding.bottom, // Just above the bottom bar
       child: IgnorePointer(
         child: _HesakToastView(
           message: message,

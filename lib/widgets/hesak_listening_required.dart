@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/data/hesak_mode_store.dart';
 import 'hesak_confirm_dialog.dart';
+import 'hesak_internet_required.dart';
 
 // =====================================================================
 //  LISTENING REQUIRED — conversations work only while the big listen
@@ -11,7 +12,8 @@ import 'hesak_confirm_dialog.dart';
 //
 //  Listening already on  -> returns true right away (no window).
 //  Listening off         -> shows the shared HesakConfirmDialog:
-//      "تشغيل الاستماع" -> turns listening on and returns true
+//      "تشغيل الاستماع" -> checks the internet, then turns listening on
+//                          and returns true (no internet -> window, false)
 //      "إلغاء" / outside -> returns false (nothing happens)
 // =====================================================================
 
@@ -21,13 +23,16 @@ Future<bool> hesakRequireListening(BuildContext context) async {
 
   final bool shouldTurnOn = await showHesakConfirmDialog(
     context,
-    title: 'يجب تشغيل الاستماع أولًا',
+    title: 'يجب تشغيل زر الاستماع أولًا',
     message: 'شغّل زر الاستماع في أعلى الصفحة الرئيسية لتتمكن من بدء المحادثة',
     confirmLabel: 'تشغيل الاستماع',
     icon: Icons.mic_off_rounded,
     isDanger: false,
   );
-  if (!shouldTurnOn) return false;
+  if (!shouldTurnOn || !context.mounted) return false;
+
+  // Listening needs the internet.
+  if (!await hesakRequireInternet(context)) return false;
 
   HesakModeStore.instance.setListening(true);
   return true;

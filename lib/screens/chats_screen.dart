@@ -89,7 +89,7 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
   _ChatsSortOrder _selectedSortOrder = _ChatsSortOrder.newestFirst;
   String _searchQuery = '';
 
-  /// Ticks every second so the "تُحذف بعد 17:20:30" countdown stays exact.
+  /// Ticks every minute so "تُحذف بعد 17 ساعة" stays right.
   Timer? _countdownTimer;
 
   @override
@@ -99,7 +99,7 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
     // Reload when a conversation is saved / deleted from another page (الرئيسية).
     ConversationService.instance.changeCount.addListener(_reloadQuietly);
     _countdownTimer = Timer.periodic(
-      const Duration(seconds: 1),
+      const Duration(minutes: 1),
           (_) => _refreshCountdowns(),
     );
   }
@@ -192,7 +192,10 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
       builder: (_) => _ChatsRenameDialog(currentTitle: conversation.title),
     );
     if (newTitle == null || newTitle.trim().isEmpty) return;
-    setState(() => conversation.title = newTitle.trim());
+    setState(() {
+      conversation.title = newTitle.trim();
+      conversation.markEdited(); // Renaming = a change -> moves to the top
+    });
     ConversationService.instance.saveConversation(conversation);
   }
 
@@ -286,9 +289,8 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: HesakSizes.sectionGap),
-                  // The 24h notice shows on "الكل" only; "المحفوظة" has none.
-                  if (isAllTab) const _ChatsExpiryNotice(),
+                  // The 24h notice is now the first item of the list
+                  // (it scrolls away with the conversations).
                 ],
               ),
             ),
@@ -299,26 +301,44 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
                   : _hasLoadFailed && _conversations.isEmpty
                   ? _ChatsLoadFailedState(onRetry: _loadConversations)
                   : visible.isEmpty
-                  ? _ChatsEmptyState(
-                      isSearching: _searchQuery.isNotEmpty,
-                      isAllTab: isAllTab,
+                  ? Column(
+                      children: <Widget>[
+                        if (isAllTab)
+                          const Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              HesakSizes.pagePadding,
+                              HesakSizes.sectionGap,
+                              HesakSizes.pagePadding,
+                              0,
+                            ),
+                            child: _ChatsExpiryNotice(),
+                          ),
+                        Expanded(
+                          child: _ChatsEmptyState(
+                            isSearching: _searchQuery.isNotEmpty,
+                            isAllTab: isAllTab,
+                          ),
+                        ),
+                      ],
                     )
                   : ListView.separated(
                 key: const Key('chats_conversations_list'),
                 padding: const EdgeInsets.fromLTRB(
                   HesakSizes.pagePadding,
-                  16,
+                  HesakSizes.sectionGap,
                   HesakSizes.pagePadding,
                   // Bar space + room so the last card clears the
                   // "محادثة جديدة" button.
                   HesakSizes.pageBottomSafeSpace + 70,
                 ),
-                itemCount: visible.length,
+                // On "الكل" the 24h notice is item 0, so it scrolls away.
+                itemCount: visible.length + (isAllTab ? 1 : 0),
                 separatorBuilder: (_, __) =>
                 const SizedBox(height: HesakSizes.sectionGap),
                 itemBuilder: (_, index) {
+                  if (isAllTab && index == 0) return const _ChatsExpiryNotice();
                   final ChatsConversation conversation =
-                  visible[index];
+                  visible[isAllTab ? index - 1 : index];
                   return _ChatsConversationCard(
                     conversation: conversation,
                     onOpen: () => _openConversation(conversation),
@@ -666,8 +686,13 @@ class _ChatsConversationCard extends StatelessWidget {
     return Container(
       key: Key('chats_conversation_card_${conversation.id}'),
       decoration: BoxDecoration(
-        color: HesakColors.surface,
-        border: Border.all(color: HesakColors.surfaceBorder),
+        // Lavender on the icon side, fading to light on the other side.
+        gradient: const LinearGradient(
+          begin: AlignmentDirectional.centerStart,
+          end: AlignmentDirectional.centerEnd,
+          colors: HesakColors.chatsCardGradient,
+        ),
+        border: Border.all(color: HesakColors.chatsCardBorder),
         borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
         boxShadow: _chatsCardShadow,
       ),
@@ -686,18 +711,18 @@ class _ChatsConversationCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
+                // Dark purple circle with a light chat icon.
                 Container(
                   width: HesakSizes.iconBox,
                   height: HesakSizes.iconBox,
-                  decoration: BoxDecoration(
-                    color: HesakColors.primaryLight,
-                    borderRadius:
-                    BorderRadius.circular(HesakSizes.radiusIconBox),
+                  decoration: const BoxDecoration(
+                    color: HesakColors.primary,
+                    shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.chat_outlined,
                     size: HesakSizes.iconInBox,
-                    color: HesakColors.primary,
+                    color: HesakColors.onHomeGlass,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -727,8 +752,8 @@ class _ChatsConversationCard extends StatelessWidget {
                           ),
                           if (!isSaved && conversation.hasStartedListening)
                             Text(
-                              '· تُحذف بعد ${chatsFormatTimeLeft(conversation.timeUntilAutoDelete)}',
-                              style: HesakTextStyles.captionUrgent,
+                              'تُحذف بعد ${chatsFormatTimeLeft(conversation.timeUntilAutoDelete)}',
+                              style: HesakTextStyles.caption, // Grey, not red
                             ),
                         ],
                       ),

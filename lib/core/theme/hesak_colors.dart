@@ -219,74 +219,129 @@ class HesakColors {
   // Home page (الرئيسية)
   // ---------------------------------------------------------------
 
-  /// Light lavender page background of الرئيسية (under the purple top).
+  /// Very light lavender page background behind the cards (الرئيسية and the other tabs).
+  /// The cards on top are the darker purple, so they stand out.
   static const Color homePageBackground = Color(0xFFF6F3F9);
 
-  /// Middle tone of the purple top (between the dark purple and the lavender).
-  static const Color homeHeroMiddle = Color(0xFF8F7FA3);
+  /// Light lavender at the very top (behind the logo + greeting) — not white.
+  static const Color homeHeaderTint = Color(0xFFF2EEF6);
 
-  /// Purple top of الرئيسية: dark purple at the top, fades into the lavender page.
-  static const List<Color> homeHeroGradient = [
-    primary,
-    buttonPrimary,
-    homeHeroMiddle,
-    primaryLightBorder,
+  /// Long soft band behind the listen button: header tint -> purple behind
+  /// the button -> back to the page background. No hard line anywhere.
+  static const List<Color> homeListenBandGradient = [
+    homeHeaderTint,
+    Color(0xFFEFE9F6),
+    Color(0xFFE5DBF0),
+    Color(0xFFD4C6E7),
+    Color(0xFFBFAED9),
+    Color(0xFFAE9BCB),
+    Color(0xFFAA97C8),
+    Color(0xFFB8A7D3),
+    Color(0xFFCBBDE1),
+    Color(0xFFE6DDF1),
     homePageBackground,
   ];
 
-  /// Where each color of [homeHeroGradient] sits (0 = top, 1 = bottom).
-  static const List<double> homeHeroGradientStops = [0.0, 0.28, 0.55, 0.78, 1.0];
+  /// Where each color of [homeListenBandGradient] sits (0 = top of the page).
+  static const List<double> homeListenBandStops = [
+    0.0, 0.18, 0.27, 0.35, 0.42, 0.49, 0.54, 0.63, 0.74, 0.85, 1.0,
+  ];
 
-  /// Header waves + divider on the purple top (~40% white).
+  /// Header waves + divider on a purple background (~40% white). (Kept for the header option.)
   static const Color homeHeaderLinesOnPurple = Color(0x66FFFFFF);
 
-  /// Soft white circles (halos) around the listen button (~12% white).
-  static const Color homeHaloFill = Color(0x1FFFFFFF);
+  // ---- Listen button ----
 
-  /// Outline of those halos (~40% white).
-  static const Color homeHaloBorder = Color(0x66FFFFFF);
+  /// One soft circle around the button before listening (~16% light lavender).
+  static const Color homeHaloFill = Color(0x29F6F2F9);
 
-  /// Empty part of the turning ring while listening (~25% white).
-  static const Color homeListenTrack = Color(0x40FFFFFF);
+  /// Outline of that circle and of the rings while listening (~50%).
+  static const Color homeHaloBorder = Color(0x80F6F2F9);
 
-  /// White listen button (before listening): white -> very light lavender.
-  static const List<Color> homeListenButtonIdle = [surface, modeTileSelectedFill, primaryLight];
+  /// Empty part of the turning ring while listening (~30%).
+  static const Color homeListenTrack = Color(0x4DF6F2F9);
 
-  /// Purple listen button (while listening).
-  static const List<Color> homeListenButtonActive = [primaryMuted, primary];
+  /// Light lavender of the button / rings (never pure white).
+  static const Color homeListenLight = Color(0xFFF6F2F9);
+
+  /// Button before listening: light lavender (not white).
+  static const List<Color> homeListenButtonIdle = [homeListenLight, Color(0xFFEDE6F4), Color(0xFFE1D6EE)];
+
+  /// Button while listening: very dark purple.
+  static const List<Color> homeListenButtonActive = [primary, primaryDark];
 
   /// Dark soft shadow under the listen button.
   static const Color homeListenShadow = Color(0x47201430);
 
-  /// Light red box behind an urgent alert icon (e.g. إنذار حريق).
-  static const Color homeUrgentIconFill = Color(0xFFFBE9E7);
+  // ---- Cards (الأصوات الحالية · محادثات اليوم · التنبيهات) ----
 
-  /// Current mode card while listening is OFF (light lavender).
-  static const Color homeModeCardIdle = Color(0xFFF3EEF9);
+  /// Soft lavender (used behind the open schedule editor on the mode card).
+  static const List<Color> homeCardGradient = [Color(0xFFECE6F3), Color(0xFFE6DEF0)];
 
-  /// Outline of the mode card, its tiles and the schedule box.
-  static const Color homeModeCardIdleBorder = Color(0xFFE6DEF0);
+  /// Thin purple outline of the cards.
+  static const Color homeCardBorder = Color(0xFFCDBFDE);
+
+  /// Deeper soft shadow under the cards.
+  static const Color homeCardShadow = Color(0x243F2A73);
+
+  // All 3 cards (الأصوات الحالية · محادثات اليوم · التنبيهات) are matte white
+  // (HesakColors.surface); what's inside them is light purple.
+
+  /// Things inside a white card: sound chips, conversation rows, alert icon boxes.
+  static const Color homeItemFill = Color(0xFFE6DEF0);
+
+  /// Thin outline of the sound chips.
+  static const Color homeChipBorder = Color(0xFFDED3EC);
+
+  /// Thin lines between the alerts.
+  static const Color homeCardDivider = Color(0xFFEAE3F2);
+
+  /// Icon box inside a conversation row (one step darker than the row).
+  static const Color homeCardIconBox = Color(0xFFD3C6E3);
+
+  /// Box behind an urgent alert icon (e.g. إنذار حريق).
+  static const Color homeUrgentIconFill = Color(0xFFEED5D8);
+
+  // ---- Mode card ----
+
+  /// Mode card while listening is OFF (same light purple as الأوضاع).
+  static const List<Color> homeModeCardIdle = [modeHeaderIdleStart, modeHeaderIdleEnd];
+
+  /// Mode card while listening is ON: very dark purple.
+  static const List<Color> homeModeCardActive = [primary, primaryDark];
+
+  /// Thin dark outline of the mode card (~35%).
+  static const Color homeModeCardBorder = Color(0x593F2A73);
+
+  /// See-through glass boxes on the mode card (tiles, schedule) (~14% white).
+  static const Color homeGlassFill = Color(0x24FFFFFF);
+
+  /// Outline of the glass boxes (~22% white).
+  static const Color homeGlassBorder = Color(0x38FFFFFF);
+
+  /// Icon circles on the glass boxes (~20% white).
+  static const Color homeGlassIcon = Color(0x33FFFFFF);
+
+  /// Text / icons on the mode card (light lavender, not white).
+  static const Color onHomeGlass = Color(0xFFF3EEF8);
+
+  /// Small text on the mode card (~75%).
+  static const Color onHomeGlassSoft = Color(0xBFF3EEF8);
 
   /// Yellow of a favorite mode's star (الأوضاع المفضلة), on light and purple.
   static const Color favoriteStar = Color(0xFFF2C14E);
 
-  /// Light lavender background of the 4 main tabs
-  /// (الرئيسية bottom, المحادثات, الأوضاع, الإعدادات in فاتح).
+  /// Background of the 4 main tabs (الرئيسية, المحادثات, الأوضاع, الإعدادات in فاتح).
   static const Color tabPageBackground = homePageBackground;
 
-  /// Purple-ish band behind the listen button (الرئيسية), from under the
-  /// greeting: light header -> lavender -> soft purple -> lavender page.
-  static const List<Color> homeListenBandGradient = [
-    background,
-    Color(0xFFF5F1F8),
-    primaryLight,
-    primaryLightBorder,
-    Color(0xFFA897BD),
-    Color(0xFFA897BD),
-    primaryLightBorder,
-    tabPageBackground,
-  ];
+  /// المحادثات list cards: lavender on the icon side fading to light
+  /// on the other side (start -> end).
+  static const List<Color> chatsCardGradient = [Color(0xFFE3D9F0), Color(0xFFF6F2FA)];
 
-  /// Where each color of [homeListenBandGradient] sits (0 = top of the page).
-  static const List<double> homeListenBandStops = [0.0, 0.22, 0.29, 0.37, 0.47, 0.60, 0.73, 0.88];
+  /// Thin outline of the المحادثات list cards.
+  static const Color chatsCardBorder = Color(0xFFD8CCE8);
+
+  /// Inside one conversation: very light purple (same as the pages), so the
+  /// purple voice messages stand out from it.
+  static const Color chatsConversationBackground = tabPageBackground;
 }
