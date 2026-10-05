@@ -80,7 +80,7 @@ class _SignUpFormState extends State<SignUpForm> {
 
   String? get _termsError {
     if (!_hasTriedSubmit) return null;
-    if (!_hasAcceptedTerms) return 'يجب الموافقة على الشروط والأحكام';
+    if (!_hasAcceptedTerms) return 'يجب الموافقة على الشروط والأحكام وسياسة الخصوصية';
     return null;
   }
 
