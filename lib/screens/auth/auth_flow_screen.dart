@@ -37,15 +37,18 @@ enum AuthStep { welcome, login, signUp, resetPassword, verifyEmail, callName }
 
 /// Welcome buttons + all sign in / sign up forms.
 class HesakAuthFlowScreen extends StatefulWidget {
-  const HesakAuthFlowScreen({super.key});
+  /// The first step to show. Normally welcome (after the splash);
+  /// login after "كلمة مرور جديدة" (see new_password_screen.dart).
+  final AuthStep initialStep;
+
+  const HesakAuthFlowScreen({super.key, this.initialStep = AuthStep.welcome});
 
   @override
   State<HesakAuthFlowScreen> createState() => _HesakAuthFlowScreenState();
 }
 
 class _HesakAuthFlowScreenState extends State<HesakAuthFlowScreen> {
-  AuthStep _step = AuthStep.welcome;
-
+  late AuthStep _step = widget.initialStep;
   // Welcome starts looking exactly like the end of the splash (logo in the middle).
   // Shortly after, the logo rises and the 2 buttons slide in.
   bool _areWelcomeButtonsVisible = false;
