@@ -286,7 +286,7 @@ class HesakModeStore extends ChangeNotifier {
       id: HesakModeIds.sleep,
       name: 'النوم',
       icon: Icons.nightlight_round,
-      isFavorite: true,
+      // Only العام starts in الأوضاع المفضلة; the user stars the others.
       alertTypes: const {HesakAlertType.vibration, HesakAlertType.flash},
       alertRepeat: HesakAlertRepeat.thrice,
       soundIds: hesakEmergencySoundIds,
@@ -295,7 +295,6 @@ class HesakModeStore extends ChangeNotifier {
       id: HesakModeIds.car,
       name: 'السيارة',
       icon: Icons.directions_car_rounded,
-      isFavorite: true,
       soundIds: {
         ...hesakEmergencySoundIds,
         ...hesakSoundsIn(HesakSoundCategory.traffic).map((sound) => sound.id),

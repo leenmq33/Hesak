@@ -19,6 +19,8 @@ import '../core/theme/hesak_text_styles.dart';
 import '../widgets/hesak_confirm_dialog.dart';
 import '../widgets/hesak_listening_required.dart';
 import '../widgets/hesak_page_header.dart';
+import '../widgets/hesak_toast.dart';
+import 'settings/settings_widgets.dart';
 import 'chats_conversation_screen.dart';
 import 'chats_models.dart';
 import '../services/conversation_service.dart';
@@ -34,7 +36,7 @@ class ChatsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // SafeArea (like الأوضاع / الإعدادات) so the header sits at exactly
     // the same height on every tab.
-    return const SafeArea(
+    return SafeArea(
       bottom: false,
       child: Column(
         children: <Widget>[
@@ -56,11 +58,11 @@ enum _ChatsSortOrder { newestFirst, oldestFirst }
 enum _ChatsCardAction { rename, delete }
 
 /// Shared card shadow from the guide: primary at 6%, blur 16, 4 down.
-final List<BoxShadow> _chatsCardShadow = <BoxShadow>[
+List<BoxShadow> get _chatsCardShadow => <BoxShadow>[
   BoxShadow(
     color: HesakColors.primary.withValues(alpha: 0.06),
     blurRadius: 16,
-    offset: const Offset(0, 4),
+    offset: Offset(0, 4),
   ),
 ];
 
@@ -89,7 +91,7 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
   _ChatsSortOrder _selectedSortOrder = _ChatsSortOrder.newestFirst;
   String _searchQuery = '';
 
-  /// Ticks every second so the "تُحذف بعد 17:20:30" countdown stays exact.
+  /// Ticks every minute so "تُحذف بعد 17 ساعة" stays right.
   Timer? _countdownTimer;
 
   @override
@@ -99,7 +101,7 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
     // Reload when a conversation is saved / deleted from another page (الرئيسية).
     ConversationService.instance.changeCount.addListener(_reloadQuietly);
     _countdownTimer = Timer.periodic(
-      const Duration(seconds: 1),
+      Duration(minutes: 1),
           (_) => _refreshCountdowns(),
     );
   }
@@ -182,18 +184,37 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
   void _toggleConversationSaved(ChatsConversation conversation) {
     setState(() => conversation.isSaved = !conversation.isSaved);
     ConversationService.instance.saveConversation(conversation);
+    // Same messages as inside the conversation.
+    showHesakToast(
+      context,
+      conversation.isSaved ? 'تم حفظ المحادثة' : 'تم إلغاء حفظ المحادثة',
+      icon: conversation.isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+    );
   }
 
   /// Opens the rename dialog and applies the new title.
-  Future<void> _renameConversation(ChatsConversation conversation) async {
-    final String? newTitle = await showDialog<String>(
-      context: context,
-      barrierColor: HesakColors.textPrimary.withValues(alpha: 0.38),
-      builder: (_) => _ChatsRenameDialog(currentTitle: conversation.title),
+  /// Same sheet as editing the name in الإعدادات (rises from the bottom).
+  /// "حفظ" stays grey until the name really changes.
+  Future<void> _renameConversation(ChatsConversation conversation) {
+    return showSettingsNameSheet(
+      context,
+      title: 'تعديل اسم المحادثة',
+      note: null,
+      fieldLabel: 'الاسم:',
+      hint: 'اسم المحادثة',
+      initialValue: conversation.title,
+      problemOf: (_) => null, // Any text is OK (numbers too, e.g. "محادثة 38")
+      onSave: (newTitle) async {
+        if (!mounted) return false;
+        setState(() {
+          conversation.title = newTitle;
+          conversation.markEdited(); // Renaming = a change -> moves to the top
+        });
+        ConversationService.instance.saveConversation(conversation);
+        showHesakToast(context, 'تم تغيير اسم المحادثة');
+        return true;
+      },
     );
-    if (newTitle == null || newTitle.trim().isEmpty) return;
-    setState(() => conversation.title = newTitle.trim());
-    ConversationService.instance.saveConversation(conversation);
   }
 
   /// Asks for confirmation, then removes the conversation.
@@ -208,6 +229,7 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
     if (!isConfirmed || !mounted) return;
     ConversationService.instance.deleteConversation(conversation.id);
     setState(() => _conversations.remove(conversation));
+    showHesakToast(context, 'تم حذف المحادثة', icon: Icons.delete_outline_rounded);
   }
 
   /// Opens a conversation full screen (above the bottom bar, which must
@@ -255,7 +277,7 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
         Column(
           children: <Widget>[
             Padding(
-              padding: const EdgeInsets.fromLTRB(
+              padding: EdgeInsets.fromLTRB(
                 HesakSizes.pagePadding,
                 16, // breathing room under the header divider
                 HesakSizes.pagePadding,
@@ -268,7 +290,7 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
                     onTabSelected: (tab) =>
                         setState(() => _selectedFilterTab = tab),
                   ),
-                  const SizedBox(height: HesakSizes.sectionGap),
+                  SizedBox(height: HesakSizes.sectionGap),
                   Row(
                     children: <Widget>[
                       Expanded(
@@ -278,7 +300,7 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
                               setState(() => _searchQuery = value),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       _ChatsSortButton(
                         selectedOrder: _selectedSortOrder,
                         onOrderSelected: (order) =>
@@ -286,39 +308,56 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: HesakSizes.sectionGap),
-                  // The 24h notice shows on "الكل" only; "المحفوظة" has none.
-                  if (isAllTab) const _ChatsExpiryNotice(),
+                  // The 24h notice is now the first item of the list
+                  // (it scrolls away with the conversations).
                 ],
               ),
             ),
             Expanded(
               child: _isLoading && _conversations.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: CircularProgressIndicator(color: HesakColors.primary))
                   : _hasLoadFailed && _conversations.isEmpty
                   ? _ChatsLoadFailedState(onRetry: _loadConversations)
                   : visible.isEmpty
-                  ? _ChatsEmptyState(
-                      isSearching: _searchQuery.isNotEmpty,
-                      isAllTab: isAllTab,
+                  ? Column(
+                      children: <Widget>[
+                        if (isAllTab)
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              HesakSizes.pagePadding,
+                              HesakSizes.sectionGap,
+                              HesakSizes.pagePadding,
+                              0,
+                            ),
+                            child: _ChatsExpiryNotice(),
+                          ),
+                        Expanded(
+                          child: _ChatsEmptyState(
+                            isSearching: _searchQuery.isNotEmpty,
+                            isAllTab: isAllTab,
+                          ),
+                        ),
+                      ],
                     )
                   : ListView.separated(
-                key: const Key('chats_conversations_list'),
-                padding: const EdgeInsets.fromLTRB(
+                key: Key('chats_conversations_list'),
+                padding: EdgeInsets.fromLTRB(
                   HesakSizes.pagePadding,
-                  16,
+                  HesakSizes.sectionGap,
                   HesakSizes.pagePadding,
                   // Bar space + room so the last card clears the
                   // "محادثة جديدة" button.
                   HesakSizes.pageBottomSafeSpace + 70,
                 ),
-                itemCount: visible.length,
+                // On "الكل" the 24h notice is item 0, so it scrolls away.
+                itemCount: visible.length + (isAllTab ? 1 : 0),
                 separatorBuilder: (_, __) =>
-                const SizedBox(height: HesakSizes.sectionGap),
+                SizedBox(height: HesakSizes.sectionGap),
                 itemBuilder: (_, index) {
+                  if (isAllTab && index == 0) return _ChatsExpiryNotice();
                   final ChatsConversation conversation =
-                  visible[index];
+                  visible[isAllTab ? index - 1 : index];
                   return _ChatsConversationCard(
                     conversation: conversation,
                     onOpen: () => _openConversation(conversation),
@@ -365,8 +404,8 @@ class _ChatsFilterTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      key: const Key('chats_filter_tabs'),
-      padding: const EdgeInsets.all(4),
+      key: Key('chats_filter_tabs'),
+      padding: EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: HesakColors.navBar,
         border: Border.all(color: HesakColors.surfaceBorder),
@@ -375,14 +414,14 @@ class _ChatsFilterTabs extends StatelessWidget {
       child: Row(
         children: <Widget>[
           _ChatsFilterTabButton(
-            key: const Key('chats_filter_all_tab'),
+            key: Key('chats_filter_all_tab'),
             label: 'الكل',
             isSelected: selectedTab == _ChatsFilterTab.all,
             onTap: () => onTabSelected(_ChatsFilterTab.all),
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           _ChatsFilterTabButton(
-            key: const Key('chats_filter_saved_tab'),
+            key: Key('chats_filter_saved_tab'),
             label: 'المحفوظة',
             isSelected: selectedTab == _ChatsFilterTab.saved,
             onTap: () => onTabSelected(_ChatsFilterTab.saved),
@@ -416,7 +455,7 @@ class _ChatsFilterTabButton extends StatelessWidget {
           onTap: onTap,
           behavior: HitTestBehavior.opaque,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
+            duration: Duration(milliseconds: 180),
             height: 40, // 40 + 4 padding each side = 48 touch height
             alignment: Alignment.center,
             decoration: BoxDecoration(
@@ -427,7 +466,7 @@ class _ChatsFilterTabButton extends StatelessWidget {
                 BoxShadow(
                   color: HesakColors.primary.withValues(alpha: 0.12),
                   blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  offset: Offset(0, 2),
                 ),
               ]
                   : null,
@@ -462,7 +501,7 @@ class _ChatsSearchBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 48, // matches the sort button
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: HesakColors.surface,
         border: Border.all(color: HesakColors.surfaceBorder),
@@ -471,15 +510,15 @@ class _ChatsSearchBar extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          const Icon(
+          Icon(
             Icons.search_rounded,
             size: HesakSizes.iconInChip + 3,
             color: HesakColors.textSecondary,
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: TextField(
-              key: const Key('chats_search_bar'),
+              key: Key('chats_search_bar'),
               controller: controller,
               onChanged: onChanged,
               textInputAction: TextInputAction.search,
@@ -515,16 +554,16 @@ class _ChatsSortButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<_ChatsSortOrder>(
-      key: const Key('chats_sort_button'),
+      key: Key('chats_sort_button'),
       tooltip: 'ترتيب حسب التاريخ',
       onSelected: onOrderSelected,
       color: HesakColors.surface,
       elevation: 8,
       shadowColor: HesakColors.primary.withValues(alpha: 0.3),
-      offset: const Offset(0, 56), // opens just under the button
+      offset: Offset(0, 56), // opens just under the button
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: HesakColors.surfaceBorder),
+        side: BorderSide(color: HesakColors.surfaceBorder),
       ),
       itemBuilder: (_) => <PopupMenuEntry<_ChatsSortOrder>>[
         PopupMenuItem<_ChatsSortOrder>(
@@ -534,12 +573,12 @@ class _ChatsSortButton extends StatelessWidget {
               .copyWith(color: HesakColors.textSecondary)),
         ),
         _buildSortItem(
-          key: const Key('chats_sort_newest_option'),
+          key: Key('chats_sort_newest_option'),
           order: _ChatsSortOrder.newestFirst,
           label: 'من الأحدث للأقدم',
         ),
         _buildSortItem(
-          key: const Key('chats_sort_oldest_option'),
+          key: Key('chats_sort_oldest_option'),
           order: _ChatsSortOrder.oldestFirst,
           label: 'من الأقدم للأحدث',
         ),
@@ -553,7 +592,7 @@ class _ChatsSortButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: _chatsCardShadow,
         ),
-        child: const Icon(
+        child: Icon(
           Icons.swap_vert_rounded,
           size: HesakSizes.iconInBox,
           color: HesakColors.primary,
@@ -577,7 +616,7 @@ class _ChatsSortButton extends StatelessWidget {
         children: <Widget>[
           Expanded(child: Text(label, style: HesakTextStyles.itemTitle)),
           if (isSelected)
-            const Icon(
+            Icon(
               Icons.check_rounded,
               size: HesakSizes.iconInChip + 3,
               color: HesakColors.primaryMuted,
@@ -599,8 +638,8 @@ class _ChatsExpiryNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      key: const Key('chats_expiry_note'),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      key: Key('chats_expiry_note'),
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: HesakColors.urgent.withValues(alpha: 0.05),
         border: Border.all(color: HesakColors.urgent.withValues(alpha: 0.2)),
@@ -608,12 +647,12 @@ class _ChatsExpiryNotice extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          const Icon(
+          Icon(
             Icons.info_outline_rounded,
             size: HesakSizes.iconInChip + 3,
             color: HesakColors.urgent,
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Text.rich(
               TextSpan(
@@ -623,12 +662,12 @@ class _ChatsExpiryNotice extends StatelessWidget {
                   height: 1.6,
                 ),
                 children: <InlineSpan>[
-                  const TextSpan(text: 'تُحذف المحادثات تلقائيًا بعد '),
+                  TextSpan(text: 'تُحذف المحادثات تلقائيًا بعد '),
                   TextSpan(
                     text: '24 ساعة',
                     style: HesakTextStyles.captionUrgent,
                   ),
-                  const TextSpan(text: '، احفظ ما يهمك بزر الحفظ'),
+                  TextSpan(text: '، احفظ ما يهمك بزر الحفظ'),
                 ],
               ),
             ),
@@ -666,8 +705,13 @@ class _ChatsConversationCard extends StatelessWidget {
     return Container(
       key: Key('chats_conversation_card_${conversation.id}'),
       decoration: BoxDecoration(
-        color: HesakColors.surface,
-        border: Border.all(color: HesakColors.surfaceBorder),
+        // Lavender on the icon side, fading to light on the other side.
+        gradient: LinearGradient(
+          begin: AlignmentDirectional.centerStart,
+          end: AlignmentDirectional.centerEnd,
+          colors: HesakColors.chatsCardGradient,
+        ),
+        border: Border.all(color: HesakColors.chatsCardBorder),
         borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
         boxShadow: _chatsCardShadow,
       ),
@@ -677,7 +721,7 @@ class _ChatsConversationCard extends StatelessWidget {
           onTap: onOpen,
           borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
           child: Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(
+            padding: EdgeInsetsDirectional.fromSTEB(
               HesakSizes.cardPaddingHorizontal,
               HesakSizes.cardPaddingTop,
               6, // the (…) and save buttons already have their own padding
@@ -686,21 +730,21 @@ class _ChatsConversationCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
+                // Dark purple circle with a light chat icon.
                 Container(
                   width: HesakSizes.iconBox,
                   height: HesakSizes.iconBox,
                   decoration: BoxDecoration(
-                    color: HesakColors.primaryLight,
-                    borderRadius:
-                    BorderRadius.circular(HesakSizes.radiusIconBox),
+                    color: HesakColors.primary,
+                    shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.chat_outlined,
                     size: HesakSizes.iconInBox,
-                    color: HesakColors.primary,
+                    color: HesakColors.onHomeGlass,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -711,7 +755,7 @@ class _ChatsConversationCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: HesakTextStyles.cardTitle,
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Wrap(
                         spacing: 10,
                         runSpacing: 4,
@@ -727,8 +771,8 @@ class _ChatsConversationCard extends StatelessWidget {
                           ),
                           if (!isSaved && conversation.hasStartedListening)
                             Text(
-                              '· تُحذف بعد ${chatsFormatTimeLeft(conversation.timeUntilAutoDelete)}',
-                              style: HesakTextStyles.captionUrgent,
+                              'تُحذف بعد ${chatsFormatTimeLeft(conversation.timeUntilAutoDelete)}',
+                              style: HesakTextStyles.caption, // Grey, not red
                             ),
                         ],
                       ),
@@ -780,7 +824,7 @@ class _ChatsMetaItem extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         Icon(icon, size: 14, color: HesakColors.textSecondary),
-        const SizedBox(width: 4),
+        SizedBox(width: 4),
         // textSecondary instead of textMuted: easier to read for our users.
         Text(text,
             style:
@@ -805,9 +849,9 @@ class _ChatsCardMenuButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<_ChatsCardAction>(
-      key: const Key('chats_card_menu_button'),
+      key: Key('chats_card_menu_button'),
       tooltip: 'خيارات المحادثة: $conversationTitle',
-      icon: const Icon(
+      icon: Icon(
         Icons.more_horiz_rounded,
         size: HesakSizes.iconInBox,
         color: HesakColors.primary,
@@ -817,7 +861,7 @@ class _ChatsCardMenuButton extends StatelessWidget {
       shadowColor: HesakColors.primary.withValues(alpha: 0.3),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: HesakColors.surfaceBorder),
+        side: BorderSide(color: HesakColors.surfaceBorder),
       ),
       onSelected: (action) {
         switch (action) {
@@ -829,28 +873,28 @@ class _ChatsCardMenuButton extends StatelessWidget {
       },
       itemBuilder: (_) => <PopupMenuEntry<_ChatsCardAction>>[
         PopupMenuItem<_ChatsCardAction>(
-          key: const Key('chats_card_menu_rename'),
+          key: Key('chats_card_menu_rename'),
           value: _ChatsCardAction.rename,
           height: 48,
           child: Row(
             children: <Widget>[
-              const Icon(Icons.edit_outlined,
+              Icon(Icons.edit_outlined,
                   size: HesakSizes.iconInChip + 3, color: HesakColors.primary),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text('تعديل الاسم', style: HesakTextStyles.itemTitle),
             ],
           ),
         ),
-        const PopupMenuDivider(height: 8),
+        PopupMenuDivider(height: 8),
         PopupMenuItem<_ChatsCardAction>(
-          key: const Key('chats_card_menu_delete'),
+          key: Key('chats_card_menu_delete'),
           value: _ChatsCardAction.delete,
           height: 48,
           child: Row(
             children: <Widget>[
-              const Icon(Icons.delete_outline_rounded,
+              Icon(Icons.delete_outline_rounded,
                   size: HesakSizes.iconInChip + 3, color: HesakColors.urgent),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text('حذف المحادثة',
                   style: HesakTextStyles.itemTitle
                       .copyWith(color: HesakColors.urgent)),
@@ -878,7 +922,7 @@ class _ChatsEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
         HesakSizes.pagePadding,
         40,
         HesakSizes.pagePadding,
@@ -904,7 +948,7 @@ class _ChatsEmptyState extends StatelessWidget {
               color: HesakColors.primaryMuted,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             isSearching
                 ? 'لا توجد نتائج'
@@ -913,7 +957,7 @@ class _ChatsEmptyState extends StatelessWidget {
                 : 'لا توجد محادثات محفوظة',
             style: HesakTextStyles.cardTitle,
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             isSearching
                 ? 'جرّب كلمة أخرى أو امسح البحث'
@@ -938,8 +982,8 @@ class _ChatsLoadFailedState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      key: const Key('chats_load_failed'),
-      padding: const EdgeInsets.fromLTRB(
+      key: Key('chats_load_failed'),
+      padding: EdgeInsets.fromLTRB(
         HesakSizes.pagePadding,
         40,
         HesakSizes.pagePadding,
@@ -954,30 +998,30 @@ class _ChatsLoadFailedState extends StatelessWidget {
               color: HesakColors.urgent.withValues(alpha: 0.07),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.wifi_off_rounded,
+            child: Icon(Icons.wifi_off_rounded,
                 size: HesakSizes.iconInBox + 3, color: HesakColors.urgent),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text('تعذّر تحميل المحادثات', style: HesakTextStyles.cardTitle),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             'تحقّق من اتصالك بالإنترنت ثم أعد المحاولة',
             textAlign: TextAlign.center,
             style: HesakTextStyles.body.copyWith(height: 1.6),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           SizedBox(
             height: 46,
             child: TextButton.icon(
-              key: const Key('chats_retry_button'),
+              key: Key('chats_retry_button'),
               onPressed: onRetry,
               style: TextButton.styleFrom(
                 backgroundColor: HesakColors.primary,
                 foregroundColor: HesakColors.onPrimary,
-                shape: const StadiumBorder(),
-                padding: const EdgeInsets.symmetric(horizontal: 22),
+                shape: StadiumBorder(),
+                padding: EdgeInsets.symmetric(horizontal: 22),
               ),
-              icon: const Icon(Icons.refresh_rounded, size: HesakSizes.iconInChip + 3),
+              icon: Icon(Icons.refresh_rounded, size: HesakSizes.iconInChip + 3),
               label: Text('إعادة المحاولة',
                   style: HesakTextStyles.itemTitle.copyWith(color: HesakColors.onPrimary)),
             ),
@@ -1001,13 +1045,13 @@ class _ChatsNewConversationButton extends StatelessWidget {
       button: true,
       label: 'محادثة جديدة',
       child: GestureDetector(
-        key: const Key('chats_new_button'),
+        key: Key('chats_new_button'),
         onTap: onPressed,
         child: Container(
           width: 52, // comfortable touch size
           height: 52,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: <Color>[HesakColors.primaryMuted, HesakColors.primary],
@@ -1017,181 +1061,13 @@ class _ChatsNewConversationButton extends StatelessWidget {
               BoxShadow(
                 color: HesakColors.primary.withValues(alpha: 0.3),
                 blurRadius: 22,
-                offset: const Offset(0, 10),
+                offset: Offset(0, 10),
               ),
             ],
           ),
-          child: const Icon(Icons.add_rounded,
+          child: Icon(Icons.add_rounded,
               size: HesakSizes.iconNavTab, color: HesakColors.onPrimary),
         ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Dialogs
-// ---------------------------------------------------------------------------
-
-/// "تعديل اسم المحادثة" — returns the new title, or null when cancelled.
-class _ChatsRenameDialog extends StatefulWidget {
-  const _ChatsRenameDialog({required this.currentTitle});
-
-  final String currentTitle;
-
-  @override
-  State<_ChatsRenameDialog> createState() => _ChatsRenameDialogState();
-}
-
-class _ChatsRenameDialogState extends State<_ChatsRenameDialog> {
-  late final TextEditingController _titleController =
-  TextEditingController(text: widget.currentTitle)
-    ..addListener(() => setState(() {})); // Re-check "حفظ" on every letter
-
-  /// "حفظ" works only when the name really changed (typing it back to the
-  /// old name makes it grey again).
-  bool get _hasNewTitle {
-    final String typed = _titleController.text.trim();
-    return typed.isNotEmpty && typed != widget.currentTitle.trim();
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    super.dispose();
-  }
-
-  void _submitNewTitle() {
-    if (_hasNewTitle) Navigator.of(context).pop(_titleController.text);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _ChatsDialogFrame(
-      key: const Key('chats_rename_dialog'),
-      children: <Widget>[
-        Text('تعديل اسم المحادثة', style: HesakTextStyles.cardTitle),
-        const SizedBox(height: 14),
-        TextField(
-          key: const Key('chats_rename_input'),
-          controller: _titleController,
-          autofocus: true,
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => _submitNewTitle(),
-          style: HesakTextStyles.itemTitle.copyWith(fontWeight: FontWeight.w400),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: HesakColors.surface,
-            contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(
-                  color: HesakColors.primaryLightBorder, width: 1.5),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide:
-              const BorderSide(color: HesakColors.primaryMuted, width: 1.5),
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: _ChatsDialogButton(
-                key: const Key('chats_rename_save'),
-                label: 'حفظ',
-                isPrimary: true,
-                onPressed: _hasNewTitle ? _submitNewTitle : null, // Grey until changed
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _ChatsDialogButton(
-                key: const Key('chats_rename_cancel'),
-                label: 'إلغاء',
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// Card-style frame shared by the list dialogs.
-class _ChatsDialogFrame extends StatelessWidget {
-  const _ChatsDialogFrame({
-    super.key,
-    required this.children,
-  });
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: HesakColors.surface,
-      insetPadding: const EdgeInsets.all(HesakSizes.pagePadding),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
-        side: const BorderSide(color: HesakColors.surfaceBorder),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: children,
-        ),
-      ),
-    );
-  }
-}
-
-/// 48-high rounded button used in the list dialogs.
-class _ChatsDialogButton extends StatelessWidget {
-  const _ChatsDialogButton({
-    super.key,
-    required this.label,
-    required this.onPressed,
-    this.isPrimary = false,
-  });
-
-  final String label;
-  final VoidCallback? onPressed; // null = disabled (grey)
-  final bool isPrimary;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isEnabled = onPressed != null;
-    final Color background = !isEnabled
-        ? HesakColors.modeUnselectedFill
-        : isPrimary
-        ? HesakColors.primary
-        : HesakColors.primaryLight;
-    final Color foreground = !isEnabled
-        ? HesakColors.iconInactive
-        : isPrimary
-        ? HesakColors.onPrimary
-        : HesakColors.primary;
-
-    return SizedBox(
-      height: 48,
-      child: TextButton(
-        onPressed: onPressed,
-        style: TextButton.styleFrom(
-          backgroundColor: background,
-          foregroundColor: foreground,
-          disabledBackgroundColor: background,
-          disabledForegroundColor: foreground,
-          shape: const StadiumBorder(),
-        ),
-        child: Text(label,
-            style: HesakTextStyles.itemTitle.copyWith(color: foreground)),
       ),
     );
   }

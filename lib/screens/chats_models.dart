@@ -40,6 +40,7 @@ class ChatsMessage {
     this.enhancedText,
     this.isEnhancementAccepted = false,
     this.voiceDuration,
+    this.audioFileName,
   });
 
   final String id;
@@ -62,6 +63,10 @@ class ChatsMessage {
   /// Length of the generated voice (text-to-speech messages only).
   final Duration? voiceDuration;
 
+  /// Saved ElevenLabs audio of this message on the phone (relative file
+  /// name, see HesakTtsService). Null = no real audio saved yet.
+  String? audioFileName;
+
   /// The words of the original text, used for the spoken-word highlight.
   List<String> get originalWords =>
       originalText.trim().split(RegExp(r'\s+'));
@@ -76,6 +81,7 @@ class ChatsConversation {
     List<ChatsMessage>? messages,
     this.isSaved = false,
     this.startedAt,
+    this.editedAt,
   }) : messages = messages ?? <ChatsMessage>[];
 
   final String id;
@@ -97,14 +103,37 @@ class ChatsConversation {
   /// Once true, the big "بدء الاستماع" card never shows again.
   bool get hasStartedListening => startedAt != null;
 
+  /// Last time the user changed something that is not a message
+  /// (renamed it, accepted an improved text). Null = never.
+  DateTime? editedAt;
+
   /// Marks the start time once (later calls keep the first time).
   void markStarted() => startedAt ??= DateTime.now();
 
-  /// Time shown on the card and in the chat: the start time.
-  DateTime get displayTime => startedAt ?? createdAt;
+  /// Call after a change that is not a new message (rename, improved text).
+  /// Just opening the conversation is NOT a change.
+  void markEdited() => editedAt = DateTime.now();
 
-  /// Time left before automatic deletion, counted from the start time
-  /// (zero when already expired).
+  /// When the conversation really began.
+  DateTime get startTime => startedAt ?? createdAt;
+
+  /// Time shown on the cards (الرئيسية + المحادثات) and used to order them:
+  /// the LAST change = the newest of: start, last message, last edit.
+  /// Opening a conversation without changing anything keeps the same time.
+  DateTime get displayTime {
+    DateTime latest = startTime;
+    for (final ChatsMessage m in messages) {
+      if (m.sentAt.isAfter(latest)) latest = m.sentAt;
+    }
+    final DateTime? edited = editedAt;
+    if (edited != null && edited.isAfter(latest)) latest = edited;
+    return latest;
+  }
+
+  /// Time left before automatic deletion: 24 hours from the LAST change.
+  /// Every new message / rename starts the 24 hours again
+  /// (e.g. 6 hours left -> add a message -> 24 hours left).
+  /// Zero when already expired.
   Duration get timeUntilAutoDelete {
     final Duration left =
         displayTime.add(chatsAutoDeleteAfter).difference(DateTime.now());
@@ -152,14 +181,20 @@ int chatsHighestDefaultNumber(Iterable<ChatsConversation> conversations) {
   return highest;
 }
 
-/// Exact countdown "17:20:30" (hours:minutes:seconds) — used in
-/// "تُحذف بعد ...". Updated every second by the list page.
+/// Time left in hours only (no minutes / seconds) — used in "تُحذف بعد ...":
+/// "17 ساعة" · "4 ساعات" · "ساعتين" · "ساعة". A started hour counts as a
+/// full one (16 h 40 min -> "17 ساعة").
 String chatsFormatTimeLeft(Duration left) {
-  final int hours = left.inHours;
-  final String minutes = (left.inMinutes % 60).toString().padLeft(2, '0');
-  final String seconds = (left.inSeconds % 60).toString().padLeft(2, '0');
-  return '$hours:$minutes:$seconds';
+  final int hours = (left.inMinutes + 59) ~/ 60; // round up
+  if (hours <= 1) return 'ساعة';
+  if (hours == 2) return 'ساعتين';
+  if (hours <= 10) return '$hours ساعات';
+  return '$hours ساعة';
 }
+
+/// True when [a] and [b] are on the same calendar day.
+bool chatsIsSameDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
 
 /// "0:05" — voice message length.
 String chatsFormatVoiceDuration(Duration duration) {
@@ -226,7 +261,7 @@ Future<String> chatsEnhanceText(String text) async {
 /// delete unsaved conversations older than [chatsAutoDeleteAfter].
 List<ChatsConversation> chatsSampleConversations() {
   final DateTime now = DateTime.now();
-  final DateTime meetingStart = now.subtract(const Duration(hours: 6));
+  final DateTime meetingStart = now.subtract(Duration(hours: 6));
 
   return <ChatsConversation>[
     ChatsConversation(
@@ -245,21 +280,21 @@ List<ChatsConversation> chatsSampleConversations() {
         ChatsMessage(
           id: 'm2',
           kind: ChatsMessageKind.speechToText,
-          sentAt: meetingStart.add(const Duration(minutes: 1)),
+          sentAt: meetingStart.add(Duration(minutes: 1)),
           originalText:
               'نعم نحتاج نحدد المهام لكل واحد و نتفق على الجدول الزمني',
         ),
         ChatsMessage(
           id: 'm3',
           kind: ChatsMessageKind.textToSpeech,
-          sentAt: meetingStart.add(const Duration(minutes: 3)),
+          sentAt: meetingStart.add(Duration(minutes: 3)),
           originalText: 'تمام، أنا جاهزة ونقدر نبدأ بمناقشة التفاصيل الآن.',
-          voiceDuration: const Duration(seconds: 5),
+          voiceDuration: Duration(seconds: 5),
         ),
         ChatsMessage(
           id: 'm4',
           kind: ChatsMessageKind.speechToText,
-          sentAt: meetingStart.add(const Duration(minutes: 4)),
+          sentAt: meetingStart.add(Duration(minutes: 4)),
           originalText: 'ممتاز راح ارسل لكم الملفات بعد شوي',
         ),
       ],
@@ -267,28 +302,28 @@ List<ChatsConversation> chatsSampleConversations() {
     ChatsConversation(
       id: 'chats_demo_2',
       title: 'محاضرة التصميم التفاعلي',
-      createdAt: now.subtract(const Duration(hours: 8)),
-      startedAt: now.subtract(const Duration(hours: 8)),
+      createdAt: now.subtract(Duration(hours: 8)),
+      startedAt: now.subtract(Duration(hours: 8)),
     ),
     ChatsConversation(
       id: 'chats_demo_3',
       title: 'موعد العيادة',
-      createdAt: now.subtract(const Duration(days: 1, hours: 2)),
+      createdAt: now.subtract(Duration(days: 1, hours: 2)),
       isSaved: true,
-      startedAt: now.subtract(const Duration(days: 1, hours: 2)),
+      startedAt: now.subtract(Duration(days: 1, hours: 2)),
     ),
     ChatsConversation(
       id: 'chats_demo_4',
       title: 'في المقهى',
-      createdAt: now.subtract(const Duration(hours: 21)),
-      startedAt: now.subtract(const Duration(hours: 21)),
+      createdAt: now.subtract(Duration(hours: 21)),
+      startedAt: now.subtract(Duration(hours: 21)),
     ),
     ChatsConversation(
       id: 'chats_demo_5',
       title: 'اجتماع فريق المشروع',
-      createdAt: now.subtract(const Duration(days: 2, hours: 1)),
+      createdAt: now.subtract(Duration(days: 2, hours: 1)),
       isSaved: true,
-      startedAt: now.subtract(const Duration(days: 2, hours: 1)),
+      startedAt: now.subtract(Duration(days: 2, hours: 1)),
     ),
   ];
 }

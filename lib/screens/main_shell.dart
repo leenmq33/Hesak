@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../core/data/hesak_connection.dart';
 import '../core/data/hesak_mode_store.dart';
 import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_palette.dart';
 import '../services/auth_service.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/hesak_confirm_dialog.dart';
 import '../widgets/hesak_toast.dart';
 import 'chats_screen.dart';
 import 'home_screen.dart';
@@ -21,6 +23,8 @@ import 'settings_screen.dart';
 //  - Passing the user's modes (from HesakModeStore) to the middle button.
 //  - Showing the message when the schedule switches the mode, and checking
 //    the schedule again when the app comes back from the background.
+//  - Watching the internet: if it drops while listening, listening turns
+//    off and a window says so (on any page, even inside a conversation).
 //
 //  Each page lives in its own file, so each teammate can work on one page
 //  without touching the others:
@@ -42,6 +46,10 @@ class _HesakMainShellState extends State<HesakMainShell> with WidgetsBindingObse
   // The page that is open now (starts on الرئيسية).
   HesakNavTab _selectedTab = HesakNavTab.home;
 
+  // الرئيسية has its own navigator (like الأوضاع), so تعديل الوضع (the pencil on
+  // the mode card) opens INSIDE the tab: the bottom bar stays, back returns here.
+  final GlobalKey<NavigatorState> _homeNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'home_navigator');
+
   // The user's modes + the active one live in HesakModeStore
   // (lib/core/data/hesak_mode_store.dart), shared with the الأوضاع page.
   final HesakModeStore _modeStore = HesakModeStore.instance;
@@ -60,11 +68,30 @@ class _HesakMainShellState extends State<HesakMainShell> with WidgetsBindingObse
       });
     });
     _modeStore.checkSchedule(isAppStart: true);
+    HesakConnection.instance
+      ..start()
+      ..addListener(_handleConnectionChanged);
+  }
+
+  /// Internet dropped while listening -> stop listening + tell the user.
+  void _handleConnectionChanged() {
+    if (HesakConnection.instance.isOnline || !_modeStore.isListening) return;
+    _modeStore.setListening(false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showHesakNoticeDialog(
+        context,
+        title: 'انقطع الاتصال بالإنترنت',
+        message: 'تم إيقاف الاستماع، شغّل الإنترنت ثم اضغط زر الاستماع مرة أخرى',
+        icon: Icons.wifi_off_rounded,
+      );
+    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    HesakConnection.instance.removeListener(_handleConnectionChanged);
     _scheduleMessagesSubscription?.cancel();
     super.dispose();
   }
@@ -93,15 +120,26 @@ class _HesakMainShellState extends State<HesakMainShell> with WidgetsBindingObse
         children: [
           // Home greeting uses the user's name from AuthService, and updates
           // when it changes in الإعدادات. Empty = unknown (e.g. after login, for now).
-          ListenableBuilder(
-            listenable: AuthService.instance,
-            builder: (context, _) => HomeScreen(
-              userName: AuthService.instance.currentUserName ?? '',
-              // "عرض الكل" on the conversations card -> المحادثات tab.
-              onShowAllChats: () => setState(() => _selectedTab = HesakNavTab.chats),
+          // Phone back button: go back inside the tab first (e.g. from تعديل الوضع).
+          NavigatorPopHandler(
+            enabled: _selectedTab == HesakNavTab.home,
+            onPop: () => _homeNavigatorKey.currentState?.maybePop(),
+            child: Navigator(
+              key: _homeNavigatorKey,
+              onGenerateRoute: (settings) => MaterialPageRoute(
+                settings: settings,
+                builder: (_) => ListenableBuilder(
+                  listenable: AuthService.instance,
+                  builder: (context, _) => HomeScreen(
+                    userName: AuthService.instance.currentUserName ?? '',
+                    // "عرض الكل" on the conversations card -> المحادثات tab.
+                    onShowAllChats: () => setState(() => _selectedTab = HesakNavTab.chats),
+                  ),
+                ),
+              ),
             ),
           ),
-          const ChatsScreen(),
+          ChatsScreen(),
           // isActive: the phone back button only goes back inside الأوضاع while it's shown.
           ModesScreen(isActive: _selectedTab == HesakNavTab.modes),
           SettingsScreen(isActive: _selectedTab == HesakNavTab.settings),

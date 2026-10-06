@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'hesak_colors.dart';
 
 // =====================================================================
 //  HESAK PALETTE — light / dark (المظهر: فاتح / داكن)
 //
-//  TRIAL: for now only the الإعدادات page and the bottom bar follow the
-//  appearance. The other pages still use HesakColors directly (always light).
-//  When the team approves dark mode, every page will switch from
-//  `HesakColors.xxx` to `HesakPalette.current.xxx` (one big change, done
-//  together so nobody's work clashes).
+//  The WHOLE app follows the appearance:
+//  - Most screens use HesakColors.xxx, which gives the light or dark color
+//    by itself (hesak_colors.dart).
+//  - الإعدادات and the bottom bar use this palette (same idea, older code).
+//  When the user changes فاتح / داكن, every screen builds again (see
+//  HesakThemeController.setAppearance), so nothing stays in the old colors.
 //
-//  How to use in a widget that should follow the appearance:
+//  How to use the palette in a widget:
 //    ListenableBuilder(
 //      listenable: HesakThemeController.instance,
 //      builder: (context, _) {
@@ -20,7 +23,7 @@ import 'hesak_colors.dart';
 //    )
 //
 //  NAMING: public types start with "Hesak". Light values come from
-//  HesakColors (so they always match the rest of the app).
+//  HesakColorsLight (so they always match the rest of the app).
 // =====================================================================
 
 /// The two appearances the user can pick in الإعدادات.
@@ -39,12 +42,59 @@ class HesakThemeController extends ChangeNotifier {
   /// true = dark appearance.
   bool get isDark => _appearance == HesakAppearance.dark;
 
-  /// Changes the appearance (every listening widget rebuilds).
-  /// TODO: save the choice on the phone so it stays after restarting the app.
+  /// Key of the choice saved on the phone.
+  static const String _phoneKey = 'hesak_appearance';
+
+  /// Reads the last choice made ON THIS PHONE. Called once in main() before
+  /// the app starts, so even the splash / sign-in pages open in that look
+  /// (nobody is signed in yet, so the account's choice isn't known there).
+  Future<void> loadFromPhone() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getString(_phoneKey) == HesakAppearance.dark.name) _appearance = HesakAppearance.dark;
+    } catch (e) {
+      debugPrint('loadFromPhone error: $e'); // Not saved yet / not available -> light
+    }
+    _applyStatusBar();
+  }
+
+  /// Changes the appearance and remembers it on the phone.
+  /// The account copy is saved by AuthService.updateAppearance.
   void setAppearance(HesakAppearance appearance) {
     if (appearance == _appearance) return;
     _appearance = appearance;
     notifyListeners();
+    _applyStatusBar();
+    _rebuildWholeApp();
+    _saveOnPhone(appearance);
+  }
+
+  /// Status bar icons: light on dark, dark on light.
+  void _applyStatusBar() =>
+      SystemChrome.setSystemUIOverlayStyle(isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark);
+
+  Future<void> _saveOnPhone(HesakAppearance appearance) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_phoneKey, appearance.name);
+    } catch (e) {
+      debugPrint('saveOnPhone error: $e');
+    }
+  }
+
+  /// Every screen reads its colors (HesakColors.xxx) while it builds. So after
+  /// a change, we ask EVERY widget — the open page, the pages kept in the
+  /// other tabs, open windows — to build again. Nothing is lost: the open
+  /// pages, typed text and scroll position all stay.
+  static void _rebuildWholeApp() {
+    final Element? root = WidgetsBinding.instance.rootElement;
+    if (root == null) return;
+    void markForRebuild(Element element) {
+      element.markNeedsBuild();
+      element.visitChildren(markForRebuild);
+    }
+
+    root.visitChildren(markForRebuild);
   }
 }
 
@@ -56,6 +106,10 @@ class HesakPalette {
   final Color surface; // Cards
   final Color surfaceBorder; // Card outline
   final Color divider; // Thin lines between rows
+  final Color cardBorder; // Outline of the white content cards (الإعدادات)
+  final Color cardShadow; // Soft shadow under those cards
+  final Color rowLine; // Lines between the rows inside those cards
+  final Color iconBox; // Small square behind a row icon
 
   // ---- Text & icons ----
   final Color title; // Page titles
@@ -95,6 +149,10 @@ class HesakPalette {
     required this.surface,
     required this.surfaceBorder,
     required this.divider,
+    required this.cardBorder,
+    required this.cardShadow,
+    required this.rowLine,
+    required this.iconBox,
     required this.title,
     required this.textPrimary,
     required this.textSecondary,
@@ -120,31 +178,36 @@ class HesakPalette {
 
   /// فاتح — exactly the colors the app already uses.
   static const HesakPalette light = HesakPalette(
-    background: HesakColors.tabPageBackground, // Lavender like the other tabs
-    surface: HesakColors.surface,
-    surfaceBorder: HesakColors.surfaceBorder,
-    divider: HesakColors.listDivider,
-    title: HesakColors.primaryDark,
-    textPrimary: HesakColors.textPrimary,
-    textSecondary: HesakColors.textSecondary,
-    iconInactive: HesakColors.iconInactive,
-    accent: HesakColors.primary,
-    onAccent: HesakColors.onPrimary,
-    accentSoft: HesakColors.primaryLight,
-    accentSoftBorder: HesakColors.primaryLightBorder,
-    headerLines: HesakColors.lavenderAccent,
-    fieldFill: HesakColors.fieldFill,
-    fieldHint: HesakColors.fieldHint,
-    noteFill: HesakColors.infoBannerFill,
-    noteBorder: HesakColors.infoBannerBorder,
-    noteText: HesakColors.infoBannerText,
-    danger: HesakColors.urgent,
-    success: HesakColors.passwordRuleMet,
-    navBar: HesakColors.navBar,
-    navPill: HesakColors.primaryLight,
-    navSelected: HesakColors.primaryMuted,
-    modeMenuBackdrop: HesakColors.modeMenuBackdrop,
-    modeMenuBackdropBorder: HesakColors.modeMenuBackdropBorder,
+    background: HesakColorsLight.tabPageBackground, // Lavender like the other tabs
+    surface: HesakColorsLight.surface,
+    surfaceBorder: HesakColorsLight.surfaceBorder,
+    divider: HesakColorsLight.listDivider,
+    // Same white cards as الرئيسية (purple outline + soft shadow).
+    cardBorder: HesakColorsLight.homeCardBorder,
+    cardShadow: HesakColorsLight.homeCardShadow,
+    rowLine: HesakColorsLight.settingsRowLine,
+    iconBox: HesakColorsLight.settingsIconBox,
+    title: HesakColorsLight.primaryDark,
+    textPrimary: HesakColorsLight.textPrimary,
+    textSecondary: HesakColorsLight.textSecondary,
+    iconInactive: HesakColorsLight.iconInactive,
+    accent: HesakColorsLight.primary,
+    onAccent: HesakColorsLight.onPrimary,
+    accentSoft: HesakColorsLight.primaryLight,
+    accentSoftBorder: HesakColorsLight.primaryLightBorder,
+    headerLines: HesakColorsLight.lavenderAccent,
+    fieldFill: HesakColorsLight.fieldFill,
+    fieldHint: HesakColorsLight.fieldHint,
+    noteFill: HesakColorsLight.infoBannerFill,
+    noteBorder: HesakColorsLight.infoBannerBorder,
+    noteText: HesakColorsLight.infoBannerText,
+    danger: HesakColorsLight.urgent,
+    success: HesakColorsLight.passwordRuleMet,
+    navBar: HesakColorsLight.navBar,
+    navPill: HesakColorsLight.primaryLight,
+    navSelected: HesakColorsLight.primaryMuted,
+    modeMenuBackdrop: HesakColorsLight.modeMenuBackdrop,
+    modeMenuBackdropBorder: HesakColorsLight.modeMenuBackdropBorder,
   );
 
   /// داكن — very dark purple (not pure black) so it still feels like Hesak.
@@ -154,12 +217,17 @@ class HesakPalette {
     surface: Color(0xFF221B2B),
     surfaceBorder: Color(0xFF342A40),
     divider: Color(0xFF342A40),
+    cardBorder: Color(0xFF342A40),
+    cardShadow: Color(0x33000000),
+    rowLine: Color(0xFF342A40),
+    iconBox: Color(0xFF3A2E4B),
     title: Color(0xFFD9C8F2),
     textPrimary: Color(0xFFF1ECF6),
     textSecondary: Color(0xFFB3A9C1),
     iconInactive: Color(0xFF8C8299),
-    accent: Color(0xFFB79BE0),
-    onAccent: Color(0xFF1E1628),
+    // Same purple as HesakColorsDark.primary, so الإعدادات matches the other pages.
+    accent: HesakColorsDark.primary,
+    onAccent: HesakColorsDark.onPrimary,
     accentSoft: Color(0xFF3A2E4B),
     accentSoftBorder: Color(0xFF55456B),
     headerLines: Color(0xFF6E5A8C),
@@ -172,7 +240,7 @@ class HesakPalette {
     success: Color(0xFF7FC99C),
     navBar: Color(0xFF1F1827),
     navPill: Color(0xFF3A2E4B),
-    navSelected: Color(0xFFB79BE0),
+    navSelected: HesakColorsDark.primaryMuted,
     modeMenuBackdrop: Color(0xE6221B2B),
     modeMenuBackdropBorder: Color(0x6655456B),
   );

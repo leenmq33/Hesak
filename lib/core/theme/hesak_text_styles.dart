@@ -8,6 +8,8 @@ import 'hesak_colors.dart';
 /// - Need a small change (e.g. different color)? Use `.copyWith(...)`:
 ///     HesakTextStyles.body.copyWith(color: HesakColors.urgent)
 /// - Need a new style? Add it here first.
+/// - The styles follow فاتح / داكن (their colors come from HesakColors), so they
+///   are not `const`: don't write `const` in front of a widget that uses them.
 class HesakTextStyles {
   HesakTextStyles._(); // Use HesakTextStyles.xxx directly
 
@@ -19,7 +21,7 @@ class HesakTextStyles {
   // ---- Big titles ----
 
   /// Page title under the header ("الرئيسية", "المحادثات" ...). 26 / Bold.
-  static const TextStyle pageTitle = TextStyle(
+  static TextStyle get pageTitle => TextStyle(
     fontFamily: fontFamily,
     fontSize: 26,
     fontWeight: FontWeight.w700,
@@ -27,16 +29,16 @@ class HesakTextStyles {
   );
 
   /// Splash tagline (the sentence under the logo). 22 / SemiBold.
-  static const TextStyle splashTagline = TextStyle(
+  static TextStyle get splashTagline => TextStyle(
     fontFamily: fontFamily,
     fontSize: 22,
     fontWeight: FontWeight.w600,
-    color: HesakColors.primaryDark,
+    color: HesakColorsLight.primaryDark, // Always the dark purple: sits on the same light purple in فاتح and داكن
     height: 1.4,
   );
 
   /// Greeting ("مرحبًا رحاب"). 22 / Bold.
-  static const TextStyle greeting = TextStyle(
+  static TextStyle get greeting => TextStyle(
     fontFamily: fontFamily,
     fontSize: 22,
     fontWeight: FontWeight.w700,
@@ -44,7 +46,7 @@ class HesakTextStyles {
   );
 
   /// Big action text under a main button ("اضغط للاستماع"). 20 / Bold.
-  static const TextStyle actionLabel = TextStyle(
+  static TextStyle get actionLabel => TextStyle(
     fontFamily: fontFamily,
     fontSize: 20,
     fontWeight: FontWeight.w700,
@@ -54,7 +56,7 @@ class HesakTextStyles {
   // ---- Cards ----
 
   /// Title at the top of a card ("الأصوات الحالية", "التنبيهات"). 15 / Bold.
-  static const TextStyle cardTitle = TextStyle(
+  static TextStyle get cardTitle => TextStyle(
     fontFamily: fontFamily,
     fontSize: 15,
     fontWeight: FontWeight.w700,
@@ -62,7 +64,7 @@ class HesakTextStyles {
   );
 
   /// Title of one row inside a card ("إنذار", "بكاء طفل"). 14.5 / Bold.
-  static const TextStyle itemTitle = TextStyle(
+  static TextStyle get itemTitle => TextStyle(
     fontFamily: fontFamily,
     fontSize: 14.5,
     fontWeight: FontWeight.w700,
@@ -70,7 +72,7 @@ class HesakTextStyles {
   );
 
   /// Text inside a chip ("صوت إسعاف"). 13 / SemiBold.
-  static const TextStyle chipLabel = TextStyle(
+  static TextStyle get chipLabel => TextStyle(
     fontFamily: fontFamily,
     fontSize: 13,
     fontWeight: FontWeight.w600,
@@ -80,7 +82,7 @@ class HesakTextStyles {
   // ---- Bottom nav bar ----
 
   /// Tab label in the bottom bar (unselected). 11 / Medium / grey.
-  static const TextStyle navLabel = TextStyle(
+  static TextStyle get navLabel => TextStyle(
     fontFamily: fontFamily,
     fontSize: 11,
     fontWeight: FontWeight.w500,
@@ -88,7 +90,7 @@ class HesakTextStyles {
   );
 
   /// Tab label in the bottom bar (selected). 11 / Bold / purple.
-  static const TextStyle navLabelSelected = TextStyle(
+  static TextStyle get navLabelSelected => TextStyle(
     fontFamily: fontFamily,
     fontSize: 11,
     fontWeight: FontWeight.w700,
@@ -96,7 +98,7 @@ class HesakTextStyles {
   );
 
   /// Label under each mode circle ("الصلاة", "النوم", "إضافة"). 12 / SemiBold.
-  static const TextStyle modeLabel = TextStyle(
+  static TextStyle get modeLabel => TextStyle(
     fontFamily: fontFamily,
     fontSize: 12,
     fontWeight: FontWeight.w600,
@@ -106,7 +108,7 @@ class HesakTextStyles {
   // ---- Small text ----
 
   /// Descriptions / subtitles ("تم رصد صوت إنذار"). 12 / Regular.
-  static const TextStyle body = TextStyle(
+  static TextStyle get body => TextStyle(
     fontFamily: fontFamily,
     fontSize: 12,
     fontWeight: FontWeight.w400,
@@ -114,7 +116,7 @@ class HesakTextStyles {
   );
 
   /// Times and small hints ("منذ ساعة"). 12 / Medium.
-  static const TextStyle caption = TextStyle(
+  static TextStyle get caption => TextStyle(
     fontFamily: fontFamily,
     fontSize: 12,
     fontWeight: FontWeight.w500,
@@ -122,7 +124,7 @@ class HesakTextStyles {
   );
 
   /// Urgent caption ("الآن" on a new alert). 12 / Bold / red.
-  static const TextStyle captionUrgent = TextStyle(
+  static TextStyle get captionUrgent => TextStyle(
     fontFamily: fontFamily,
     fontSize: 12,
     fontWeight: FontWeight.w700,
@@ -132,7 +134,7 @@ class HesakTextStyles {
   // ---- Sign in / sign up screens ----
 
   /// Title at the top of the white sheet ("تسجيل الدخول", "إنشاء حساب"). 20 / Bold.
-  static const TextStyle authSheetTitle = TextStyle(
+  static TextStyle get authSheetTitle => TextStyle(
     fontFamily: fontFamily,
     fontSize: 20,
     fontWeight: FontWeight.w700,
@@ -140,7 +142,7 @@ class HesakTextStyles {
   );
 
   /// Label above a text field ("البريد الإلكتروني:"). 17 / Bold.
-  static const TextStyle fieldLabel = TextStyle(
+  static TextStyle get fieldLabel => TextStyle(
     fontFamily: fontFamily,
     fontSize: 17,
     fontWeight: FontWeight.w700,
@@ -148,7 +150,7 @@ class HesakTextStyles {
   );
 
   /// Text the user types in a field. 15 / Regular.
-  static const TextStyle fieldInput = TextStyle(
+  static TextStyle get fieldInput => TextStyle(
     fontFamily: fontFamily,
     fontSize: 15,
     fontWeight: FontWeight.w400,
@@ -156,7 +158,7 @@ class HesakTextStyles {
   );
 
   /// Placeholder inside a field ("example@email.com"). 15 / Regular / grey.
-  static const TextStyle fieldHint = TextStyle(
+  static TextStyle get fieldHint => TextStyle(
     fontFamily: fontFamily,
     fontSize: 15,
     fontWeight: FontWeight.w400,
@@ -164,7 +166,7 @@ class HesakTextStyles {
   );
 
   /// Error under a field ("البريد الإلكتروني غير صحيح"). 12 / Medium / red.
-  static const TextStyle fieldError = TextStyle(
+  static TextStyle get fieldError => TextStyle(
     fontFamily: fontFamily,
     fontSize: 12,
     fontWeight: FontWeight.w500,
@@ -172,7 +174,7 @@ class HesakTextStyles {
   );
 
   /// Text on the big rounded buttons. 18 / Bold / white.
-  static const TextStyle buttonLabel = TextStyle(
+  static TextStyle get buttonLabel => TextStyle(
     fontFamily: fontFamily,
     fontSize: 18,
     fontWeight: FontWeight.w700,
@@ -180,7 +182,7 @@ class HesakTextStyles {
   );
 
   /// Text inside the pink note box. 11.5 / Medium.
-  static const TextStyle infoBanner = TextStyle(
+  static TextStyle get infoBanner => TextStyle(
     fontFamily: fontFamily,
     fontSize: 11.5,
     fontWeight: FontWeight.w500,
@@ -189,7 +191,7 @@ class HesakTextStyles {
   );
 
   /// One password rule ("8 خانات على الأقل"). 11.5 / Regular.
-  static const TextStyle passwordRule = TextStyle(
+  static TextStyle get passwordRule => TextStyle(
     fontFamily: fontFamily,
     fontSize: 11.5,
     fontWeight: FontWeight.w400,
@@ -197,7 +199,7 @@ class HesakTextStyles {
   );
 
   /// Small grey text ("ليس لديك حساب؟"). 12.5 / Regular.
-  static const TextStyle authHint = TextStyle(
+  static TextStyle get authHint => TextStyle(
     fontFamily: fontFamily,
     fontSize: 12.5,
     fontWeight: FontWeight.w400,
@@ -205,7 +207,7 @@ class HesakTextStyles {
   );
 
   /// Small tappable link ("إنشاء حساب", "هل نسيت كلمة المرور؟"). 12.5 / Bold.
-  static const TextStyle authLink = TextStyle(
+  static TextStyle get authLink => TextStyle(
     fontFamily: fontFamily,
     fontSize: 12.5,
     fontWeight: FontWeight.w700,
@@ -213,21 +215,21 @@ class HesakTextStyles {
   );
 
   /// Text on the main glass button ("إنشاء حساب"). 18 / Bold / dark purple.
-  static const TextStyle glassButtonPrimaryLabel = TextStyle(
+  static TextStyle get glassButtonPrimaryLabel => TextStyle(
     fontFamily: fontFamily,
     fontSize: 18,
     fontWeight: FontWeight.w700,
-    color: HesakColors.primaryDark,
+    color: HesakColorsLight.primaryDark, // Always the dark purple: sits on the same light purple in فاتح and داكن
   );
 
   /// Text on the light glass button ("تسجيل الدخول"). 18 / Bold / white.
-  static const TextStyle glassButtonSecondaryLabel = buttonLabel;
+  static TextStyle get glassButtonSecondaryLabel => buttonLabel;
 
 
   // ---- Modes page ----
 
   /// Name of the selected mode under the circles ("العام"). 17 / Bold.
-  static const TextStyle modeName = TextStyle(
+  static TextStyle get modeName => TextStyle(
     fontFamily: fontFamily,
     fontSize: 17,
     fontWeight: FontWeight.w700,
@@ -235,7 +237,7 @@ class HesakTextStyles {
   );
 
   /// Label under a mode circle (not selected). 12 / Regular / grey.
-  static const TextStyle modeCircleLabel = TextStyle(
+  static TextStyle get modeCircleLabel => TextStyle(
     fontFamily: fontFamily,
     fontSize: 12,
     fontWeight: FontWeight.w400,
@@ -243,7 +245,7 @@ class HesakTextStyles {
   );
 
   /// Label under the selected mode circle. 12.5 / Bold / dark.
-  static const TextStyle modeCircleLabelSelected = TextStyle(
+  static TextStyle get modeCircleLabelSelected => TextStyle(
     fontFamily: fontFamily,
     fontSize: 12.5,
     fontWeight: FontWeight.w700,
@@ -251,7 +253,7 @@ class HesakTextStyles {
   );
 
   /// Letter shown in a mode circle that has no icon. 22 / Bold.
-  static const TextStyle modeCircleLetter = TextStyle(
+  static TextStyle get modeCircleLetter => TextStyle(
     fontFamily: fontFamily,
     fontSize: 22,
     fontWeight: FontWeight.w700,
@@ -259,7 +261,7 @@ class HesakTextStyles {
   );
 
   /// Small tappable purple text ("عرض الكل", "إضافة فترة", "تحديد الكل"). 13 / Bold.
-  static const TextStyle modeLink = TextStyle(
+  static TextStyle get modeLink => TextStyle(
     fontFamily: fontFamily,
     fontSize: 13,
     fontWeight: FontWeight.w700,
@@ -267,7 +269,7 @@ class HesakTextStyles {
   );
 
   /// Days of a schedule period ("الأحد – الخميس"). 13 / Bold.
-  static const TextStyle modePeriodDays = TextStyle(
+  static TextStyle get modePeriodDays => TextStyle(
     fontFamily: fontFamily,
     fontSize: 13,
     fontWeight: FontWeight.w700,
@@ -275,7 +277,7 @@ class HesakTextStyles {
   );
 
   /// Time of a schedule period / time field ("11:00 م"). 13 / Bold / purple.
-  static const TextStyle modePeriodTime = TextStyle(
+  static TextStyle get modePeriodTime => TextStyle(
     fontFamily: fontFamily,
     fontSize: 13,
     fontWeight: FontWeight.w700,
@@ -283,7 +285,7 @@ class HesakTextStyles {
   );
 
   /// Label of a setting row ("التنبيه عند نداء اسمك", "من:"). 13.5 / Bold.
-  static const TextStyle modeSettingLabel = TextStyle(
+  static TextStyle get modeSettingLabel => TextStyle(
     fontFamily: fontFamily,
     fontSize: 13.5,
     fontWeight: FontWeight.w700,
@@ -291,7 +293,7 @@ class HesakTextStyles {
   );
 
   /// Chip that is NOT selected (days, sounds, alert types). 12 / Regular / grey.
-  static const TextStyle modeChip = TextStyle(
+  static TextStyle get modeChip => TextStyle(
     fontFamily: fontFamily,
     fontSize: 12,
     fontWeight: FontWeight.w400,
@@ -299,7 +301,7 @@ class HesakTextStyles {
   );
 
   /// Chip that IS selected. 12 / Bold / purple.
-  static const TextStyle modeChipSelected = TextStyle(
+  static TextStyle get modeChipSelected => TextStyle(
     fontFamily: fontFamily,
     fontSize: 12,
     fontWeight: FontWeight.w700,
@@ -307,7 +309,7 @@ class HesakTextStyles {
   );
 
   /// Selected day chip (white text on purple). 12 / Bold / white.
-  static const TextStyle modeDayChipSelected = TextStyle(
+  static TextStyle get modeDayChipSelected => TextStyle(
     fontFamily: fontFamily,
     fontSize: 12,
     fontWeight: FontWeight.w700,
@@ -315,7 +317,7 @@ class HesakTextStyles {
   );
 
   /// "مفعّل" badge next to the active mode's name. 10.5 / Bold / purple.
-  static const TextStyle modeBadge = TextStyle(
+  static TextStyle get modeBadge => TextStyle(
     fontFamily: fontFamily,
     fontSize: 10.5,
     fontWeight: FontWeight.w700,
@@ -323,7 +325,7 @@ class HesakTextStyles {
   );
 
   /// Small buttons inside sections ("حفظ" / "إلغاء"). 13 / Bold.
-  static const TextStyle modeSmallButton = TextStyle(
+  static TextStyle get modeSmallButton => TextStyle(
     fontFamily: fontFamily,
     fontSize: 13,
     fontWeight: FontWeight.w700,
@@ -331,7 +333,7 @@ class HesakTextStyles {
   );
 
   /// "حذف الوضع" and other red actions. 13.5 / Bold / red.
-  static const TextStyle modeDanger = TextStyle(
+  static TextStyle get modeDanger => TextStyle(
     fontFamily: fontFamily,
     fontSize: 13.5,
     fontWeight: FontWeight.w700,
@@ -339,7 +341,7 @@ class HesakTextStyles {
   );
 
   /// Title of a confirmation dialog ("حذف وضع السيارة؟"). 17 / Bold.
-  static const TextStyle dialogTitle = TextStyle(
+  static TextStyle get dialogTitle => TextStyle(
     fontFamily: fontFamily,
     fontSize: 17,
     fontWeight: FontWeight.w700,
@@ -347,7 +349,7 @@ class HesakTextStyles {
   );
 
   /// Text of a confirmation dialog. 13 / Regular / grey.
-  static const TextStyle dialogBody = TextStyle(
+  static TextStyle get dialogBody => TextStyle(
     fontFamily: fontFamily,
     fontSize: 13,
     fontWeight: FontWeight.w400,
@@ -356,7 +358,7 @@ class HesakTextStyles {
   );
 
   /// Text of the small message at the bottom ("تمت إضافة ..."). 13 / Medium / white.
-  static const TextStyle toast = TextStyle(
+  static TextStyle get toast => TextStyle(
     fontFamily: fontFamily,
     fontSize: 13,
     fontWeight: FontWeight.w500,
@@ -365,7 +367,7 @@ class HesakTextStyles {
 
   /// Section title on the modes pages ("جدولة الوضع", "الإعدادات العامة").
   /// A bit bigger than the labels inside the section. 16.5 / Bold.
-  static const TextStyle modeSectionTitle = TextStyle(
+  static TextStyle get modeSectionTitle => TextStyle(
     fontFamily: fontFamily,
     fontSize: 16.5,
     fontWeight: FontWeight.w700,
@@ -373,7 +375,7 @@ class HesakTextStyles {
   );
 
   /// Name under a mode tile (not selected). 13 / Medium / dark (easy to read).
-  static const TextStyle modeTileLabel = TextStyle(
+  static TextStyle get modeTileLabel => TextStyle(
     fontFamily: fontFamily,
     fontSize: 13,
     fontWeight: FontWeight.w500,
@@ -381,7 +383,7 @@ class HesakTextStyles {
   );
 
   /// Name under the selected mode tile. 13.5 / Bold / purple.
-  static const TextStyle modeTileLabelSelected = TextStyle(
+  static TextStyle get modeTileLabelSelected => TextStyle(
     fontFamily: fontFamily,
     fontSize: 13.5,
     fontWeight: FontWeight.w700,
@@ -389,7 +391,7 @@ class HesakTextStyles {
   );
 
   /// Mode name on the purple card header ("النوم"). 20 / Bold / white.
-  static const TextStyle modeHeaderName = TextStyle(
+  static TextStyle get modeHeaderName => TextStyle(
     fontFamily: fontFamily,
     fontSize: 20,
     fontWeight: FontWeight.w700,
@@ -397,7 +399,7 @@ class HesakTextStyles {
   );
 
   /// Schedule line on the purple card header. 12 / Regular / soft white.
-  static const TextStyle modeHeaderSubtitle = TextStyle(
+  static TextStyle get modeHeaderSubtitle => TextStyle(
     fontFamily: fontFamily,
     fontSize: 12,
     fontWeight: FontWeight.w400,
@@ -405,7 +407,7 @@ class HesakTextStyles {
   );
 
   /// Value in the settings summary ("4 أصوات", "مفعّل"). 12.5 / Regular / grey.
-  static const TextStyle modeSummaryValue = TextStyle(
+  static TextStyle get modeSummaryValue => TextStyle(
     fontFamily: fontFamily,
     fontSize: 12.5,
     fontWeight: FontWeight.w400,
@@ -413,7 +415,7 @@ class HesakTextStyles {
   );
 
   /// Small grey hints on the الأوضاع page ("اضغط للتفعيل", "اضغط زر الاستماع ..."). 12 / Regular / grey.
-  static const TextStyle modeHint = TextStyle(
+  static TextStyle get modeHint => TextStyle(
     fontFamily: fontFamily,
     fontSize: 12,
     fontWeight: FontWeight.w400,
@@ -421,7 +423,7 @@ class HesakTextStyles {
   );
 
   /// Mode name in the list rows of the الأوضاع page. 15 / Bold.
-  static const TextStyle modeRowName = TextStyle(
+  static TextStyle get modeRowName => TextStyle(
     fontFamily: fontFamily,
     fontSize: 15,
     fontWeight: FontWeight.w700,

@@ -46,6 +46,15 @@ String modesSoundsCountText(int count) {
   return '$count صوتًا';
 }
 
+/// "لا توجد فترات" / "فترة واحدة" / "فترتان" / "3 فترات" / "11 فترة" (Arabic counting).
+String modesPeriodsCountText(int count) {
+  if (count == 0) return 'لا توجد فترات';
+  if (count == 1) return 'فترة واحدة';
+  if (count == 2) return 'فترتان';
+  if (count <= 10) return '$count فترات';
+  return '$count فترة';
+}
+
 /// Asks, deletes the mode, shows the message. Returns true if deleted.
 Future<bool> modesDeleteWithConfirm(BuildContext context, HesakModeConfig mode) async {
   final bool isConfirmed = await showHesakConfirmDialog(
@@ -81,7 +90,7 @@ class ModesPillButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
   final bool isFilled;
-  final Color color;
+  final Color? color; // null = HesakColors.modeSelected
   final double height;
 
   const ModesPillButton({
@@ -89,13 +98,14 @@ class ModesPillButton extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.isFilled = true,
-    this.color = HesakColors.modeSelected,
+    this.color,
     this.height = 42,
   });
 
   @override
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(height / 2);
+    final Color color = this.color ?? HesakColors.modeSelected;
     return Opacity(
       opacity: onTap == null ? 0.45 : 1,
       child: Material(
@@ -135,14 +145,14 @@ class ModesSaveCancelRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 14),
+      padding: EdgeInsets.only(top: 14),
       child: Row(
         children: [
           SizedBox(
             width: 100,
             child: ModesPillButton(key: Key('${keyPrefix}_save_button'), label: 'حفظ', onTap: onSave, height: 38),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           SizedBox(
             width: 100,
             child: ModesPillButton(
@@ -180,16 +190,16 @@ class ModesStarButton extends StatelessWidget {
       message: isFavorite ? 'إزالة من الأوضاع المفضلة' : 'إضافة إلى الأوضاع المفضلة',
       child: Material(
         color: Colors.transparent,
-        shape: const CircleBorder(),
+        shape: CircleBorder(),
         child: InkWell(
           onTap: onTap,
-          customBorder: const CircleBorder(),
+          customBorder: CircleBorder(),
           child: SizedBox(
             width: HesakSizes.modeStarButton, // Same touch size as before
             height: HesakSizes.modeStarButton,
             // The star pops a little when it changes.
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
+              duration: Duration(milliseconds: 250),
               transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
               child: Icon(
                 isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
@@ -220,7 +230,7 @@ class ModesStateBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: HesakColors.primaryLight,
         borderRadius: BorderRadius.circular(10),
@@ -238,7 +248,7 @@ class ModesStateBadge extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           Text(
             isListening ? 'مفعّل' : 'غير مفعّل',
             style: isListening ? HesakTextStyles.modeBadge : HesakTextStyles.modeBadge.copyWith(color: HesakColors.textSecondary),
@@ -279,7 +289,7 @@ class ModesModeCircle extends StatelessWidget {
     final Color contentColor = isSelected ? HesakColors.onPrimary : HesakColors.iconInactive;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
+      duration: Duration(milliseconds: 250),
       width: size,
       height: size,
       decoration: BoxDecoration(
@@ -287,7 +297,7 @@ class ModesModeCircle extends StatelessWidget {
         color: isSelected ? HesakColors.modeSelected : HesakColors.modeUnselectedFill,
         // Soft light-purple ring around the selected one.
         boxShadow: isSelected
-            ? const [BoxShadow(color: HesakColors.modeSelectedRing, spreadRadius: 4)]
+            ? [BoxShadow(color: HesakColors.modeSelectedRing, spreadRadius: 4)]
             : null,
       ),
       child: Center(
@@ -306,13 +316,16 @@ class ModesModeCircle extends StatelessWidget {
 // Section card (opens / closes)
 // ---------------------------------------------------------------------
 
-/// White rounded card with a title; tapping the title opens / closes it.
+/// White card with a title (and an optional icon); tapping the title opens / closes it.
+/// When open: a thin line across the card under the title, then the content.
+/// Same white as the cards on الرئيسية (surface + purple outline + soft shadow).
 class ModesSectionCard extends StatefulWidget {
   final String title;
+  final IconData? icon; // e.g. the calendar next to "جدولة الوضع"
   final Widget child;
   final bool initiallyExpanded;
 
-  const ModesSectionCard({super.key, required this.title, required this.child, this.initiallyExpanded = true});
+  const ModesSectionCard({super.key, required this.title, this.icon, required this.child, this.initiallyExpanded = true});
 
   @override
   State<ModesSectionCard> createState() => _ModesSectionCardState();
@@ -324,11 +337,13 @@ class _ModesSectionCardState extends State<ModesSectionCard> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: HesakSizes.sectionGap),
+      margin: EdgeInsets.only(bottom: HesakSizes.sectionGap),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: HesakColors.surface,
         borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
-        border: Border.all(color: HesakColors.surfaceBorder),
+        border: Border.all(color: HesakColors.homeCardBorder),
+        boxShadow: [BoxShadow(color: HesakColors.homeCardShadow, blurRadius: 18, offset: Offset(0, 6))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -336,36 +351,45 @@ class _ModesSectionCardState extends State<ModesSectionCard> {
           // Title row (tap to open / close).
           InkWell(
             onTap: () => setState(() => _isExpanded = !_isExpanded),
-            borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(
+              padding: EdgeInsets.fromLTRB(
                 HesakSizes.cardPaddingHorizontal, 14, HesakSizes.cardPaddingHorizontal, 14),
               child: Row(
                 children: [
+                  if (widget.icon != null) ...[
+                    Icon(widget.icon, size: 20, color: HesakColors.modeSelected),
+                    SizedBox(width: 8),
+                  ],
                   // Bigger than the labels inside, so it reads as the section title.
                   Expanded(child: Text(widget.title, style: HesakTextStyles.modeSectionTitle)),
                   AnimatedRotation(
                     turns: _isExpanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: const Icon(Icons.keyboard_arrow_down_rounded, color: HesakColors.textSecondary),
+                    duration: Duration(milliseconds: 200),
+                    child: Icon(Icons.keyboard_arrow_down_rounded, color: HesakColors.textSecondary),
                   ),
                 ],
               ),
             ),
           ),
 
-          // Content (slides open / closed).
+          // Line + content (slides open / closed).
           AnimatedSize(
-            duration: const Duration(milliseconds: 220),
+            duration: Duration(milliseconds: 220),
             curve: Curves.easeOut,
             alignment: Alignment.topCenter,
             child: _isExpanded
-                ? Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      HesakSizes.cardPaddingHorizontal, 0, HesakSizes.cardPaddingHorizontal, HesakSizes.cardPaddingBottom),
-                    child: widget.child,
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Divider(height: 1, thickness: 1, color: HesakColors.cardTitleLine),
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          HesakSizes.cardPaddingHorizontal, 12, HesakSizes.cardPaddingHorizontal, HesakSizes.cardPaddingBottom),
+                        child: widget.child,
+                      ),
+                    ],
                   )
-                : const SizedBox(width: double.infinity),
+                : SizedBox(width: double.infinity),
           ),
         ],
       ),
@@ -411,15 +435,15 @@ class ModesChip extends StatelessWidget {
       shape: StadiumBorder(side: BorderSide(color: border, width: 1.3)),
       child: InkWell(
         onTap: isLocked ? null : onTap,
-        customBorder: const StadiumBorder(),
+        customBorder: StadiumBorder(),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (shownIcon != null) ...[
                 Icon(shownIcon, size: isLocked ? 13 : 16, color: textStyle.color),
-                const SizedBox(width: 5),
+                SizedBox(width: 5),
               ],
               Text(label, style: textStyle),
             ],
@@ -448,9 +472,9 @@ class ModesDayChip extends StatelessWidget {
       child: InkWell(
         key: Key('modes_day_${day.name}'),
         onTap: onTap,
-        customBorder: const StadiumBorder(),
+        customBorder: StadiumBorder(),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           child: Text(
             day.shortLabel,
             style: isSelected ? HesakTextStyles.modeDayChipSelected : HesakTextStyles.modeChip,
@@ -472,12 +496,29 @@ class ModesDayChip extends StatelessWidget {
 /// "تم حذف الفترة".
 /// [modeId] = the mode these periods belong to. Two modes can't share the same
 /// time, so a new period is also checked against every OTHER mode.
+///
+/// SAME shape in all 3 places (تعديل / إضافة وضع، الأوضاع، الرئيسية): period boxes,
+/// dashed "إضافة فترة", edit box. Only the colors follow the background:
+///  - white card (default): light lavender period boxes
+///  - lavender (الأوضاع): [periodFill] white
+///  - purple glass (الرئيسية): [isOnGlass] true + white period boxes
 class ModesScheduleEditor extends StatefulWidget {
   final String modeId;
   final List<HesakSchedulePeriod> periods;
   final ValueChanged<List<HesakSchedulePeriod>> onChanged;
+  final Color? periodFill; // null = HesakColors.schedulePeriodFill
+  final Color? periodBorder; // null = HesakColors.schedulePeriodBorder
+  final bool isOnGlass;
 
-  const ModesScheduleEditor({super.key, required this.modeId, required this.periods, required this.onChanged});
+  const ModesScheduleEditor({
+    super.key,
+    required this.modeId,
+    required this.periods,
+    required this.onChanged,
+    this.periodFill,
+    this.periodBorder,
+    this.isOnGlass = false,
+  });
 
   @override
   State<ModesScheduleEditor> createState() => _ModesScheduleEditorState();
@@ -489,8 +530,8 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
   int? _editingIndex; // null = not editing, -1 = new period, 0.. = editing that period
   String? _clashMessage; // Red message when the time clashes with another period
   Set<HesakWeekday> _draftDays = {};
-  TimeOfDay _draftStart = const TimeOfDay(hour: 22, minute: 0);
-  TimeOfDay _draftEnd = const TimeOfDay(hour: 6, minute: 0);
+  TimeOfDay _draftStart = TimeOfDay(hour: 22, minute: 0);
+  TimeOfDay _draftEnd = TimeOfDay(hour: 6, minute: 0);
 
   /// If the periods change from somewhere else while a period is open,
   /// close the edit box (its index may point to another period now).
@@ -509,8 +550,8 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
       _clashMessage = null;
       if (index == _newPeriodIndex) {
         _draftDays = {};
-        _draftStart = const TimeOfDay(hour: 22, minute: 0);
-        _draftEnd = const TimeOfDay(hour: 6, minute: 0);
+        _draftStart = TimeOfDay(hour: 22, minute: 0);
+        _draftEnd = TimeOfDay(hour: 6, minute: 0);
       } else {
         final period = widget.periods[index];
         _draftDays = {...period.days};
@@ -623,9 +664,13 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (widget.periods.isEmpty && _editingIndex == null)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 6),
-            child: Text('لا توجد فترات بعد', textAlign: TextAlign.center, style: HesakTextStyles.caption),
+            child: Text(
+              'لا توجد فترات بعد',
+              textAlign: TextAlign.center,
+              style: widget.isOnGlass ? HesakTextStyles.caption.copyWith(color: HesakColors.onHomeGlassSoft) : HesakTextStyles.caption,
+            ),
           ),
 
         // Saved periods (the one being edited turns into the edit box).
@@ -637,23 +682,45 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
           _buildEditBox(isNew: true)
         else
           Padding(
-            padding: const EdgeInsets.only(top: 8),
+            padding: EdgeInsets.only(top: 8),
             child: Opacity(
               opacity: _editingIndex == null ? 1 : 0.4, // Finish the open edit first
-              child: OutlinedButton.icon(
-                key: const Key('modes_schedule_add_period_button'),
-                onPressed: _editingIndex == null ? () => _startEditing(_newPeriodIndex) : null,
-                icon: const Icon(Icons.add_rounded, size: 18, color: HesakColors.modeSelected),
-                label: const Text('إضافة فترة', style: HesakTextStyles.modeLink),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(44),
-                  side: const BorderSide(color: HesakColors.primaryLightBorder, width: 1.3),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard)),
-                ),
-              ),
+              child: _buildAddPeriodButton(),
             ),
           ),
       ],
+    );
+  }
+
+  /// "+ إضافة فترة": dashed outline. White on light backgrounds, see-through on the glass.
+  Widget _buildAddPeriodButton() {
+    final bool isOnGlass = widget.isOnGlass;
+    final Color contentColor = isOnGlass ? HesakColors.onHomeGlass : HesakColors.modeSelected;
+    final radius = BorderRadius.circular(HesakSizes.radiusInnerCard);
+
+    return ModesDashedBorder(
+      color: isOnGlass ? HesakColors.onHomeGlassSoft : HesakColors.scheduleAddBorder,
+      radius: HesakSizes.radiusInnerCard,
+      child: Material(
+        color: isOnGlass ? Colors.transparent : HesakColors.modesDetailsFill,
+        borderRadius: radius,
+        child: InkWell(
+          key: Key('modes_schedule_add_period_button'),
+          borderRadius: radius,
+          onTap: _editingIndex == null ? () => _startEditing(_newPeriodIndex) : null,
+          child: SizedBox(
+            height: 44,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.add_rounded, size: 18, color: contentColor),
+                SizedBox(width: 4),
+                Text('إضافة فترة', style: HesakTextStyles.modeLink.copyWith(color: contentColor)),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -662,12 +729,12 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
     final period = widget.periods[index];
     return Container(
       key: Key('modes_schedule_period_$index'),
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 4, 8),
+      margin: EdgeInsets.only(bottom: 8),
+      padding: EdgeInsetsDirectional.fromSTEB(12, 8, 4, 8),
       decoration: BoxDecoration(
-        color: HesakColors.background,
+        color: widget.periodFill ?? HesakColors.schedulePeriodFill,
         borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard),
-        border: Border.all(color: HesakColors.surfaceBorder),
+        border: Border.all(color: widget.periodBorder ?? HesakColors.schedulePeriodBorder),
       ),
       child: Row(
         children: [
@@ -676,11 +743,11 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(period.daysText, style: HesakTextStyles.modePeriodDays),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.schedule_rounded, size: 15, color: HesakColors.modeSelected),
-                    const SizedBox(width: 4),
+                    Icon(Icons.schedule_rounded, size: 15, color: HesakColors.modeSelected),
+                    SizedBox(width: 4),
                     Text(period.timeText, style: HesakTextStyles.modePeriodTime),
                   ],
                 ),
@@ -690,14 +757,14 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
           IconButton(
             key: Key('modes_schedule_edit_period_$index'),
             onPressed: _editingIndex == null ? () => _startEditing(index) : null,
-            icon: const Icon(Icons.edit_outlined, size: 20),
+            icon: Icon(Icons.edit_outlined, size: 20),
             color: HesakColors.textSecondary,
             tooltip: 'تعديل',
           ),
           IconButton(
             key: Key('modes_schedule_delete_period_$index'),
             onPressed: _editingIndex == null ? () => _deletePeriod(index) : null,
-            icon: const Icon(Icons.delete_outline_rounded, size: 20),
+            icon: Icon(Icons.delete_outline_rounded, size: 20),
             color: HesakColors.danger,
             tooltip: 'حذف',
           ),
@@ -711,11 +778,12 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
     final bool hasDays = _draftDays.isNotEmpty;
 
     return Container(
-      key: const Key('modes_schedule_edit_box'),
-      margin: const EdgeInsets.only(bottom: 8, top: 4),
-      padding: const EdgeInsets.all(12),
+      key: Key('modes_schedule_edit_box'),
+      margin: EdgeInsets.only(bottom: 8, top: 4),
+      padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: HesakColors.primaryLight.withOpacity(0.45),
+        // Solid on the purple glass (الرئيسية), so the days and times stay easy to read.
+        color: widget.isOnGlass ? HesakColors.surface : HesakColors.primaryLight.withOpacity(0.45),
         borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard),
         border: Border.all(color: HesakColors.modeSelected, width: 1.5),
       ),
@@ -723,11 +791,11 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(isNew ? 'فترة جديدة' : 'تعديل الفترة', style: HesakTextStyles.modeLink),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
 
           // Days
-          const Text('الأيام:', style: HesakTextStyles.modeSettingLabel),
-          const SizedBox(height: 8),
+          Text('الأيام:', style: HesakTextStyles.modeSettingLabel),
+          SizedBox(height: 8),
           Wrap(
             spacing: 6,
             runSpacing: 6,
@@ -744,15 +812,15 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
             ],
           ),
           if (!hasDays)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 6),
               child: Text('اختر يومًا واحدًا على الأقل', style: HesakTextStyles.caption),
             ),
 
           // Time
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           ModesTimeField(
-            key: const Key('modes_schedule_start_time'),
+            key: Key('modes_schedule_start_time'),
             label: 'من:',
             pickerTitle: 'وقت البداية',
             time: _draftStart,
@@ -761,9 +829,9 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
               _clashMessage = null;
             }),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           ModesTimeField(
-            key: const Key('modes_schedule_end_time'),
+            key: Key('modes_schedule_end_time'),
             label: 'إلى:',
             pickerTitle: 'وقت النهاية',
             time: _draftEnd,
@@ -776,15 +844,15 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
           // Clash message (red).
           if (_clashMessage != null)
             Padding(
-              padding: const EdgeInsets.only(top: 10),
+              padding: EdgeInsets.only(top: 10),
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline_rounded, size: 16, color: HesakColors.danger),
-                  const SizedBox(width: 4),
+                  Icon(Icons.error_outline_rounded, size: 16, color: HesakColors.danger),
+                  SizedBox(width: 4),
                   Expanded(
                     child: Text(
                       _clashMessage!,
-                      key: const Key('modes_schedule_clash_message'),
+                      key: Key('modes_schedule_clash_message'),
                       style: HesakTextStyles.fieldError,
                     ),
                   ),
@@ -802,6 +870,54 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
       ),
     );
   }
+}
+
+/// Draws a dashed rounded outline around [child] (e.g. "إضافة فترة").
+class ModesDashedBorder extends StatelessWidget {
+  final Widget child;
+  final Color color;
+  final double radius;
+
+  const ModesDashedBorder({super.key, required this.child, required this.color, required this.radius});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      foregroundPainter: _ModesDashedBorderPainter(color: color, radius: radius),
+      child: child,
+    );
+  }
+}
+
+class _ModesDashedBorderPainter extends CustomPainter {
+  final Color color;
+  final double radius;
+
+  const _ModesDashedBorderPainter({required this.color, required this.radius});
+
+  static const double _dashLength = 5;
+  static const double _gapLength = 4;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3;
+    final outline = Path()
+      ..addRRect(RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)).deflate(0.65));
+    for (final metric in outline.computeMetrics()) {
+      double distance = 0;
+      while (distance < metric.length) {
+        canvas.drawPath(metric.extractPath(distance, distance + _dashLength), paint);
+        distance += _dashLength + _gapLength;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ModesDashedBorderPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.radius != radius;
 }
 
 /// "من:  [🕐 11:00 م]" — tapping the time opens the phone's clock picker.
@@ -868,7 +984,7 @@ class ModesTimeField extends StatelessWidget {
         dayPeriodTextColor: WidgetStateColor.resolveWith(
           (states) => selectedOr(states, HesakColors.modeSelected, HesakColors.textSecondary),
         ),
-        dayPeriodBorderSide: const BorderSide(color: HesakColors.primaryLightBorder),
+        dayPeriodBorderSide: BorderSide(color: HesakColors.primaryLightBorder),
         dialBackgroundColor: HesakColors.modeUnselectedFill,
         dialHandColor: HesakColors.modeSelected,
         dialTextColor: WidgetStateColor.resolveWith(
@@ -890,18 +1006,18 @@ class ModesTimeField extends StatelessWidget {
           color: HesakColors.primaryLight,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: HesakColors.primaryLightBorder),
+            side: BorderSide(color: HesakColors.primaryLightBorder),
           ),
           child: InkWell(
             onTap: () => _pickTime(context),
             borderRadius: BorderRadius.circular(12),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.schedule_rounded, size: 17, color: HesakColors.modeSelected),
-                  const SizedBox(width: 6),
+                  Icon(Icons.schedule_rounded, size: 17, color: HesakColors.modeSelected),
+                  SizedBox(width: 6),
                   Text(hesakFormatTime(time), style: HesakTextStyles.modePeriodTime),
                 ],
               ),
@@ -968,16 +1084,16 @@ class ModesGeneralSettingsFields extends StatelessWidget {
               child: Opacity(
                 opacity: isCallNameAvailable ? 1 : 0.45,
                 child: Switch(
-              key: const Key('modes_call_name_switch'),
+              key: Key('modes_call_name_switch'),
               value: isCallNameAvailable && isCallNameAlertOn,
               onChanged: isCallNameAvailable ? onCallNameAlertChanged : null,
-              thumbColor: const WidgetStatePropertyAll(HesakColors.onPrimary),
+              thumbColor: WidgetStatePropertyAll(HesakColors.onPrimary),
               trackColor: WidgetStateProperty.resolveWith(
                 (states) => states.contains(WidgetState.selected)
                     ? HesakColors.modeSelected
                     : HesakColors.passwordRuleUnmet,
               ),
-              trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+              trackOutlineColor: WidgetStatePropertyAll(Colors.transparent),
                 ),
               ),
             ),
@@ -986,11 +1102,11 @@ class ModesGeneralSettingsFields extends StatelessWidget {
         if (!isCallNameAvailable) _buildCallNameNeededNote(),
 
         // ---- نوع التنبيه (one or more) ----
-        const SizedBox(height: 10),
-        const Text('نوع التنبيه', style: HesakTextStyles.modeSettingLabel),
-        const SizedBox(height: 2),
-        const Text('يمكنك اختيار أكثر من نوع', style: HesakTextStyles.caption),
-        const SizedBox(height: 8),
+        SizedBox(height: 10),
+        Text('نوع التنبيه', style: HesakTextStyles.modeSettingLabel),
+        SizedBox(height: 2),
+        Text('يمكنك اختيار أكثر من نوع', style: HesakTextStyles.caption),
+        SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -1017,9 +1133,9 @@ class ModesGeneralSettingsFields extends StatelessWidget {
         ),
 
         // ---- تكرار التنبيه (one) ----
-        const SizedBox(height: 14),
-        const Text('تكرار التنبيه', style: HesakTextStyles.modeSettingLabel),
-        const SizedBox(height: 8),
+        SizedBox(height: 14),
+        Text('تكرار التنبيه', style: HesakTextStyles.modeSettingLabel),
+        SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -1041,9 +1157,9 @@ class ModesGeneralSettingsFields extends StatelessWidget {
   /// "أضف الاسم للنداء أولًا لتفعيل هذه الخاصية" + "إضافة الاسم" (opens the sheet right here).
   Widget _buildCallNameNeededNote() {
     return Container(
-      key: const Key('modes_call_name_needed_note'),
-      margin: const EdgeInsets.only(top: 2, bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      key: Key('modes_call_name_needed_note'),
+      margin: EdgeInsets.only(top: 2, bottom: 6),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: HesakColors.infoBannerFill,
         borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard),
@@ -1051,17 +1167,17 @@ class ModesGeneralSettingsFields extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, size: 16, color: HesakColors.infoBannerText),
-          const SizedBox(width: 6),
+          Icon(Icons.info_outline_rounded, size: 16, color: HesakColors.infoBannerText),
+          SizedBox(width: 6),
           Expanded(
             child: Text(
               'أضف الاسم للنداء أولًا لتفعيل هذه الخاصية',
               style: HesakTextStyles.modeHint.copyWith(color: HesakColors.infoBannerText),
             ),
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           GestureDetector(
-            key: const Key('modes_add_call_name_link'),
+            key: Key('modes_add_call_name_link'),
             onTap: onAddCallName,
             child: Text(
               'إضافة الاسم',
@@ -1130,38 +1246,38 @@ class _ModesSoundsPickerState extends State<ModesSoundsPicker> {
       children: [
         // ---- Search ----
         TextField(
-          key: const Key('modes_sounds_search_field'),
+          key: Key('modes_sounds_search_field'),
           controller: _searchController,
           onChanged: (_) => setState(() {}),
           style: HesakTextStyles.fieldInput,
           decoration: InputDecoration(
             hintText: 'ابحث عن صوت...',
             hintStyle: HesakTextStyles.fieldHint,
-            prefixIcon: const Icon(Icons.search_rounded, color: HesakColors.fieldHint),
+            prefixIcon: Icon(Icons.search_rounded, color: HesakColors.fieldHint),
             suffixIcon: _query.isEmpty
                 ? null
                 : IconButton(
                     onPressed: () => setState(() => _searchController.clear()),
-                    icon: const Icon(Icons.close_rounded, color: HesakColors.fieldHint),
+                    icon: Icon(Icons.close_rounded, color: HesakColors.fieldHint),
                     tooltip: 'مسح البحث',
                   ),
             filled: true,
             fillColor: HesakColors.navBar,
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            contentPadding: EdgeInsets.symmetric(vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard),
               borderSide: BorderSide.none,
             ),
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
 
         // ---- Sections ----
         for (final category in HesakSoundCategory.values) ..._buildCategory(category),
 
         if (_query.isNotEmpty && !hesakSounds.any((s) => s.label.contains(_query)))
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Text('لا يوجد صوت بهذا الاسم', textAlign: TextAlign.center, style: HesakTextStyles.caption),
           ),
@@ -1173,7 +1289,7 @@ class _ModesSoundsPickerState extends State<ModesSoundsPicker> {
     final allSounds = hesakSoundsIn(category);
     // While searching: only matching sounds, and matching sections open by themselves.
     final sounds = _query.isEmpty ? allSounds : allSounds.where((s) => s.label.contains(_query)).toList();
-    if (sounds.isEmpty) return const [];
+    if (sounds.isEmpty) return [];
 
     final bool isOpen = _query.isNotEmpty || _openCategories.contains(category);
     final int selectedCount = allSounds.where((s) => widget.selectedIds.contains(s.id)).length;
@@ -1181,7 +1297,7 @@ class _ModesSoundsPickerState extends State<ModesSoundsPicker> {
     final bool isNoneSelected = selectedCount == 0;
 
     return [
-      const Divider(height: 1, color: HesakColors.listDivider),
+      Divider(height: 1, color: HesakColors.listDivider),
 
       // Section title row: icon, name, "2 من 5", arrow (tap to open / close).
       InkWell(
@@ -1194,11 +1310,11 @@ class _ModesSoundsPickerState extends State<ModesSoundsPicker> {
                       : _openCategories.add(category);
                 }),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: EdgeInsets.symmetric(vertical: 12),
           child: Row(
             children: [
               Icon(category.icon, size: 20, color: HesakColors.modeSelected),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: Row(
                   children: [
@@ -1209,21 +1325,21 @@ class _ModesSoundsPickerState extends State<ModesSoundsPicker> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Text('$selectedCount من ${allSounds.length}', style: HesakTextStyles.caption),
                   ],
                 ),
               ),
               if (category.isLocked)
-                const Padding(
+                Padding(
                   padding: EdgeInsetsDirectional.only(end: 4),
                   child: Icon(Icons.lock_rounded, size: 16, color: HesakColors.iconInactive),
                 ),
               if (_query.isEmpty)
                 AnimatedRotation(
                   turns: isOpen ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 200),
-                  child: const Icon(Icons.keyboard_arrow_down_rounded, color: HesakColors.textSecondary),
+                  duration: Duration(milliseconds: 200),
+                  child: Icon(Icons.keyboard_arrow_down_rounded, color: HesakColors.textSecondary),
                 ),
             ],
           ),
@@ -1232,18 +1348,18 @@ class _ModesSoundsPickerState extends State<ModesSoundsPicker> {
 
       // Section content.
       AnimatedSize(
-        duration: const Duration(milliseconds: 200),
+        duration: Duration(milliseconds: 200),
         alignment: Alignment.topCenter,
         child: !isOpen
-            ? const SizedBox(width: double.infinity)
+            ? SizedBox(width: double.infinity)
             : Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: EdgeInsets.only(bottom: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (category.isLocked)
                       // Why emergency sounds can't be turned off.
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(bottom: 8),
                         child: Row(
                           children: [
@@ -1261,7 +1377,7 @@ class _ModesSoundsPickerState extends State<ModesSoundsPicker> {
                     else if (_query.isEmpty)
                       // "تحديد الكل" (if not all picked) / "إلغاء الكل" (if some picked).
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
+                        padding: EdgeInsets.only(bottom: 6),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
@@ -1269,13 +1385,13 @@ class _ModesSoundsPickerState extends State<ModesSoundsPicker> {
                               TextButton(
                                 key: Key('modes_sounds_select_all_${category.name}'),
                                 onPressed: () => _setAll(category, true),
-                                child: const Text('تحديد الكل', style: HesakTextStyles.modeLink),
+                                child: Text('تحديد الكل', style: HesakTextStyles.modeLink),
                               ),
                             if (!isNoneSelected)
                               TextButton(
                                 key: Key('modes_sounds_clear_all_${category.name}'),
                                 onPressed: () => _setAll(category, false),
-                                child: const Text('إلغاء الكل', style: HesakTextStyles.modeLink),
+                                child: Text('إلغاء الكل', style: HesakTextStyles.modeLink),
                               ),
                           ],
                         ),
@@ -1333,15 +1449,15 @@ class ModesIconNamePicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('الأيقونة:', style: HesakTextStyles.modeSectionTitle),
-        const SizedBox(height: 10),
+        Text('الأيقونة:', style: HesakTextStyles.modeSectionTitle),
+        SizedBox(height: 10),
         GridView.count(
           crossAxisCount: 6,
           shrinkWrap: true,
           // Zero padding on purpose: without it, the grid adds the screen's bottom
           // safe space (here the whole bottom bar height) = a big gap under the icons.
           padding: EdgeInsets.zero,
-          physics: const NeverScrollableScrollPhysics(),
+          physics: NeverScrollableScrollPhysics(),
           mainAxisSpacing: 10,
           crossAxisSpacing: 10,
           children: [
@@ -1350,11 +1466,11 @@ class ModesIconNamePicker extends StatelessWidget {
             for (final choice in hesakModeIconChoices) _iconOption(context, choice, letter),
           ],
         ),
-        const SizedBox(height: 10), // Keeps the name close to the icons
-        const Text('اسم الوضع:', style: HesakTextStyles.modeSectionTitle),
-        const SizedBox(height: 8),
+        SizedBox(height: 10), // Keeps the name close to the icons
+        Text('اسم الوضع:', style: HesakTextStyles.modeSectionTitle),
+        SizedBox(height: 8),
         TextField(
-          key: const Key('modes_name_field'),
+          key: Key('modes_name_field'),
           controller: nameController,
           onChanged: onNameChanged,
           maxLength: 20,
@@ -1367,7 +1483,7 @@ class ModesIconNamePicker extends StatelessWidget {
             errorStyle: HesakTextStyles.fieldError,
             filled: true,
             fillColor: HesakColors.fieldFill,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(HesakSizes.radiusField),
               borderSide: BorderSide.none,
@@ -1397,7 +1513,7 @@ Future<void> showModesIconNameSheet(BuildContext context, HesakModeConfig mode) 
     isScrollControlled: true, // Can grow when the keyboard opens
     useRootNavigator: true, // Above the bottom bar
     backgroundColor: HesakColors.surface,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
     builder: (sheetContext) => _ModesIconNameSheet(mode: mode),
   );
 }
@@ -1448,7 +1564,7 @@ class _ModesIconNameSheetState extends State<_ModesIconNameSheet> {
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          padding: EdgeInsets.fromLTRB(20, 12, 20, 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -1463,7 +1579,7 @@ class _ModesIconNameSheetState extends State<_ModesIconNameSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               ModesIconNamePicker(
                 icon: _icon,
                 onIconChanged: (icon) => setState(() => _icon = icon),
@@ -1471,21 +1587,21 @@ class _ModesIconNameSheetState extends State<_ModesIconNameSheet> {
                 nameError: _nameError,
                 onNameChanged: (_) => setState(() => _nameError = null),
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: 18),
               Row(
                 children: [
                   Expanded(
                     // Faded until the name or the icon really changes.
                     child: ModesPillButton(
-                      key: const Key('modes_sheet_save_button'),
+                      key: Key('modes_sheet_save_button'),
                       label: 'حفظ',
                       onTap: _hasChanges ? _save : null,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: ModesPillButton(
-                      key: const Key('modes_sheet_cancel_button'),
+                      key: Key('modes_sheet_cancel_button'),
                       label: 'إلغاء',
                       isFilled: false,
                       onTap: () => Navigator.pop(context),

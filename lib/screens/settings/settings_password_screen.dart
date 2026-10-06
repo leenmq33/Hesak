@@ -115,13 +115,13 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
                 ),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(
+                    padding: EdgeInsets.fromLTRB(
                         HesakSizes.pagePadding, 0, HesakSizes.pagePadding, HesakSizes.pageBottomSafeSpace),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         SettingsTextField(
-                          key: const Key('settings_password_current_field'),
+                          key: Key('settings_password_current_field'),
                           label: 'كلمة المرور الحالية:',
                           controller: _currentController,
                           hint: '••••••••',
@@ -129,7 +129,7 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
                           onChanged: (_) => setState(() => _serverError = null),
                         ),
                         SettingsTextField(
-                          key: const Key('settings_password_new_field'),
+                          key: Key('settings_password_new_field'),
                           label: 'كلمة المرور الجديدة:',
                           controller: _newController,
                           hint: '••••••••',
@@ -139,7 +139,7 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
                         ),
                         SettingsPasswordRules(password: _newController.text),
                         SettingsTextField(
-                          key: const Key('settings_password_confirm_field'),
+                          key: Key('settings_password_confirm_field'),
                           label: 'تأكيد كلمة المرور الجديدة:',
                           controller: _confirmController,
                           hint: '••••••••',
@@ -149,10 +149,10 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
                           onChanged: (_) => setState(() {}),
                         ),
 
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         if (_serverError != null)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
+                            padding: EdgeInsets.only(bottom: 10),
                             child: Text(
                               _serverError!,
                               textAlign: TextAlign.center,
@@ -160,17 +160,17 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
                             ),
                           ),
                         SettingsButton(
-                          key: const Key('settings_password_submit_button'),
+                          key: Key('settings_password_submit_button'),
                           label: 'تغيير كلمة المرور',
                           isLoading: _isLoading,
                           onTap: _canSubmit ? _submit : null,
                         ),
 
                         // Forgot the current password?
-                        const SizedBox(height: 10),
+                        SizedBox(height: 10),
                         Center(
                           child: TextButton(
-                            key: const Key('settings_password_forgot_button'),
+                            key: Key('settings_password_forgot_button'),
                             onPressed: _sendResetLink,
                             child: Text.rich(
                               TextSpan(

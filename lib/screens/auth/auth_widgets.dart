@@ -5,6 +5,8 @@ import '../../core/theme/hesak_colors.dart';
 import '../../core/theme/hesak_sizes.dart';
 import '../../core/theme/hesak_text_styles.dart';
 import '../../services/auth_service.dart';
+import '../../core/data/hesak_legal_texts.dart';
+import '../../widgets/hesak_legal_sheet.dart';
 
 // =====================================================================
 //  AUTH WIDGETS — small building blocks shared by the sign in / sign up
@@ -119,7 +121,7 @@ class AuthSheetHeader extends StatelessWidget {
                 Shadow(
                   color: HesakColors.primaryDark.withOpacity(0.25),
                   blurRadius: 6,
-                  offset: const Offset(0, 2),
+                  offset: Offset(0, 2),
                 ),
               ],
             ),
@@ -130,9 +132,9 @@ class AuthSheetHeader extends StatelessWidget {
             PositionedDirectional(
               start: 0,
               child: IconButton(
-                key: const Key('auth_back_button'),
+                key: Key('auth_back_button'),
                 onPressed: onBack,
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 22),
+                icon: Icon(Icons.arrow_back_ios_new_rounded, size: 22),
                 color: HesakColors.textPrimary,
                 tooltip: 'رجوع',
               ),
@@ -160,7 +162,7 @@ class AuthFieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 18, bottom: 8),
+      padding: EdgeInsets.only(top: 18, bottom: 8),
       child: Text(text, style: HesakTextStyles.fieldLabel),
     );
   }
@@ -237,7 +239,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
               hintStyle: HesakTextStyles.fieldHint,
               filled: true,
               fillColor: HesakColors.fieldFill,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               suffixIcon: endIcon,
               // No border normally; a thin red one when there's an error.
               border: OutlineInputBorder(
@@ -247,7 +249,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(HesakSizes.radiusField),
                 borderSide: hasError
-                    ? const BorderSide(color: HesakColors.urgent, width: 1)
+                    ? BorderSide(color: HesakColors.urgent, width: 1)
                     : BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
@@ -264,7 +266,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
         // Error message under the field.
         if (hasError)
           Padding(
-            padding: const EdgeInsets.only(top: 6, right: 4, left: 4),
+            padding: EdgeInsets.only(top: 6, right: 4, left: 4),
             child: Text(widget.errorText!, style: HesakTextStyles.fieldError),
           ),
       ],
@@ -282,7 +284,7 @@ class AuthPrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final bool isLoading;
-  final Color color;
+  final Color? color; // null = HesakColors.buttonPrimary
   final TextStyle? labelStyle;
 
   const AuthPrimaryButton({
@@ -290,7 +292,7 @@ class AuthPrimaryButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.isLoading = false,
-    this.color = HesakColors.buttonPrimary,
+    this.color,
     this.labelStyle,
   });
 
@@ -299,7 +301,7 @@ class AuthPrimaryButton extends StatelessWidget {
     final bool isEnabled = onPressed != null && !isLoading;
 
     return AnimatedOpacity(
-      duration: const Duration(milliseconds: 200),
+      duration: Duration(milliseconds: 200),
       opacity: onPressed == null ? 0.45 : 1, // Faded when disabled
       child: GestureDetector(
         onTap: isEnabled ? onPressed : null,
@@ -308,18 +310,18 @@ class AuthPrimaryButton extends StatelessWidget {
           width: double.infinity,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: color,
+            color: color ?? HesakColors.buttonPrimary,
             borderRadius: BorderRadius.circular(HesakSizes.radiusButton),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.18),
                 blurRadius: 10,
-                offset: const Offset(0, 5),
+                offset: Offset(0, 5),
               ),
             ],
           ),
           child: isLoading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 24,
                   height: 24,
                   child: CircularProgressIndicator(strokeWidth: 2.5, color: HesakColors.onPrimary),
@@ -351,7 +353,7 @@ class AuthFooterLink extends StatelessWidget {
         onTap: onTap,
         behavior: HitTestBehavior.opaque, // Easier to tap
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: EdgeInsets.symmetric(vertical: 10),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -390,7 +392,7 @@ class AuthGlassButton extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: radius,
         boxShadow: isMain
-            ? const [BoxShadow(color: HesakColors.glassShadow, blurRadius: 18, offset: Offset(0, 8))]
+            ? [BoxShadow(color: HesakColors.glassShadow, blurRadius: 18, offset: Offset(0, 8))]
             : null,
       ),
       child: ClipRRect(
@@ -453,7 +455,7 @@ class _AuthBreathingBackgroundState extends State<AuthBreathingBackground>
   // One full "breath" (A -> B) takes 7 seconds, then it goes back.
   late final AnimationController _breathController = AnimationController(
     vsync: this,
-    duration: const Duration(seconds: 7),
+    duration: Duration(seconds: 7),
   )..repeat(reverse: true);
 
   @override
@@ -517,7 +519,7 @@ class _AuthBreathingBackgroundState extends State<AuthBreathingBackground>
         alignment: alignment,
         child: FractionallySizedBox(
           widthFactor: sizeFactor,
-          child: const AspectRatio(
+          child: AspectRatio(
             aspectRatio: 1,
             child: DecoratedBox(
               decoration: BoxDecoration(
@@ -548,7 +550,7 @@ class AuthInfoBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: HesakColors.infoBannerFill,
         borderRadius: BorderRadius.circular(14),
@@ -557,8 +559,8 @@ class AuthInfoBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_outline_rounded, size: 16, color: HesakColors.infoBannerText),
-          const SizedBox(width: 6),
+          Icon(Icons.info_outline_rounded, size: 16, color: HesakColors.infoBannerText),
+          SizedBox(width: 6),
           Expanded(child: Text(text, style: HesakTextStyles.infoBanner)),
         ],
       ),
@@ -575,18 +577,18 @@ class AuthPasswordRulesList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 10, right: 4),
+      padding: EdgeInsets.only(top: 10, right: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (final rule in AuthValidators.passwordRules(password))
             Padding(
-              padding: const EdgeInsets.only(bottom: 4),
+              padding: EdgeInsets.only(bottom: 4),
               child: Row(
                 children: [
                   // Dot: green with a check when met, empty grey when not.
                   AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
+                    duration: Duration(milliseconds: 200),
                     width: 14,
                     height: 14,
                     decoration: BoxDecoration(
@@ -598,10 +600,10 @@ class AuthPasswordRulesList extends StatelessWidget {
                       ),
                     ),
                     child: rule.isMet
-                        ? const Icon(Icons.check_rounded, size: 10, color: HesakColors.onPrimary)
+                        ? Icon(Icons.check_rounded, size: 10, color: HesakColors.onPrimary)
                         : null,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Text(rule.label, style: HesakTextStyles.passwordRule),
                 ],
               ),
@@ -624,7 +626,7 @@ class AuthVoiceToggle extends StatelessWidget {
     return Container(
       width: 180,
       height: 46,
-      padding: const EdgeInsets.all(4),
+      padding: EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: HesakColors.fieldFill,
         borderRadius: BorderRadius.circular(14),
@@ -647,13 +649,13 @@ class AuthVoiceToggle extends StatelessWidget {
         key: Key('auth_voice_${voice.name}'), // e.g. auth_voice_male
         onTap: () => onChanged(voice),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: Duration(milliseconds: 200),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isSelected ? HesakColors.surface : Colors.transparent,
             borderRadius: BorderRadius.circular(11),
             boxShadow: isSelected
-                ? [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 2))]
+                ? [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6, offset: Offset(0, 2))]
                 : null,
           ),
           child: Text(
@@ -666,7 +668,10 @@ class AuthVoiceToggle extends StatelessWidget {
   }
 }
 
-/// "أوافق على الشروط والأحكام" with a checkbox. Shows [errorText] under it when set.
+/// "أوافق على الشروط والأحكام وسياسة الخصوصية" with a checkbox.
+/// The 2 purple words are links: each opens its text (showHesakLegalSheet)
+/// without ticking the box. Tapping anywhere else on the row ticks / unticks it.
+/// Shows [errorText] under it when set.
 class AuthTermsCheckbox extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
@@ -685,7 +690,7 @@ class AuthTermsCheckbox extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GestureDetector(
-          key: const Key('auth_terms_checkbox'),
+          key: Key('auth_terms_checkbox'),
           onTap: () => onChanged(!value),
           behavior: HitTestBehavior.opaque,
           child: Row(
@@ -700,13 +705,34 @@ class AuthTermsCheckbox extends StatelessWidget {
                 ),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
               ),
-              const Text('أوافق على الشروط والأحكام', style: HesakTextStyles.authHint),
+              // Wraps to a 2nd line on small phones.
+              Expanded(
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text('أوافق على ', style: HesakTextStyles.authHint),
+                    HesakLegalLink(
+                      key: Key('auth_terms_link'),
+                      label: 'الشروط والأحكام',
+                      doc: hesakTermsDoc,
+                      style: HesakTextStyles.authLink,
+                    ),
+                    Text(' و', style: HesakTextStyles.authHint),
+                    HesakLegalLink(
+                      key: Key('auth_privacy_link'),
+                      label: 'سياسة الخصوصية',
+                      doc: hesakPrivacyDoc,
+                      style: HesakTextStyles.authLink,
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
         if (errorText != null)
           Padding(
-            padding: const EdgeInsets.only(right: 12),
+            padding: EdgeInsets.only(right: 12),
             child: Text(errorText!, style: HesakTextStyles.fieldError),
           ),
       ],

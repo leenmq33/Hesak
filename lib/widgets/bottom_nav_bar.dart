@@ -109,7 +109,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
   // Soft pulse + rings of the middle button while listening is on.
   late final AnimationController _modePulseController = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1800),
+    duration: Duration(milliseconds: 1800),
   );
   Animation<double>? _wheelSnapAnimation;
 
@@ -125,7 +125,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
     super.initState();
     _modeMenuController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 380),
+      duration: Duration(milliseconds: 380),
     );
     // easeOutBack gives a small "pop" at the end when opening.
     _modeMenuAnimation = CurvedAnimation(
@@ -136,7 +136,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
 
     _wheelSnapController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 250),
+      duration: Duration(milliseconds: 250),
     )..addListener(() {
         final snap = _wheelSnapAnimation;
         if (snap != null) setState(() => _wheelRotation = snap.value);
@@ -300,7 +300,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
                       child: _wheelDragArea(
                         wheelCenter: wheelCenter,
                         child: GestureDetector(
-                          key: const Key('navbar_mode_menu_backdrop'),
+                          key: Key('navbar_mode_menu_backdrop'),
                           onTap: _toggleModeMenu, // Tap the background = close the menu
                           child: Transform.scale(
                             scale: menuProgress.clamp(0.0, 1.0),
@@ -337,7 +337,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
                           children: [
                             _buildNavTab(HesakNavTab.home, Icons.home_outlined, Icons.home_rounded, 'الرئيسية'),
                             _buildNavTab(HesakNavTab.chats, Icons.chat_outlined, Icons.chat_rounded, 'المحادثات'),
-                            const SizedBox(width: 92), // Empty space under the middle button (same width as the notch)
+                            SizedBox(width: 92), // Empty space under the middle button (same width as the notch)
                             _buildNavTab(HesakNavTab.modes, Icons.grid_view_outlined, Icons.grid_view_rounded, 'الأوضاع'),
                             _buildNavTab(HesakNavTab.settings, Icons.settings_outlined, Icons.settings_rounded, 'الإعدادات'),
                           ],
@@ -410,7 +410,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
           alignment: Alignment.center,
           children: [
             // Two thin rings that grow and fade, one after the other.
-            for (final double offset in const [0.0, 0.5]) _buildPulseRing((t + offset) % 1.0),
+            for (final double offset in [0.0, 0.5]) _buildPulseRing((t + offset) % 1.0),
             Transform.scale(scale: breathe, child: button),
           ],
         );
@@ -441,7 +441,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
   /// The purple circle with the active mode's icon.
   Widget _buildModeButtonCircle() {
     return GestureDetector(
-      key: const Key('navbar_mode_button'),
+      key: Key('navbar_mode_button'),
       onTap: _toggleModeMenu,
       child: Container(
         width: _modeButtonSize,
@@ -449,7 +449,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           // Lighter at the top-left, darker at the bottom-right.
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [HesakColors.primaryMuted, HesakColors.primary],
@@ -459,14 +459,14 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
             BoxShadow(
               color: HesakColors.primary.withOpacity(0.35),
               blurRadius: 16,
-              offset: const Offset(0, 7),
+              offset: Offset(0, 7),
             ),
           ],
         ),
         // Shows the active mode's icon (e.g. person for "العام").
         // When it changes, the old icon shrinks away and the new one pops in.
         child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
+          duration: Duration(milliseconds: 300),
           transitionBuilder: (child, animation) => ScaleTransition(
             scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
             child: FadeTransition(opacity: animation, child: child),
@@ -511,7 +511,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
         child: Center(
           child: AnimatedContainer(
             // Smoothly fades the pill in/out when switching tabs.
-            duration: const Duration(milliseconds: 250),
+            duration: Duration(milliseconds: 250),
             curve: Curves.easeOut,
             // Small, fully rounded pill (only as big as the icon + label need).
             width: 62,
@@ -528,7 +528,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
                   size: HesakSizes.iconNavTab,
                   color: isSelected ? HesakPalette.current.navSelected : HesakPalette.current.iconInactive,
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
                   label,
                   maxLines: 1,
@@ -562,7 +562,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
     // Hidden when it's turned out of the visible slots.
     final visibility = keyName == 'add' ? 1.0 : _modeVisibilityAt(angleDegrees);
     final opacity = (visibility * menuProgress).clamp(0.0, 1.0);
-    if (opacity <= 0) return const SizedBox.shrink();
+    if (opacity <= 0) return SizedBox.shrink();
 
     // Position on the wheel. While the menu opens, circles fly out from the middle.
     final radians = angleDegrees * math.pi / 180;
@@ -601,7 +601,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
                         BoxShadow(
                           color: HesakColors.primaryMuted.withOpacity(0.12),
                           blurRadius: 10,
-                          offset: const Offset(0, 4),
+                          offset: Offset(0, 4),
                         ),
                       ],
                     ),
@@ -620,7 +620,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
                             color: isActive ? HesakPalette.current.navSelected : HesakPalette.current.iconInactive,
                           ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     label,
                     maxLines: 1,

@@ -6,6 +6,7 @@ import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
 import '../services/conversation_service.dart';
+import '../widgets/hesak_internet_required.dart';
 import '../widgets/hesak_listening_required.dart';
 import '../widgets/hesak_page_header.dart';
 import 'chats_conversation_screen.dart';
@@ -16,14 +17,16 @@ import 'home/home_mode_section.dart';
 //  HOME PAGE (الرئيسية)
 //
 //  Layout (top -> bottom):
-//    1) Shared header exactly as on the other pages (purple logo + waves +
-//       "مرحبًا, رحاب !"). Under it the color slowly turns purple behind the
-//       listen button, then slowly back to the lavender page (no hard edge).
+//    1) Shared header (purple logo + waves + "مرحبًا, رحاب !") on a light
+//       lavender tint. Under it a long soft band: it turns purple behind the
+//       listen button and fades back into the light purple page (no hard line).
 //         big listen button + a hint line under it
-//    2) Current mode card (light = غير مفعّل, dark purple = مفعّل):
-//       its 4 settings always shown, the arrow opens جدولة الوضع
-//    3) محادثات اليوم: last 24 hours (scrolls inside the card) + "محادثة جديدة"
-//    4) التنبيهات card (last 24 hours)
+//    2) الأصوات الحالية (sound chips)
+//    3) Current mode card (light purple = غير مفعّل, very dark = مفعّل):
+//       نوع التنبيه + نداء اسمك (glass tiles), the arrow opens جدولة الوضع
+//    4) محادثات اليوم: last 24 hours (scrolls inside the card) + "محادثة جديدة"
+//    5) التنبيهات card (last 24 hours)
+//  Cards: matte white, thin purple outline + soft shadow; light purple things inside.
 //
 //  NAMING RULES used in this file (so team files never clash):
 //  - Everything that belongs to this page starts with "Home".
@@ -44,8 +47,8 @@ class HomeScreen extends StatelessWidget {
 
   const HomeScreen({super.key, required this.userName, this.onShowAllChats});
 
-  /// Height of the colored band (header + listen button + hint).
-  static const double _bandHeight = 560;
+  /// Height of the soft band (header + listen button + hint + its fade).
+  static const double _bandHeight = 636;
 
   @override
   Widget build(BuildContext context) {
@@ -54,9 +57,9 @@ class HomeScreen extends StatelessWidget {
     return ColoredBox(
       color: HesakColors.tabPageBackground,
       child: SingleChildScrollView(
-        key: const Key('home_scroll'),
+        key: Key('home_scroll'),
         // Bottom space keeps the last card above the floating nav bar.
-        padding: const EdgeInsets.only(bottom: HesakSizes.pageBottomSafeSpace),
+        padding: EdgeInsets.only(bottom: HesakSizes.pageBottomSafeSpace),
         child: Stack(
           children: [
             // Light header -> purple behind the button -> lavender page.
@@ -66,7 +69,7 @@ class HomeScreen extends StatelessWidget {
               left: 0,
               right: 0,
               height: topInset + _bandHeight,
-              child: const DecoratedBox(
+              child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
@@ -88,17 +91,19 @@ class HomeScreen extends StatelessWidget {
                 Directionality(
                   textDirection: TextDirection.rtl,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(HesakSizes.pagePadding, 18, HesakSizes.pagePadding, 0),
+                    padding: EdgeInsets.fromLTRB(HesakSizes.pagePadding, 18, HesakSizes.pagePadding, 0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const _HomeListenButton(),
-                        const SizedBox(height: 22),
-                        const HomeModeSection(),
-                        const SizedBox(height: HesakSizes.sectionGap + 4),
-                        const _HomeConversationsCard(),
-                        const SizedBox(height: HesakSizes.sectionGap + 4),
-                        const _HomeAlertsCard(),
+                        _HomeListenButton(),
+                        SizedBox(height: 22),
+                        _HomeCurrentSoundsCard(),
+                        SizedBox(height: HesakSizes.sectionGap + 4),
+                        HomeModeSection(),
+                        SizedBox(height: HesakSizes.sectionGap + 4),
+                        _HomeConversationsCard(),
+                        SizedBox(height: HesakSizes.sectionGap + 4),
+                        _HomeAlertsCard(),
                       ],
                     ),
                   ),
@@ -117,8 +122,8 @@ class HomeScreen extends StatelessWidget {
 // =====================================================================
 
 /// Big round button.
-/// Before: white button with ONE soft circle around it + "ابدأ الاستماع".
-/// After pressing: purple button, white rings spread out, a white arc turns
+/// Before: light lavender button with ONE soft circle around it + "ابدأ الاستماع".
+/// After pressing: very dark purple button, light rings spread out, a light arc turns
 /// around it, and the current mode becomes مفعّل.
 class _HomeListenButton extends StatefulWidget {
   const _HomeListenButton();
@@ -131,19 +136,19 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
   // Soft grow / shrink of the button while listening.
   late final AnimationController _listenPulseController = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 900),
+    duration: Duration(milliseconds: 900),
   );
 
   // Rings that spread out from the button.
   late final AnimationController _listenRingsController = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 2400),
+    duration: Duration(milliseconds: 2400),
   );
 
   // The white arc that turns around the button.
   late final AnimationController _listenArcController = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1600),
+    duration: Duration(milliseconds: 1600),
   );
 
   /// Last listening state we animated for.
@@ -181,7 +186,7 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
   }
 
   void _stopAnimations() {
-    _listenPulseController.animateTo(0, duration: const Duration(milliseconds: 200));
+    _listenPulseController.animateTo(0, duration: Duration(milliseconds: 200));
     _listenRingsController
       ..stop()
       ..reset();
@@ -191,9 +196,12 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
   }
 
   /// Start or stop listening. The mode card + الأوضاع page follow the store.
-  void _toggleListening() {
+  /// Starting needs the internet (no internet -> window, stays off).
+  Future<void> _toggleListening() async {
+    final bool isTurningOn = !HesakModeStore.instance.isListening;
+    if (isTurningOn && !await hesakRequireInternet(context)) return;
     // The store tells _syncAnimationsWithStore, which starts / stops the animation.
-    HesakModeStore.instance.setListening(!HesakModeStore.instance.isListening);
+    HesakModeStore.instance.setListening(isTurningOn);
     // TODO: start / stop the real microphone listening here.
   }
 
@@ -229,14 +237,14 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
                         // Turning white arc.
                         Transform.rotate(
                           angle: _listenArcController.value * 2 * math.pi,
-                          child: const SizedBox(
+                          child: SizedBox(
                             width: buttonSize + 24,
                             height: buttonSize + 24,
                             child: CircularProgressIndicator(
                               value: 0.25,
                               strokeWidth: 4,
                               strokeCap: StrokeCap.round,
-                              color: HesakColors.onPrimary,
+                              color: HesakColors.homeListenLight,
                               backgroundColor: HesakColors.homeListenTrack,
                             ),
                           ),
@@ -250,35 +258,35 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
                           button: true,
                           label: isListening ? 'إيقاف الاستماع' : 'ابدأ الاستماع',
                           child: GestureDetector(
-                            key: const Key('home_listen_button'),
+                            key: Key('home_listen_button'),
                             onTap: _toggleListening,
                             child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
+                              duration: Duration(milliseconds: 300),
                               width: buttonSize,
                               height: buttonSize,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 gradient: isListening
-                                    ? const LinearGradient(
+                                    ? LinearGradient(
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                         colors: HesakColors.homeListenButtonActive,
                                       )
-                                    : const RadialGradient(
+                                    : RadialGradient(
                                         center: Alignment(0, -0.3),
                                         colors: HesakColors.homeListenButtonIdle,
                                         stops: [0.0, 0.7, 1.0],
                                       ),
                                 border: Border.all(
-                                  color: isListening ? HesakColors.onModeHeaderSoft : HesakColors.onPrimary,
+                                  color: isListening ? HesakColors.homeHaloBorder : HesakColors.homeListenLight,
                                   width: isListening ? 3 : 1.5,
                                 ),
-                                boxShadow: const [
+                                boxShadow: [
                                   BoxShadow(color: HesakColors.homeListenShadow, blurRadius: 36, offset: Offset(0, 16)),
                                 ],
                               ),
                               child: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 250),
+                                duration: Duration(milliseconds: 250),
                                 child: isListening ? _buildListeningContent() : _buildIdleContent(),
                               ),
                             ),
@@ -293,7 +301,7 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
 
             // Hint under the button: tells the user the mode turns on with listening.
             AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
+              duration: Duration(milliseconds: 250),
               child: Text(
                 isListening
                     ? 'حِسّك يستمع الآن ووضع ${store.selectedMode.name} مفعّل'
@@ -311,11 +319,11 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
 
   Widget _buildIdleContent() {
     return Column(
-      key: const ValueKey('home_listen_idle'),
+      key: ValueKey('home_listen_idle'),
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.mic_none_rounded, size: 52, color: HesakColors.primary),
-        const SizedBox(height: 6),
+        Icon(Icons.mic_none_rounded, size: 52, color: HesakColors.primary),
+        SizedBox(height: 6),
         Text('ابدأ الاستماع', style: HesakTextStyles.cardTitle.copyWith(color: HesakColors.primary)),
       ],
     );
@@ -323,14 +331,14 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
 
   Widget _buildListeningContent() {
     return Column(
-      key: const ValueKey('home_listen_on'),
+      key: ValueKey('home_listen_on'),
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.graphic_eq_rounded, size: 52, color: HesakColors.onPrimary),
-        const SizedBox(height: 4),
-        Text('يستمع…', style: HesakTextStyles.cardTitle.copyWith(color: HesakColors.onPrimary)),
-        const SizedBox(height: 2),
-        const Text('اضغط للإيقاف', style: HesakTextStyles.modeHeaderSubtitle),
+        Icon(Icons.graphic_eq_rounded, size: 52, color: HesakColors.homeListenLight),
+        SizedBox(height: 4),
+        Text('يستمع…', style: HesakTextStyles.cardTitle.copyWith(color: HesakColors.homeListenLight)),
+        SizedBox(height: 2),
+        Text('اضغط للإيقاف', style: HesakTextStyles.modeHeaderSubtitle),
       ],
     );
   }
@@ -357,7 +365,7 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
       height: ringSize,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: HesakColors.onPrimary.withOpacity(0.5 * (1 - progress)), width: 2),
+        border: Border.all(color: HesakColors.homeListenLight.withValues(alpha: 0.6 * (1 - progress)), width: 2),
       ),
     );
   }
@@ -367,30 +375,39 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
 //                         SHARED CARD
 // =====================================================================
 
-/// White rounded card: title (+ optional thing on the left), then content.
+/// Matte white card: thin purple outline + soft shadow so it looks a little
+/// raised. Title (+ optional icon / thing on the left), then content.
+/// Same for all 3 cards; what's inside is light purple.
 class _HomeSectionCard extends StatelessWidget {
   final String title;
-  final Widget? trailing; // Shown on the left of the title ("عرض الكل", "آخر 24 ساعة")
+  final Widget? titleIcon; // Small icon next to the title (e.g. sound waves)
+  final Widget? trailing; // Shown on the left of the title ("(5)", "آخر 24 ساعة")
   final Widget child;
 
-  const _HomeSectionCard({super.key, required this.title, this.trailing, required this.child});
+  const _HomeSectionCard({
+    super.key,
+    required this.title,
+    this.titleIcon,
+    this.trailing,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
         HesakSizes.cardPaddingHorizontal,
         HesakSizes.cardPaddingTop,
         HesakSizes.cardPaddingHorizontal,
         HesakSizes.cardPaddingBottom,
       ),
       decoration: BoxDecoration(
-        color: HesakColors.surface,
+        color: HesakColors.surface, // Matte white
         borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
-        border: Border.all(color: HesakColors.surfaceBorder),
+        border: Border.all(color: HesakColors.homeCardBorder),
         boxShadow: [
-          BoxShadow(color: HesakColors.primary.withOpacity(0.07), blurRadius: 18, offset: const Offset(0, 6)),
+          BoxShadow(color: HesakColors.homeCardShadow, blurRadius: 24, offset: Offset(0, 10)),
         ],
       ),
       child: Column(
@@ -398,12 +415,70 @@ class _HomeSectionCard extends StatelessWidget {
         children: [
           Row(
             children: [
+              if (titleIcon != null) ...[titleIcon!, SizedBox(width: 6)],
               Expanded(child: Text(title, style: HesakTextStyles.cardTitle)),
               if (trailing != null) trailing!,
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           child,
+        ],
+      ),
+    );
+  }
+}
+
+// =====================================================================
+//                         CURRENT SOUNDS CARD
+// =====================================================================
+
+/// "الأصوات الحالية": sounds the app is detecting now, as chips.
+class _HomeCurrentSoundsCard extends StatelessWidget {
+  const _HomeCurrentSoundsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    // TODO: real sounds from the listening service.
+    return _HomeSectionCard(
+      key: Key('home_current_sounds_card'),
+      title: 'الأصوات الحالية',
+      // Sound waves next to the title (no box behind it).
+      titleIcon: Icon(Icons.graphic_eq_rounded, size: 22, color: HesakColors.primary),
+      child: Wrap(
+        spacing: 8, // Gap between chips
+        runSpacing: 8, // Gap between rows
+        children: [
+          _HomeSoundChip(label: 'صوت إسعاف', icon: Icons.medical_services_outlined),
+          _HomeSoundChip(label: 'صوت دق الباب', icon: Icons.door_front_door_outlined),
+          _HomeSoundChip(label: 'صوت منبه', icon: Icons.alarm_rounded),
+        ],
+      ),
+    );
+  }
+}
+
+/// One soft purple pill: label + icon.
+class _HomeSoundChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+
+  const _HomeSoundChip({required this.label, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: HesakColors.homeItemFill,
+        borderRadius: BorderRadius.circular(HesakSizes.radiusChip),
+        border: Border.all(color: HesakColors.homeChipBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min, // Only as wide as its content
+        children: [
+          Text(label, style: HesakTextStyles.chipLabel),
+          SizedBox(width: 6),
+          Icon(icon, size: HesakSizes.iconInChip, color: HesakColors.primary),
         ],
       ),
     );
@@ -463,7 +538,7 @@ class _HomeConversationsCardState extends State<_HomeConversationsCard> {
 
   /// Last 24 hours only, newest first.
   List<ChatsConversation> get _todayConversations {
-    final DateTime since = DateTime.now().subtract(const Duration(hours: 24));
+    final DateTime since = DateTime.now().subtract(Duration(hours: 24));
     final List<ChatsConversation> today = _allConversations.where((c) => c.displayTime.isAfter(since)).toList()
       ..sort((a, b) => b.displayTime.compareTo(a.displayTime));
     return today;
@@ -495,7 +570,7 @@ class _HomeConversationsCardState extends State<_HomeConversationsCard> {
     final List<ChatsConversation> today = _todayConversations;
 
     return _HomeSectionCard(
-      key: const Key('home_conversations_card'),
+      key: Key('home_conversations_card'),
       title: 'محادثات اليوم',
       // How many conversations today, e.g. "(5)".
       trailing: today.isEmpty ? null : Text('(${today.length})', style: HesakTextStyles.caption),
@@ -505,11 +580,11 @@ class _HomeConversationsCardState extends State<_HomeConversationsCard> {
           if (today.isEmpty && _hasLoadFailed)
             // No internet / Firebase error: tap to try again.
             InkWell(
-              key: const Key('home_conversations_retry'),
+              key: Key('home_conversations_retry'),
               onTap: _loadConversations,
               borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                padding: EdgeInsets.symmetric(vertical: 10),
                 child: Text(
                   'تعذّر تحميل المحادثات، اضغط لإعادة المحاولة',
                   textAlign: TextAlign.center,
@@ -518,28 +593,28 @@ class _HomeConversationsCardState extends State<_HomeConversationsCard> {
               ),
             )
           else if (today.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 10),
               child: Text('لا توجد محادثات خلال 24 ساعة', textAlign: TextAlign.center, style: HesakTextStyles.caption),
             )
           else
             // Fixed box: never grows. Scroll inside it to see the rest.
             ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: _listMaxHeight),
+              constraints: BoxConstraints(maxHeight: _listMaxHeight),
               child: Scrollbar(
                 controller: _listScrollController,
                 thumbVisibility: today.length > 2, // Shows there is more to scroll
-                radius: const Radius.circular(4),
+                radius: Radius.circular(4),
                 child: Padding(
                   // Room for the scrollbar on the side.
-                  padding: const EdgeInsetsDirectional.only(end: 8),
+                  padding: EdgeInsetsDirectional.only(end: 8),
                   child: ListView.separated(
-                    key: const Key('home_conversations_list'),
+                    key: Key('home_conversations_list'),
                     controller: _listScrollController,
                     shrinkWrap: true,
                     padding: EdgeInsets.zero,
                     itemCount: today.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (_, __) => SizedBox(height: 8),
                     itemBuilder: (context, i) => _HomeConversationRow(
                       conversation: today[i],
                       onTap: () => _openConversation(today[i]),
@@ -548,20 +623,20 @@ class _HomeConversationsCardState extends State<_HomeConversationsCard> {
                 ),
               ),
             ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           SizedBox(
             height: 48,
             child: ElevatedButton.icon(
-              key: const Key('home_conversation_new'),
+              key: Key('home_conversation_new'),
               onPressed: _startNewConversation,
               style: ElevatedButton.styleFrom(
                 backgroundColor: HesakColors.primary,
-                foregroundColor: HesakColors.onPrimary,
+                foregroundColor: HesakColors.homeListenLight,
                 elevation: 0,
-                shape: const StadiumBorder(),
+                shape: StadiumBorder(),
               ),
-              icon: const Icon(Icons.add_rounded, size: 22),
-              label: Text('محادثة جديدة', style: HesakTextStyles.cardTitle.copyWith(color: HesakColors.onPrimary)),
+              icon: Icon(Icons.add_rounded, size: 22),
+              label: Text('محادثة جديدة', style: HesakTextStyles.cardTitle.copyWith(color: HesakColors.homeListenLight)),
             ),
           ),
         ],
@@ -570,7 +645,9 @@ class _HomeConversationsCardState extends State<_HomeConversationsCard> {
   }
 }
 
-/// One conversation row: icon · title · "قبل ساعة · محفوظة / تُحذف بعد 22:10:05".
+/// One conversation row: icon · title · then one grey line:
+///   not saved -> "تُحذف بعد 17 ساعة"
+///   saved     -> "محفوظة"
 /// The whole row opens the conversation.
 class _HomeConversationRow extends StatelessWidget {
   final ChatsConversation conversation;
@@ -582,43 +659,36 @@ class _HomeConversationRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isSaved = conversation.isSaved;
     return Material(
-      color: HesakColors.modeTileSelectedFill,
+      color: HesakColors.homeItemFill,
       borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard),
         child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
           Container(
             width: HesakSizes.iconBox,
             height: HesakSizes.iconBox,
             decoration: BoxDecoration(
-              color: HesakColors.primaryLight,
+              color: HesakColors.homeCardIconBox,
               borderRadius: BorderRadius.circular(HesakSizes.radiusIconBox),
             ),
-            child: const Icon(Icons.chat_outlined, size: HesakSizes.iconInBox, color: HesakColors.primary),
+            child: Icon(Icons.chat_outlined, size: HesakSizes.iconInBox, color: HesakColors.primary),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(conversation.title, style: HesakTextStyles.itemTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(text: '${_homeTimeAgo(conversation.displayTime)} · ', style: HesakTextStyles.caption),
-                      TextSpan(
-                        text: isSaved ? 'محفوظة' : 'تُحذف بعد ${chatsFormatTimeLeft(conversation.timeUntilAutoDelete)}',
-                        style: isSaved
-                            ? HesakTextStyles.caption.copyWith(color: HesakColors.primary, fontWeight: FontWeight.w600)
-                            : HesakTextStyles.caption,
-                      ),
-                    ],
-                  ),
+                SizedBox(height: 2),
+                Text(
+                  isSaved
+                      ? 'محفوظة'
+                      : 'تُحذف بعد ${chatsFormatTimeLeft(conversation.timeUntilAutoDelete)}',
+                  style: HesakTextStyles.caption, // Grey
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -633,29 +703,20 @@ class _HomeConversationRow extends StatelessWidget {
   }
 }
 
-/// "الآن" / "قبل 5 د" / "قبل ساعة" / "قبل 3 ساعات" / "أمس" / "قبل 4 أيام".
-String _homeTimeAgo(DateTime time) {
-  final Duration diff = DateTime.now().difference(time);
-  if (diff.inMinutes < 1) return 'الآن';
-  if (diff.inMinutes < 60) return 'قبل ${diff.inMinutes} د';
-  if (diff.inHours == 1) return 'قبل ساعة';
-  if (diff.inHours < 24) return 'قبل ${diff.inHours} ساعات';
-  if (diff.inDays == 1) return 'أمس';
-  return 'قبل ${diff.inDays} أيام';
-}
-
 // =====================================================================
 //                         ALERTS CARD
 // =====================================================================
 
 /// "التنبيهات": recent alerts (last 24 hours). Urgent ones are red.
+/// Times are "منذ دقيقة" / "منذ ساعة"… never "الآن": what is heard right
+/// now shows up in "الأصوات الحالية" above, not here.
 class _HomeAlertsCard extends StatelessWidget {
   const _HomeAlertsCard();
 
   @override
   Widget build(BuildContext context) {
     // TODO: real alerts from the listening service.
-    return const _HomeSectionCard(
+    return _HomeSectionCard(
       key: Key('home_alerts_card'),
       title: 'التنبيهات',
       trailing: Text('آخر 24 ساعة', style: HesakTextStyles.caption),
@@ -665,17 +726,17 @@ class _HomeAlertsCard extends StatelessWidget {
             icon: Icons.warning_amber_rounded,
             title: 'إنذار حريق',
             subtitle: 'تم رصد صوت إنذار حريق',
-            time: 'الآن',
+            time: 'منذ دقيقة',
             isUrgent: true,
           ),
-          Divider(height: 18, thickness: 0.8, color: HesakColors.listDivider),
+          SizedBox(height: 8),
           _HomeAlertTile(
             icon: Icons.child_care_outlined,
             title: 'بكاء طفل',
             subtitle: 'تم رصد صوت بكاء طفل',
             time: 'منذ ساعة',
           ),
-          Divider(height: 18, thickness: 0.8, color: HesakColors.listDivider),
+          SizedBox(height: 8),
           _HomeAlertTile(
             icon: Icons.notifications_none_rounded,
             title: 'جرس الباب',
@@ -688,13 +749,15 @@ class _HomeAlertsCard extends StatelessWidget {
   }
 }
 
-/// One alert row: icon box, title + subtitle, time.
+/// One alert: a white box with a colored line on the right (start) side,
+/// icon box, title + subtitle, time.
+/// Urgent (e.g. إنذار حريق) = red line + red icon. Others = purple.
 class _HomeAlertTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
   final String time;
-  final bool isUrgent; // Red icon box + red time
+  final bool isUrgent; // Red line + red icon box
 
   const _HomeAlertTile({
     required this.icon,
@@ -706,30 +769,53 @@ class _HomeAlertTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: HesakSizes.iconBox,
-          height: HesakSizes.iconBox,
-          decoration: BoxDecoration(
-            color: isUrgent ? HesakColors.homeUrgentIconFill : HesakColors.primaryLight,
-            borderRadius: BorderRadius.circular(HesakSizes.radiusIconBox),
-          ),
-          child: Icon(icon, size: HesakSizes.iconInBox, color: isUrgent ? HesakColors.urgent : HesakColors.primary),
+    final Color lineColor = isUrgent ? HesakColors.urgent : HesakColors.homeAlertLine;
+
+    return Container(
+      clipBehavior: Clip.antiAlias, // Cuts the side line to the rounded corners
+      decoration: BoxDecoration(
+        color: HesakColors.homeAlertFill,
+        borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard),
+        boxShadow: [BoxShadow(color: HesakColors.homeAlertShadow, blurRadius: 6, offset: Offset(0, 2))],
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(width: 4, color: lineColor), // The colored side line
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.all(10),
+                child: Row(
+                  children: [
+                    Container(
+                      width: HesakSizes.iconBox,
+                      height: HesakSizes.iconBox,
+                      decoration: BoxDecoration(
+                        color: isUrgent ? HesakColors.homeUrgentIconFill : HesakColors.homeAlertIconFill,
+                        borderRadius: BorderRadius.circular(HesakSizes.radiusIconBox),
+                      ),
+                      child: Icon(icon, size: HesakSizes.iconInBox, color: isUrgent ? HesakColors.urgent : HesakColors.primary),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title, style: HesakTextStyles.itemTitle),
+                          SizedBox(height: 2),
+                          Text(subtitle, style: HesakTextStyles.body),
+                        ],
+                      ),
+                    ),
+                    Text(time, style: HesakTextStyles.caption), // Always grey (even urgent)
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: HesakTextStyles.itemTitle),
-              const SizedBox(height: 2),
-              Text(subtitle, style: HesakTextStyles.body),
-            ],
-          ),
-        ),
-        Text(time, style: isUrgent ? HesakTextStyles.captionUrgent : HesakTextStyles.caption),
-      ],
+      ),
     );
   }
 }

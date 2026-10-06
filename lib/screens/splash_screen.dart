@@ -49,7 +49,7 @@ class _SplashScreenState extends State<SplashScreen>
     // One full wave movement takes 700ms.
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
+      duration: Duration(milliseconds: 700),
     );
 
     // The waves stretch vertically between 82% and 108% of their size.
@@ -66,7 +66,7 @@ class _SplashScreenState extends State<SplashScreen>
     // The tagline takes 1.4 seconds to fully appear.
     _taglineController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: Duration(milliseconds: 1400),
     );
 
     // Opacity goes from 0 (transparent) to 1 (fully visible).
@@ -76,7 +76,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     // Starts slightly below its final position, then slides up into place.
-    _taglineSlide = Tween<Offset>(begin: const Offset(0, 0.4), end: Offset.zero)
+    _taglineSlide = Tween<Offset>(begin: Offset(0, 0.4), end: Offset.zero)
         .animate(
           CurvedAnimation(parent: _taglineController, curve: Curves.easeOut),
         );
@@ -84,20 +84,20 @@ class _SplashScreenState extends State<SplashScreen>
     // The whole reveal takes 1.3 seconds.
     _revealController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1300),
+      duration: Duration(milliseconds: 1300),
     );
 
     // Shapes grow during the first ~75% of the reveal (slow start and end).
     _shapesGrow = CurvedAnimation(
       parent: _revealController,
-      curve: const Interval(0.0, 0.75, curve: Curves.easeInOutCubic),
+      curve: Interval(0.0, 0.75, curve: Curves.easeInOutCubic),
     );
 
     // The final purple gradient fades in at the end, so it matches the
     // sign in / sign up background exactly.
     _purpleFill = CurvedAnimation(
       parent: _revealController,
-      curve: const Interval(0.65, 1.0, curve: Curves.easeOut),
+      curve: Interval(0.65, 1.0, curve: Curves.easeOut),
     );
 
     // When the reveal is done, open the welcome screen.
@@ -106,12 +106,12 @@ class _SplashScreenState extends State<SplashScreen>
     });
 
     // Wait 1.5 seconds after the logo appears, then show the tagline.
-    _taglineTimer = Timer(const Duration(milliseconds: 1500), () {
+    _taglineTimer = Timer(Duration(milliseconds: 1500), () {
       if (mounted) _taglineController.forward();
     });
 
     // After 3.8 seconds, start the reveal (it ends at ~5.1 seconds).
-    _revealTimer = Timer(const Duration(milliseconds: 3800), _startReveal);
+    _revealTimer = Timer(Duration(milliseconds: 3800), _startReveal);
   }
 
   /// Grows the corner shapes. If the phone has "reduce motion" turned on,
@@ -120,7 +120,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
     final bool isReduceMotionOn = MediaQuery.of(context).disableAnimations;
     if (isReduceMotionOn) {
-      _openWelcomeScreen(fadeDuration: const Duration(milliseconds: 600));
+      _openWelcomeScreen(fadeDuration: Duration(milliseconds: 600));
     } else {
       _revealController.forward();
     }
@@ -138,7 +138,7 @@ class _SplashScreenState extends State<SplashScreen>
       context,
       PageRouteBuilder(
         transitionDuration: fadeDuration,
-        pageBuilder: (_, __, ___) => const HesakAuthFlowScreen(),
+        pageBuilder: (_, __, ___) => HesakAuthFlowScreen(),
         transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
       ),
@@ -181,7 +181,7 @@ class _SplashScreenState extends State<SplashScreen>
         height: double.infinity,
 
         // Soft light gradient background (top-left -> bottom-right).
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -216,7 +216,7 @@ class _SplashScreenState extends State<SplashScreen>
                           HesakColors.authGradientLight,
                           grow,
                         ),
-                        borderRadius: const BorderRadius.only(
+                        borderRadius: BorderRadius.only(
                           bottomRight: Radius.circular(220),
                         ),
                       ),
@@ -241,7 +241,7 @@ class _SplashScreenState extends State<SplashScreen>
                           HesakColors.authGradientDark,
                           grow,
                         ),
-                        borderRadius: const BorderRadius.only(
+                        borderRadius: BorderRadius.only(
                           topLeft: Radius.circular(250),
                         ),
                       ),
@@ -255,7 +255,7 @@ class _SplashScreenState extends State<SplashScreen>
                   child: IgnorePointer(
                     child: Opacity(
                       opacity: _purpleFill.value,
-                      child: const DecoratedBox(
+                      child: DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
@@ -301,7 +301,7 @@ class _SplashScreenState extends State<SplashScreen>
                 Flexible(
                   flex: 27,
                   child: Transform.translate(
-                    offset: const Offset(
+                    offset: Offset(
                       18,
                       -6,
                     ), // Nudge to connect with the waves
@@ -338,7 +338,7 @@ class _SplashScreenState extends State<SplashScreen>
                 Flexible(
                   flex: 27,
                   child: Transform.translate(
-                    offset: const Offset(
+                    offset: Offset(
                       -8,
                       0,
                     ), // Nudge left to close the gap
@@ -353,7 +353,7 @@ class _SplashScreenState extends State<SplashScreen>
           ),
 
           // Space between the logo and the tagline.
-          const SizedBox(height: 28),
+          SizedBox(height: 28),
 
           // ---------- Tagline ----------
           // Slides up and fades in together.
@@ -363,7 +363,7 @@ class _SplashScreenState extends State<SplashScreen>
               opacity: _taglineOpacity,
               child: SizedBox(
                 width: screenWidth * 0.8,
-                child: const Text(
+                child: Text(
                   'لأن ما لا يُسمع يَستحق أن يُدرك',
                   textAlign: TextAlign.center,
                   textDirection:

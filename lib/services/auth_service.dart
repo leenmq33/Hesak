@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../core/theme/hesak_palette.dart';
+
 // =====================================================================
 //  AUTH SERVICE — the ONLY place that talks to the account system.
 //
@@ -24,11 +26,23 @@ class AuthResult {
   final bool isSuccess;
   final String? errorMessage; // Arabic message shown under the button
 
+  /// true = right email + password, but the email isn't verified yet
+  /// (the login form then moves to the "تأكيد البريد" step).
+  final bool needsEmailVerification;
+
   const AuthResult.success()
       : isSuccess = true,
-        errorMessage = null;
+        errorMessage = null,
+        needsEmailVerification = false;
 
-  const AuthResult.failure(this.errorMessage) : isSuccess = false;
+  const AuthResult.failure(this.errorMessage)
+      : isSuccess = false,
+        needsEmailVerification = false;
+
+  const AuthResult.emailNotVerified()
+      : isSuccess = false,
+        errorMessage = 'لم يتم تأكيد بريدك الإلكتروني بعد',
+        needsEmailVerification = true;
 }
 
 /// Sign up, log in, reset password, the "call name", and the account
@@ -114,7 +128,8 @@ class AuthService extends ChangeNotifier {
   }
 
   /// Logs in with email + password.
-  /// If the email is not verified yet: sends the link again and refuses the login.
+  /// If the email is not verified yet: sends the link again and returns
+  /// emailNotVerified (the login form moves to the "تأكيد البريد" step).
   Future<AuthResult> logIn({
     required String email,
     required String password,
@@ -133,10 +148,10 @@ class AuthService extends ChangeNotifier {
         } catch (_) {
           // e.g. too many requests — the old link still works.
         }
-        await _auth.signOut();
-        return const AuthResult.failure(
-          'لم يتم تأكيد بريدك الإلكتروني بعد. أرسلنا لك رابط التأكيد، افتحه ثم سجّل الدخول.',
-        );
+        // Stay signed in, so the "تأكيد البريد" step can check and resend.
+        // (isLoggedIn stays false until the email is verified.)
+        currentEmail = user.email ?? email.trim();
+        return const AuthResult.emailNotVerified();
       }
 
       await _loadProfile(user);
@@ -175,6 +190,7 @@ class AuthService extends ChangeNotifier {
     currentCallName = null;
     currentVoice = HesakVoice.male;
     notifyListeners();
+    // فاتح / داكن stays as it is: the sign-in pages keep the phone's last choice.
   }
 
   // ---------------------------------------------------------------------
@@ -213,7 +229,6 @@ class AuthService extends ChangeNotifier {
       return false;
     }
   }
-
 
   // ---------------------------------------------------------------------
   // Password reset + call name
@@ -367,6 +382,23 @@ class AuthService extends ChangeNotifier {
     );
   }
 
+  /// Changes the appearance (فاتح / داكن) right away, and saves it in
+  /// users/{uid}.settings.appearance ("light" / "dark"), so it comes back
+  /// after a new login or on another phone.
+  void updateAppearance(HesakAppearance appearance) {
+    final theme = HesakThemeController.instance;
+    if (appearance == theme.appearance) return;
+    theme.setAppearance(appearance);
+
+    final user = _auth.currentUser;
+    if (user == null) return;
+    unawaited(
+      _userDoc(user.uid)
+          .update({'settings.appearance': appearance.name})
+          .catchError((e) => debugPrint('updateAppearance error: $e')),
+    );
+  }
+
   /// Changes the password. The current password is checked first.
   Future<AuthResult> changePassword({
     required String currentPassword,
@@ -457,6 +489,15 @@ class AuthService extends ChangeNotifier {
     currentCallName =
     (names != null && names.isNotEmpty) ? names.first as String : null;
     notifyListeners();
+
+    // فاتح / داكن saved in the account (follows the user to another phone).
+    // Not saved yet -> keep the phone's current choice.
+    final savedAppearance = settings?['appearance'];
+    if (savedAppearance == HesakAppearance.dark.name) {
+      HesakThemeController.instance.setAppearance(HesakAppearance.dark);
+    } else if (savedAppearance == HesakAppearance.light.name) {
+      HesakThemeController.instance.setAppearance(HesakAppearance.light);
+    }
   }
 
   /// Checks the current password again (Firebase requires it before
