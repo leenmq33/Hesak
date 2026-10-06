@@ -3,16 +3,18 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/splash_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-
+import 'services/auth_service.dart';   import 'services/auth_service.dart';
+import 'services/auth_service.dart';
+import 'services/auth_service.dart';
 /// App entry point: the first thing that runs when the app opens.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  AuthService.instance.startListeningForLinks();
   runApp(const HesakApp());
 }
-
 /// The whole app: global settings + the first screen.
 /// Shared file — don't edit without telling the team.
 class HesakApp extends StatelessWidget {

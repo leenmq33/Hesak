@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app_links/app_links.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -157,6 +158,7 @@ class AuthService extends ChangeNotifier {
       await user.reload();
       final fresh = _auth.currentUser;
       if (fresh == null || !fresh.emailVerified) return false;
+      await fresh.getIdToken(true); // Fresh token says "verified" (needed by the security rules)
       await _loadProfile(fresh);
       return true;
     } catch (e) {
@@ -203,6 +205,7 @@ class AuthService extends ChangeNotifier {
       await user.reload();
       final fresh = _auth.currentUser;
       if (fresh == null || !fresh.emailVerified) return false;
+      await fresh.getIdToken(true); // Fresh token says "verified" (needed by the security rules)
       await _loadProfile(fresh); // Creates users/{uid} the first time
       return true;
     } catch (e) {
@@ -217,16 +220,92 @@ class AuthService extends ChangeNotifier {
   // ---------------------------------------------------------------------
 
   /// Sends an email with a secure link to choose a new password.
-  /// The user opens the link, sets the new password there, then logs in.
+  /// On the phone, the link opens Hesak (see pendingResetCode below).
   Future<AuthResult> sendPasswordResetEmail({required String email}) async {
     try {
       await _auth.setLanguageCode('ar');
-      await _auth.sendPasswordResetEmail(email: email.trim());
+      await _auth.sendPasswordResetEmail(
+        email: email.trim(),
+        // The link in the email opens the Hesak app (not a web page).
+        // On a computer (no app) it opens Firebase's page instead.
+        actionCodeSettings: ActionCodeSettings(
+          url: 'https://hesak-4f175.firebaseapp.com/reset',
+          handleCodeInApp: true,
+          androidPackageName: 'com.example.hesak',
+          androidInstallApp: false,
+        ),
+      );
+      debugPrint('🟢 [reset] email sent with in-app link settings');
+      return const AuthResult.success();
+    } on FirebaseAuthException catch (e) {
+      debugPrint('🔴 [reset] ${e.code} | ${e.message}');
+      return AuthResult.failure(_arabicError(e.code));
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Password reset INSIDE the app (the link from the email opens Hesak)
+  // ---------------------------------------------------------------------
+
+  /// The secret code from a password-reset link the user opened.
+  /// The "new password" screen listens to this: not null = open the screen.
+  final ValueNotifier<String?> pendingResetCode = ValueNotifier<String?>(null);
+
+  final AppLinks _appLinks = AppLinks();
+  StreamSubscription<Uri>? _linkSubscription;
+
+  /// Call ONCE in main(). Listens for email links that open the app
+  /// (also the link that opened a closed app).
+  void startListeningForLinks() {
+    _linkSubscription ??= _appLinks.uriLinkStream.listen(
+      _handleLink,
+      onError: (e) => debugPrint('🔴 [link] $e'),
+    );
+  }
+
+  void _handleLink(Uri uri) {
+    // Firebase wraps the real link: .../__/auth/links?link=<real link>
+    Uri actionLink = uri;
+    final inner = uri.queryParameters['link'];
+    if (inner != null) actionLink = Uri.parse(inner);
+
+    final mode = actionLink.queryParameters['mode'];
+    final code = actionLink.queryParameters['oobCode'];
+    debugPrint('🟢 [link] mode=$mode, hasCode=${code != null}');
+
+    if (mode == 'resetPassword' && code != null) {
+      pendingResetCode.value = code;
+    }
+  }
+
+  /// Checks the code from the link.
+  /// Returns the account's email, or null if the link expired / was used.
+  Future<String?> checkResetCode(String code) async {
+    try {
+      return await _auth.verifyPasswordResetCode(code);
+    } on FirebaseAuthException catch (e) {
+      debugPrint('🔴 [reset] ${e.code}');
+      return null;
+    }
+  }
+
+  /// Saves the new password using the code from the link.
+  /// Firebase's password policy is checked here too.
+  Future<AuthResult> confirmNewPassword({
+    required String code,
+    required String newPassword,
+  }) async {
+    try {
+      await _auth.confirmPasswordReset(code: code, newPassword: newPassword);
+      pendingResetCode.value = null;
       return const AuthResult.success();
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(_arabicError(e.code));
     }
   }
+
+  /// The user closed the new-password screen without saving.
+  void cancelPasswordReset() => pendingResetCode.value = null;
 
   /// Saves the name the app should listen for (للتنبيه عند النداء).
   Future<AuthResult> saveCallName({required String callName}) async {
@@ -406,6 +485,8 @@ class AuthService extends ChangeNotifier {
         return 'البريد الإلكتروني غير صحيح';
       case 'weak-password':
         return 'كلمة المرور ضعيفة، اختر كلمة أقوى';
+      case 'password-does-not-meet-requirements':
+        return 'كلمة المرور يجب أن تحتوي على 8 خانات على الأقل، وحرف إنجليزي كبير وصغير، ورقم، ورمز خاص';
       case 'user-not-found':
       case 'wrong-password':
       case 'invalid-credential':
@@ -416,6 +497,9 @@ class AuthService extends ChangeNotifier {
         return 'محاولات كثيرة، حاول مرة أخرى بعد قليل';
       case 'network-request-failed':
         return 'تحقق من اتصالك بالإنترنت';
+      case 'expired-action-code':
+      case 'invalid-action-code':
+        return 'الرابط منتهي أو استُخدم من قبل، اطلب رابطًا جديدًا';
       case 'requires-recent-login':
         return 'يرجى تسجيل الدخول مرة أخرى ثم المحاولة';
       default:
