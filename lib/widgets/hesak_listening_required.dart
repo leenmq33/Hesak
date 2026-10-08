@@ -24,7 +24,7 @@ Future<bool> hesakRequireListening(BuildContext context) async {
   final bool shouldTurnOn = await showHesakConfirmDialog(
     context,
     title: 'يجب تشغيل زر الاستماع أولًا',
-    message: 'شغّل زر الاستماع في أعلى الصفحة الرئيسية لتتمكن من بدء المحادثة',
+    message: 'شغّل زر الاستماع في أعلى الصفحة الرئيسية لتتمكن من تحويل الكلام إلى نص',
     confirmLabel: 'تشغيل الاستماع',
     icon: Icons.mic_off_rounded,
     isDanger: false,

@@ -7,7 +7,6 @@ import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
 import '../services/conversation_service.dart';
 import '../widgets/hesak_internet_required.dart';
-import '../widgets/hesak_listening_required.dart';
 import '../widgets/hesak_page_header.dart';
 import 'chats_conversation_screen.dart';
 import 'chats_models.dart';
@@ -26,7 +25,7 @@ import 'home/home_mode_section.dart';
 //       نوع التنبيه + نداء اسمك (glass tiles), the arrow opens جدولة الوضع
 //    4) محادثات اليوم: last 24 hours (scrolls inside the card) + "محادثة جديدة"
 //    5) التنبيهات card (last 24 hours)
-//  Cards: matte white, thin purple outline + soft shadow; light purple things inside.
+//  Cards: pure white, thin purple outline + soft shadow; light purple things inside.
 //
 //  NAMING RULES used in this file (so team files never clash):
 //  - Everything that belongs to this page starts with "Home".
@@ -375,7 +374,7 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
 //                         SHARED CARD
 // =====================================================================
 
-/// Matte white card: thin purple outline + soft shadow so it looks a little
+/// Pure white card: thin purple outline + soft shadow so it looks a little
 /// raised. Title (+ optional icon / thing on the left), then content.
 /// Same for all 3 cards; what's inside is light purple.
 class _HomeSectionCard extends StatelessWidget {
@@ -403,7 +402,7 @@ class _HomeSectionCard extends StatelessWidget {
         HesakSizes.cardPaddingBottom,
       ),
       decoration: BoxDecoration(
-        color: HesakColors.surface, // Matte white
+        color: HesakColors.homeSectionCardFill, // Pure white (same for the 3 cards)
         borderRadius: BorderRadius.circular(HesakSizes.radiusCard),
         border: Border.all(color: HesakColors.homeCardBorder),
         boxShadow: [
@@ -555,10 +554,10 @@ class _HomeConversationsCardState extends State<_HomeConversationsCard> {
     // The list reloads by itself (ConversationService.changeCount).
   }
 
-  /// Works only while listening is on; otherwise the shared window asks to
-  /// turn it on. The number "محادثة NN" is never reused (ConversationService).
+  /// Opens even while the listen button is off (same as المحادثات): the user
+  /// can still type. Only the mic inside needs listening on.
+  /// The number "محادثة NN" is never reused (ConversationService).
   Future<void> _startNewConversation() async {
-    if (!await hesakRequireListening(context)) return;
     final ChatsConversation conversation =
         await ConversationService.instance.createNewConversation(_allConversations);
     if (!mounted) return;
@@ -749,7 +748,7 @@ class _HomeAlertsCard extends StatelessWidget {
   }
 }
 
-/// One alert: a white box with a colored line on the right (start) side,
+/// One alert: a light box (on the white card) with a colored line on the right (start) side,
 /// icon box, title + subtitle, time.
 /// Urgent (e.g. إنذار حريق) = red line + red icon. Others = purple.
 class _HomeAlertTile extends StatelessWidget {
@@ -776,7 +775,11 @@ class _HomeAlertTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: HesakColors.homeAlertFill,
         borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard),
-        boxShadow: [BoxShadow(color: HesakColors.homeAlertShadow, blurRadius: 6, offset: Offset(0, 2))],
+      ),
+      // Thin outline, drawn on top so the rounded corners stay one full frame.
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(HesakSizes.radiusInnerCard),
+        border: Border.all(color: HesakColors.homeAlertBorder),
       ),
       child: IntrinsicHeight(
         child: Row(

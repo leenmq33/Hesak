@@ -429,4 +429,23 @@ class HesakTextStyles {
     fontWeight: FontWeight.w700,
     color: HesakColors.textPrimary,
   );
+
+  // ---- الرئيسية: mode card ----
+
+  /// "الوضع الحالي" at the top of the purple mode card. 18 / Bold / light.
+  /// The biggest text of the card (the card title, like "محادثات اليوم").
+  static TextStyle get homeModeCardTitle => TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 18,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.onHomeGlass,
+  );
+
+  /// The mode's name under that title ("النوم"). 15 / Bold / light — smaller than the title.
+  static TextStyle get homeModeName => TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    color: HesakColors.onHomeGlass,
+  );
 }

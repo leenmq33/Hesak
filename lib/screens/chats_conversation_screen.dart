@@ -205,9 +205,15 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   // Listening (speech → text)
   // -------------------------------------------------------------------------
 
-  /// Stops the listening here when the big listen button is off.
+  /// Follows the big listen button (الرئيسية):
+  ///  - the mic turns faded / normal right away when it's turned off / on
+  ///  - listening here stops when it's turned off
   void _stopIfMainListeningOff() {
-    if (!mounted || !_isListening || HesakModeStore.instance.isListening) return;
+    if (!mounted) return;
+    if (!_isListening || HesakModeStore.instance.isListening) {
+      setState(() {}); // Just redraw the mic (faded or normal)
+      return;
+    }
     setState(() => _isListening = false);
     _listeningBarsController.stop();
     _demoTranscriptTimer?.cancel();
@@ -635,6 +641,8 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
                 isSending: _isSending,
                 onSend: _sendComposerText,
                 onToggleListening: _toggleListening,
+                // Faded mic while the listen button (الرئيسية) is off.
+                isMicAvailable: HesakModeStore.instance.isListening,
               ),
             ],
           ),
@@ -1703,10 +1711,12 @@ class _ChatsComposerBar extends StatelessWidget {
     required this.isSending,
     required this.onSend,
     required this.onToggleListening,
+    required this.isMicAvailable,
   });
 
   final TextEditingController controller;
   final bool isListening;
+  final bool isMicAvailable; // false = the listen button (الرئيسية) is off -> faded mic
   final bool hasText;
   final Animation<double> listeningBars;
   final VoidCallback onEnhance;
@@ -1739,7 +1749,7 @@ class _ChatsComposerBar extends StatelessWidget {
                 SizedBox(width: 10),
                 hasText || isSending
                     ? _ChatsSendButton(onPressed: onSend, isLoading: isSending)
-                    : _ChatsListenButton(onPressed: onToggleListening),
+                    : _ChatsListenButton(onPressed: onToggleListening, isAvailable: isMicAvailable),
               ],
             ),
     );
@@ -1854,35 +1864,57 @@ class _ChatsComposerField extends StatelessWidget {
 
 /// Empty field: round purple mic button (no label; the screen-reader
 /// label explains it).
+/// [isAvailable] false = the listen button (الرئيسية) is off: the mic looks
+/// faded, exactly like the ✦ button when there's no text (light lavender,
+/// purple icon, 45%). A tap still works: it shows the shared window
+/// "يجب تشغيل زر الاستماع أولًا" (from _toggleListening).
 class _ChatsListenButton extends StatelessWidget {
-  const _ChatsListenButton({required this.onPressed});
+  const _ChatsListenButton({required this.onPressed, required this.isAvailable});
 
   final VoidCallback onPressed;
+  final bool isAvailable;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: 'استماع: تحويل الكلام من حولك إلى نص',
+      label: isAvailable
+          ? 'استماع: تحويل الكلام من حولك إلى نص'
+          : 'استماع غير متاح: شغّل زر الاستماع في الرئيسية أولًا',
       child: GestureDetector(
         key: Key('chats_listen_button'),
         onTap: onPressed,
-        child: Container(
-          width: 52, // same size as the send button it turns into
-          height: 52,
-          decoration: BoxDecoration(
-            gradient: _chatsPrimaryGradient,
-            shape: BoxShape.circle,
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: HesakColors.primary.withValues(alpha: 0.28),
-                blurRadius: 18,
-                offset: Offset(0, 8),
-              ),
-            ],
+        child: AnimatedOpacity(
+          duration: Duration(milliseconds: 150),
+          opacity: isAvailable ? 1.0 : 0.45, // Same as the faded ✦
+          child: AnimatedContainer(
+            duration: Duration(milliseconds: 150),
+            width: 52, // same size as the send button it turns into
+            height: 52,
+            decoration: isAvailable
+                ? BoxDecoration(
+                    gradient: _chatsPrimaryGradient,
+                    shape: BoxShape.circle,
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: HesakColors.primary.withValues(alpha: 0.28),
+                        blurRadius: 18,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
+                  )
+                : BoxDecoration(
+                    // Same colors as the faded ✦ button.
+                    color: HesakColors.primaryLight,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: HesakColors.primaryLightBorder),
+                  ),
+            child: Icon(
+              Icons.mic_none_rounded,
+              size: HesakSizes.iconInBox + 1,
+              color: isAvailable ? HesakColors.onPrimary : HesakColors.primary,
+            ),
           ),
-          child: Icon(Icons.mic_none_rounded,
-              size: HesakSizes.iconInBox + 1, color: HesakColors.onPrimary),
         ),
       ),
     );

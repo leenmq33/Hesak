@@ -164,8 +164,10 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// Call this when the app opens (e.g. in the splash screen).
+  /// Called by the splash screen when the app opens (and by "تأكيد البريد").
   /// Returns true if the user is still signed in and verified, and loads their info.
+  /// Firebase keeps the sign-in on the phone, so the user stays signed in
+  /// until "تسجيل الخروج" / حذف الحساب (like other apps).
   Future<bool> restoreSession() async {
     final user = _auth.currentUser;
     if (user == null) return false;
@@ -176,6 +178,20 @@ class AuthService extends ChangeNotifier {
       await fresh.getIdToken(true); // Fresh token says "verified" (needed by the security rules)
       await _loadProfile(fresh);
       return true;
+    } on FirebaseAuthException catch (e) {
+      // No internet: trust the sign-in saved on the phone (if it was verified)
+      // and load the profile from Firestore's copy on the phone.
+      if (e.code == 'network-request-failed' && user.emailVerified) {
+        try {
+          // Time limit: without internet a missing profile could wait forever.
+          await _loadProfile(user).timeout(Duration(seconds: 5));
+        } catch (loadError) {
+          debugPrint('restoreSession offline profile error: $loadError');
+        }
+        return true;
+      }
+      debugPrint('restoreSession error: ${e.code}'); // e.g. the account was deleted / disabled
+      return false;
     } catch (e) {
       debugPrint('restoreSession error: $e');
       return false;
@@ -191,6 +207,67 @@ class AuthService extends ChangeNotifier {
     currentVoice = HesakVoice.male;
     notifyListeners();
     // فاتح / داكن stays as it is: the sign-in pages keep the phone's last choice.
+  }
+
+  /// Deletes the account FOREVER (الإعدادات > حذف الحساب):
+  ///  1) checks the password again (Firebase asks for it before deleting)
+  ///  2) deletes everything in Firestore: users/{uid} and its
+  ///     userModes, conversations and alerts
+  ///  3) deletes the Firebase account itself (the email can sign up again)
+  /// Needs the Firestore security rules to let users delete their own data.
+  Future<AuthResult> deleteAccount({required String password}) async {
+    final user = _auth.currentUser;
+    if (user == null || user.email == null) {
+      return const AuthResult.failure('يرجى تسجيل الدخول أولًا');
+    }
+
+    // 1) Password check.
+    try {
+      await _reauthenticate(user, password);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        return const AuthResult.failure('كلمة المرور غير صحيحة');
+      }
+      return AuthResult.failure(_arabicError(e.code));
+    }
+
+    try {
+      // 2) The user's data (sub-collections first, then the profile).
+      final userDoc = _userDoc(user.uid);
+      for (final String name in const ['userModes', 'conversations', 'alerts']) {
+        await _deleteCollection(userDoc.collection(name));
+      }
+      await userDoc.delete();
+
+      // 3) The account itself.
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      return AuthResult.failure(_arabicError(e.code));
+    } catch (e) {
+      debugPrint('deleteAccount error: $e'); // e.g. the security rules don't allow deleting
+      return const AuthResult.failure('تعذّر حذف الحساب، حاول مرة أخرى');
+    }
+
+    // Forget everything on this phone (same as تسجيل الخروج).
+    await logOut();
+    return const AuthResult.success();
+  }
+
+  /// Deletes every document of [collection], 400 at a time (Firestore's limit is 500).
+  Future<void> _deleteCollection(CollectionReference<Map<String, dynamic>> collection) async {
+    final snapshot = await collection.get();
+    WriteBatch batch = _db.batch();
+    int count = 0;
+    for (final doc in snapshot.docs) {
+      batch.delete(doc.reference);
+      count++;
+      if (count == 400) {
+        await batch.commit();
+        batch = _db.batch();
+        count = 0;
+      }
+    }
+    if (count > 0) await batch.commit();
   }
 
   // ---------------------------------------------------------------------
