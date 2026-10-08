@@ -6,6 +6,7 @@ import '../../core/theme/hesak_colors.dart';
 import '../../core/theme/hesak_sizes.dart';
 import '../../core/theme/hesak_text_styles.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/hesak_toast.dart';
 import '../main_shell.dart';
 import 'auth_widgets.dart';
 import 'call_name_form.dart';
@@ -41,7 +42,10 @@ class HesakAuthFlowScreen extends StatefulWidget {
   /// login after "كلمة مرور جديدة" (see new_password_screen.dart).
   final AuthStep initialStep;
 
-  const HesakAuthFlowScreen({super.key, this.initialStep = AuthStep.welcome});
+  /// Optional message shown once when the screen opens (e.g. "تم حذف حسابك").
+  final String? startMessage;
+
+  const HesakAuthFlowScreen({super.key, this.initialStep = AuthStep.welcome, this.startMessage});
 
   @override
   State<HesakAuthFlowScreen> createState() => _HesakAuthFlowScreenState();
@@ -64,6 +68,12 @@ class _HesakAuthFlowScreenState extends State<HesakAuthFlowScreen> {
   @override
   void initState() {
     super.initState();
+    final String? startMessage = widget.startMessage;
+    if (startMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) showHesakToast(context, startMessage, icon: Icons.check_circle_rounded);
+      });
+    }
     _welcomeButtonsTimer = Timer(Duration(milliseconds: 500), () {
       if (mounted) setState(() => _areWelcomeButtonsVisible = true);
     });

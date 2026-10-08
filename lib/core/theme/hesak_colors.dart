@@ -314,10 +314,10 @@ class HesakColorsLight {
   /// Box behind an urgent alert icon (e.g. إنذار حريق).
   static const Color homeUrgentIconFill = Color(0xFFEED5D8);
 
-  // ---- Alerts (التنبيهات): white boxes with a colored line on the side ----
+  // ---- Alerts (التنبيهات): boxes with a colored line on the side ----
 
-  /// Fill of each alert box.
-  static const Color homeAlertFill = Color(0xFFFFFFFF);
+  /// Fill of each alert box (the old matte white of the cards, on the pure white card).
+  static const Color homeAlertFill = Color(0xFFF8F6F7);
 
   /// Very soft shadow under each alert box.
   static const Color homeAlertShadow = Color(0x0F3F2A73);
@@ -447,6 +447,12 @@ class HesakColorsLight {
 
   /// Line under "الجدولة" when the glass box is open.
   static const Color homeGlassLine = Color(0x40FFFFFF);
+
+  /// The 3 white cards on الرئيسية (الأصوات الحالية، محادثات اليوم، التنبيهات): pure white.
+  static const Color homeSectionCardFill = Color(0xFFFFFFFF);
+
+  /// Thin outline of each alert box.
+  static const Color homeAlertBorder = Color(0xFFECE6F2);
 }
 
 /// The dark colors (خيار أ — بنفسجي ليلي). Same names as [HesakColorsLight].
@@ -572,6 +578,9 @@ class HesakColorsDark {
   static const Color homeTileFillActive = Color(0xFF241C30);
   static const Color homeTileBorder = Color(0xFF4A3D5E);
   static const Color homeGlassLine = HesakColorsLight.homeGlassLine;
+  static const Color homeSectionCardFill = Color(0xFF221B2B);
+  static const Color homeAlertBorder = Color(0xFF342A40);
+
 }
 
 /// What the screens use: the light or dark color of the current appearance.
@@ -697,4 +706,7 @@ class HesakColors {
   static Color get homeTileFillActive => _isDark ? HesakColorsDark.homeTileFillActive : HesakColorsLight.homeTileFillActive;
   static Color get homeTileBorder => _isDark ? HesakColorsDark.homeTileBorder : HesakColorsLight.homeTileBorder;
   static Color get homeGlassLine => _isDark ? HesakColorsDark.homeGlassLine : HesakColorsLight.homeGlassLine;
+  static Color get homeSectionCardFill => _isDark ? HesakColorsDark.homeSectionCardFill : HesakColorsLight.homeSectionCardFill;
+  static Color get homeAlertBorder => _isDark ? HesakColorsDark.homeAlertBorder : HesakColorsLight.homeAlertBorder;
+
 }

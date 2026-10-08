@@ -17,7 +17,6 @@ import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
 import '../widgets/hesak_confirm_dialog.dart';
-import '../widgets/hesak_listening_required.dart';
 import '../widgets/hesak_page_header.dart';
 import '../widgets/hesak_toast.dart';
 import 'settings/settings_widgets.dart';
@@ -255,10 +254,10 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
   }
 
   /// Creates an empty conversation and opens it (shows the start card).
-  /// Works only while listening is on (otherwise the shared window asks
-  /// to turn it on). The number is never reused (see ConversationService).
+  /// Opens even while the listen button (الرئيسية) is off: the user can
+  /// still type (text -> speech). Only the mic inside needs listening on.
+  /// The number is never reused (see ConversationService).
   Future<void> _startNewConversation() async {
-    if (!await hesakRequireListening(context)) return;
     final ChatsConversation conversation =
         await ConversationService.instance.createNewConversation(_conversations);
     if (!mounted) return;
