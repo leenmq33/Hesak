@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app_links/app_links.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -74,6 +75,10 @@ class AuthService extends ChangeNotifier {
   /// The name Hesak listens for (للتنبيه عند النداء). null = not added yet.
   String? currentCallName;
 
+  /// Voice picked at sign up, kept here until the email is verified
+  /// (the profile is saved in Firestore only AFTER verification).
+  HesakVoice? _pendingVoice;
+
   /// True if someone is signed in AND their email is verified.
   bool get isLoggedIn =>
       _auth.currentUser != null && _auth.currentUser!.emailVerified;
@@ -82,7 +87,8 @@ class AuthService extends ChangeNotifier {
   // Sign up / log in / log out
   // ---------------------------------------------------------------------
 
-  /// Creates a new account, saves the profile, and sends the verification email.
+  /// Creates a new account and sends the verification email.
+  /// The profile (users/{uid}) is saved only after the email is verified.
   Future<AuthResult> signUp({
     required String name,
     required String email,
@@ -99,20 +105,9 @@ class AuthService extends ChangeNotifier {
       // Used as %DISPLAY_NAME% inside the verification email.
       await user.updateDisplayName(name.trim());
 
-      // Create the profile in Firestore: users/{uid}
-      await _userDoc(user.uid).set({
-        'displayName': name.trim(),
-        'email': email.trim(),
-        'createdAt': FieldValue.serverTimestamp(),
-        'settings': {
-          'ttsVoice': voice.name, // "male" or "female"
-          'speechRate': 1.0,
-          'pitch': 1.0,
-          'vibrationEnabled': true,
-          'notificationsEnabled': true,
-          'currentModeId': 'general',
-        },
-      });
+      // The profile is NOT saved in Firestore yet: only after the user
+      // opens the verification link (see checkEmailVerified / logIn).
+      _pendingVoice = voice;
 
       // Send the verification email (in Arabic).
       await _auth.setLanguageCode('ar');
@@ -133,7 +128,8 @@ class AuthService extends ChangeNotifier {
   }
 
   /// Logs in with email + password.
-  /// If the email is not verified yet: sends the link again and refuses the login.
+  /// If the email is not verified yet: sends the link again and returns
+  /// emailNotVerified (the login form moves to the "تأكيد البريد" step).
   Future<AuthResult> logIn({
     required String email,
     required String password,
@@ -168,8 +164,10 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// Call this when the app opens (e.g. in the splash screen).
+  /// Called by the splash screen when the app opens (and by "تأكيد البريد").
   /// Returns true if the user is still signed in and verified, and loads their info.
+  /// Firebase keeps the sign-in on the phone, so the user stays signed in
+  /// until "تسجيل الخروج" / حذف الحساب (like other apps).
   Future<bool> restoreSession() async {
     final user = _auth.currentUser;
     if (user == null) return false;
@@ -177,8 +175,23 @@ class AuthService extends ChangeNotifier {
       await user.reload();
       final fresh = _auth.currentUser;
       if (fresh == null || !fresh.emailVerified) return false;
+      await fresh.getIdToken(true); // Fresh token says "verified" (needed by the security rules)
       await _loadProfile(fresh);
       return true;
+    } on FirebaseAuthException catch (e) {
+      // No internet: trust the sign-in saved on the phone (if it was verified)
+      // and load the profile from Firestore's copy on the phone.
+      if (e.code == 'network-request-failed' && user.emailVerified) {
+        try {
+          // Time limit: without internet a missing profile could wait forever.
+          await _loadProfile(user).timeout(Duration(seconds: 5));
+        } catch (loadError) {
+          debugPrint('restoreSession offline profile error: $loadError');
+        }
+        return true;
+      }
+      debugPrint('restoreSession error: ${e.code}'); // e.g. the account was deleted / disabled
+      return false;
     } catch (e) {
       debugPrint('restoreSession error: $e');
       return false;
@@ -196,8 +209,69 @@ class AuthService extends ChangeNotifier {
     // فاتح / داكن stays as it is: the sign-in pages keep the phone's last choice.
   }
 
+  /// Deletes the account FOREVER (الإعدادات > حذف الحساب):
+  ///  1) checks the password again (Firebase asks for it before deleting)
+  ///  2) deletes everything in Firestore: users/{uid} and its
+  ///     userModes, conversations and alerts
+  ///  3) deletes the Firebase account itself (the email can sign up again)
+  /// Needs the Firestore security rules to let users delete their own data.
+  Future<AuthResult> deleteAccount({required String password}) async {
+    final user = _auth.currentUser;
+    if (user == null || user.email == null) {
+      return const AuthResult.failure('يرجى تسجيل الدخول أولًا');
+    }
+
+    // 1) Password check.
+    try {
+      await _reauthenticate(user, password);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        return const AuthResult.failure('كلمة المرور غير صحيحة');
+      }
+      return AuthResult.failure(_arabicError(e.code));
+    }
+
+    try {
+      // 2) The user's data (sub-collections first, then the profile).
+      final userDoc = _userDoc(user.uid);
+      for (final String name in const ['userModes', 'conversations', 'alerts']) {
+        await _deleteCollection(userDoc.collection(name));
+      }
+      await userDoc.delete();
+
+      // 3) The account itself.
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      return AuthResult.failure(_arabicError(e.code));
+    } catch (e) {
+      debugPrint('deleteAccount error: $e'); // e.g. the security rules don't allow deleting
+      return const AuthResult.failure('تعذّر حذف الحساب، حاول مرة أخرى');
+    }
+
+    // Forget everything on this phone (same as تسجيل الخروج).
+    await logOut();
+    return const AuthResult.success();
+  }
+
+  /// Deletes every document of [collection], 400 at a time (Firestore's limit is 500).
+  Future<void> _deleteCollection(CollectionReference<Map<String, dynamic>> collection) async {
+    final snapshot = await collection.get();
+    WriteBatch batch = _db.batch();
+    int count = 0;
+    for (final doc in snapshot.docs) {
+      batch.delete(doc.reference);
+      count++;
+      if (count == 400) {
+        await batch.commit();
+        batch = _db.batch();
+        count = 0;
+      }
+    }
+    if (count > 0) await batch.commit();
+  }
+
   // ---------------------------------------------------------------------
-  // Email verification (for a "تحقق من بريدك" screen after sign up)
+  // Email verification
   // ---------------------------------------------------------------------
 
   /// Sends the verification email again.
@@ -216,11 +290,21 @@ class AuthService extends ChangeNotifier {
   }
 
   /// Checks with Firebase whether the user opened the verification link.
+  /// When verified, the profile is saved in Firestore (users/{uid}) and loaded.
   Future<bool> checkEmailVerified() async {
     final user = _auth.currentUser;
     if (user == null) return false;
-    await user.reload();
-    return _auth.currentUser?.emailVerified ?? false;
+    try {
+      await user.reload();
+      final fresh = _auth.currentUser;
+      if (fresh == null || !fresh.emailVerified) return false;
+      await fresh.getIdToken(true); // Fresh token says "verified" (needed by the security rules)
+      await _loadProfile(fresh); // Creates users/{uid} the first time
+      return true;
+    } catch (e) {
+      debugPrint('checkEmailVerified error: $e');
+      return false;
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -228,16 +312,92 @@ class AuthService extends ChangeNotifier {
   // ---------------------------------------------------------------------
 
   /// Sends an email with a secure link to choose a new password.
-  /// The user opens the link, sets the new password there, then logs in.
+  /// On the phone, the link opens Hesak (see pendingResetCode below).
   Future<AuthResult> sendPasswordResetEmail({required String email}) async {
     try {
       await _auth.setLanguageCode('ar');
-      await _auth.sendPasswordResetEmail(email: email.trim());
+      await _auth.sendPasswordResetEmail(
+        email: email.trim(),
+        // The link in the email opens the Hesak app (not a web page).
+        // On a computer (no app) it opens Firebase's page instead.
+        actionCodeSettings: ActionCodeSettings(
+          url: 'https://hesak-4f175.firebaseapp.com/reset',
+          handleCodeInApp: true,
+          androidPackageName: 'com.example.hesak',
+          androidInstallApp: false,
+        ),
+      );
+      debugPrint('🟢 [reset] email sent with in-app link settings');
+      return const AuthResult.success();
+    } on FirebaseAuthException catch (e) {
+      debugPrint('🔴 [reset] ${e.code} | ${e.message}');
+      return AuthResult.failure(_arabicError(e.code));
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Password reset INSIDE the app (the link from the email opens Hesak)
+  // ---------------------------------------------------------------------
+
+  /// The secret code from a password-reset link the user opened.
+  /// The "new password" screen listens to this: not null = open the screen.
+  final ValueNotifier<String?> pendingResetCode = ValueNotifier<String?>(null);
+
+  final AppLinks _appLinks = AppLinks();
+  StreamSubscription<Uri>? _linkSubscription;
+
+  /// Call ONCE in main(). Listens for email links that open the app
+  /// (also the link that opened a closed app).
+  void startListeningForLinks() {
+    _linkSubscription ??= _appLinks.uriLinkStream.listen(
+      _handleLink,
+      onError: (e) => debugPrint('🔴 [link] $e'),
+    );
+  }
+
+  void _handleLink(Uri uri) {
+    // Firebase wraps the real link: .../__/auth/links?link=<real link>
+    Uri actionLink = uri;
+    final inner = uri.queryParameters['link'];
+    if (inner != null) actionLink = Uri.parse(inner);
+
+    final mode = actionLink.queryParameters['mode'];
+    final code = actionLink.queryParameters['oobCode'];
+    debugPrint('🟢 [link] mode=$mode, hasCode=${code != null}');
+
+    if (mode == 'resetPassword' && code != null) {
+      pendingResetCode.value = code;
+    }
+  }
+
+  /// Checks the code from the link.
+  /// Returns the account's email, or null if the link expired / was used.
+  Future<String?> checkResetCode(String code) async {
+    try {
+      return await _auth.verifyPasswordResetCode(code);
+    } on FirebaseAuthException catch (e) {
+      debugPrint('🔴 [reset] ${e.code}');
+      return null;
+    }
+  }
+
+  /// Saves the new password using the code from the link.
+  /// Firebase's password policy is checked here too.
+  Future<AuthResult> confirmNewPassword({
+    required String code,
+    required String newPassword,
+  }) async {
+    try {
+      await _auth.confirmPasswordReset(code: code, newPassword: newPassword);
+      pendingResetCode.value = null;
       return const AuthResult.success();
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(_arabicError(e.code));
     }
   }
+
+  /// The user closed the new-password screen without saving.
+  void cancelPasswordReset() => pendingResetCode.value = null;
 
   /// Saves the name the app should listen for (للتنبيه عند النداء).
   Future<AuthResult> saveCallName({required String callName}) async {
@@ -374,13 +534,13 @@ class AuthService extends ChangeNotifier {
     final data = snap.data();
 
     if (data == null) {
-      // Profile missing (rare): create a basic one so the app keeps working.
+      // First time after verification (or profile missing): create it now.
       await doc.set({
         'displayName': user.displayName ?? '',
         'email': user.email ?? '',
         'createdAt': FieldValue.serverTimestamp(),
         'settings': {
-          'ttsVoice': HesakVoice.male.name,
+          'ttsVoice': (_pendingVoice ?? HesakVoice.male).name,
           'speechRate': 1.0,
           'pitch': 1.0,
           'vibrationEnabled': true,
@@ -399,9 +559,10 @@ class AuthService extends ChangeNotifier {
 
     currentUserName = (data?['displayName'] as String?) ?? user.displayName;
     currentEmail = user.email;
-    currentVoice = settings?['ttsVoice'] == HesakVoice.female.name
-        ? HesakVoice.female
-        : HesakVoice.male;
+    currentVoice = settings == null
+        ? (_pendingVoice ?? HesakVoice.male)
+        : (settings['ttsVoice'] == HesakVoice.female.name ? HesakVoice.female : HesakVoice.male);
+    _pendingVoice = null;
     currentCallName =
     (names != null && names.isNotEmpty) ? names.first as String : null;
     notifyListeners();
@@ -442,6 +603,8 @@ class AuthService extends ChangeNotifier {
         return 'البريد الإلكتروني غير صحيح';
       case 'weak-password':
         return 'كلمة المرور ضعيفة، اختر كلمة أقوى';
+      case 'password-does-not-meet-requirements':
+        return 'كلمة المرور يجب أن تحتوي على 8 خانات على الأقل، وحرف إنجليزي كبير وصغير، ورقم، ورمز خاص';
       case 'user-not-found':
       case 'wrong-password':
       case 'invalid-credential':
@@ -452,6 +615,9 @@ class AuthService extends ChangeNotifier {
         return 'محاولات كثيرة، حاول مرة أخرى بعد قليل';
       case 'network-request-failed':
         return 'تحقق من اتصالك بالإنترنت';
+      case 'expired-action-code':
+      case 'invalid-action-code':
+        return 'الرابط منتهي أو استُخدم من قبل، اطلب رابطًا جديدًا';
       case 'requires-recent-login':
         return 'يرجى تسجيل الدخول مرة أخرى ثم المحاولة';
       default:

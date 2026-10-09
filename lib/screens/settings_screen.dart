@@ -10,6 +10,7 @@ import 'settings/settings_password_screen.dart';
 import 'settings/settings_widgets.dart';
 import '../widgets/hesak_confirm_dialog.dart';
 import '../widgets/hesak_toast.dart';
+import '../widgets/hesak_internet_required.dart';
 
 // =====================================================================
 //  SETTINGS PAGE (الإعدادات) — the tab in the bottom bar.
@@ -22,6 +23,7 @@ import '../widgets/hesak_toast.dart';
 //   التفضيلات:        الجنس (ذكر / أنثى) · المظهر (فاتح / داكن)
 //   للتنبيه عند النداء: الاسم للنداء (sheet — add or edit)
 //   تسجيل الخروج (asks first)
+//   حذف الحساب: small red link under it -> confirm -> password -> deletes everything
 //
 //  Every change has its own "حفظ" (faded until something really changes),
 //  so there's no big "حفظ التعديلات" button. الجنس / المظهر save right away.
@@ -212,6 +214,26 @@ class _SettingsPageContent extends StatelessWidget {
             height: 48,
             onTap: () => _logOut(context),
           ),
+
+          // ---------------- حذف الحساب ----------------
+          // Small red link under "تسجيل الخروج": there, but hard to tap by mistake.
+          SizedBox(height: 10),
+          Center(
+            child: TextButton.icon(
+              key: Key('settings_delete_account_button'),
+              onPressed: () => _deleteAccount(context),
+              icon: Icon(Icons.delete_outline_rounded, size: 18, color: palette.danger),
+              label: Text(
+                'حذف الحساب',
+                style: HesakTextStyles.body.copyWith(
+                  color: palette.danger,
+                  fontSize: 13.5,
+                  decoration: TextDecoration.underline,
+                  decorationColor: palette.danger,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -257,6 +279,38 @@ class _SettingsPageContent extends StatelessWidget {
 
   /// Shared sheet (also opened from the الأوضاع editor).
   void _editCallName(BuildContext context) => showSettingsCallNameSheet(context);
+
+  /// حذف الحساب: 1) are you sure?  2) password  3) delete -> welcome screen.
+  Future<void> _deleteAccount(BuildContext context) async {
+    final bool isConfirmed = await showHesakConfirmDialog(
+      context,
+      title: 'هل تريد حذف حسابك؟',
+      message: 'بحذف حسابك ستُحذف جميع بياناتك نهائيًا، ولا يمكن استرجاعها لاحقًا',
+      confirmLabel: 'حذف الحساب',
+      icon: Icons.delete_outline_rounded, // Same trash as the "حذف الحساب" link
+    );
+    if (!isConfirmed || !context.mounted) return;
+    if (!await hesakRequireInternet(context)) return; // Deleting needs the internet
+    if (!context.mounted) return;
+
+    // The password window deletes the account itself; true = deleted.
+    final bool? isDeleted = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      builder: (_) => SettingsDeleteAccountDialog(),
+    );
+    if (isDeleted != true || !context.mounted) return;
+
+    // Back to the welcome screen (nothing behind it) + "تم حذف حسابك".
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      PageRouteBuilder(
+        transitionDuration: Duration(milliseconds: 500),
+        pageBuilder: (_, __, ___) => HesakAuthFlowScreen(startMessage: 'تم حذف حسابك'),
+        transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
+      ),
+      (_) => false,
+    );
+  }
 
   Future<void> _logOut(BuildContext context) async {
     final bool isConfirmed = await showHesakConfirmDialog(

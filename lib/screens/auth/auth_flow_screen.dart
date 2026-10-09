@@ -6,6 +6,7 @@ import '../../core/theme/hesak_colors.dart';
 import '../../core/theme/hesak_sizes.dart';
 import '../../core/theme/hesak_text_styles.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/hesak_toast.dart';
 import '../main_shell.dart';
 import 'auth_widgets.dart';
 import 'call_name_form.dart';
@@ -37,15 +38,21 @@ enum AuthStep { welcome, login, signUp, resetPassword, verifyEmail, callName }
 
 /// Welcome buttons + all sign in / sign up forms.
 class HesakAuthFlowScreen extends StatefulWidget {
-  const HesakAuthFlowScreen({super.key});
+  /// The first step to show. Normally welcome (after the splash);
+  /// login after "كلمة مرور جديدة" (see new_password_screen.dart).
+  final AuthStep initialStep;
+
+  /// Optional message shown once when the screen opens (e.g. "تم حذف حسابك").
+  final String? startMessage;
+
+  const HesakAuthFlowScreen({super.key, this.initialStep = AuthStep.welcome, this.startMessage});
 
   @override
   State<HesakAuthFlowScreen> createState() => _HesakAuthFlowScreenState();
 }
 
 class _HesakAuthFlowScreenState extends State<HesakAuthFlowScreen> {
-  AuthStep _step = AuthStep.welcome;
-
+  late AuthStep _step = widget.initialStep;
   // Welcome starts looking exactly like the end of the splash (logo in the middle).
   // Shortly after, the logo rises and the 2 buttons slide in.
   bool _areWelcomeButtonsVisible = false;
@@ -61,6 +68,12 @@ class _HesakAuthFlowScreenState extends State<HesakAuthFlowScreen> {
   @override
   void initState() {
     super.initState();
+    final String? startMessage = widget.startMessage;
+    if (startMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) showHesakToast(context, startMessage, icon: Icons.check_circle_rounded);
+      });
+    }
     _welcomeButtonsTimer = Timer(Duration(milliseconds: 500), () {
       if (mounted) setState(() => _areWelcomeButtonsVisible = true);
     });

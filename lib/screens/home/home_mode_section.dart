@@ -11,7 +11,8 @@ import '../modes/modes_widgets.dart';
 //  HOME — CURRENT MODE CARD (الرئيسية, under الأصوات الحالية)
 //
 //  ONE purple card that belongs to the mode:
-//    1) Header: icon · "وضع X" + مفعّل / غير مفعّل (long name -> 2 lines),
+//    1) Title "الوضع الحالي" (biggest), then icon · name ("النوم", no "وضع")
+//       + مفعّل / غير مفعّل (long name -> 2 lines),
 //       then star · pencil on the line under it (like الأوضاع). The pencil
 //       opens تعديل الوضع above الرئيسية, the bottom bar stays.
 //    2) 2 white tiles, view only — changed on الأوضاع:
@@ -82,14 +83,18 @@ class _HomeModeSectionState extends State<HomeModeSection> {
     );
   }
 
-  /// Line 1: icon · "وضع X" + badge (a long name goes to a 2nd line).
-  /// Line 2: star · pencil, at the end side — same order as on الأوضاع.
+  /// Title "الوضع الحالي" (biggest text of the card).
+  /// Then: icon · the name ("النوم") + badge (a long name goes to a 2nd line).
+  /// Then: star · pencil, at the end side — same order as on الأوضاع.
   Widget _buildHeader(HesakModeConfig mode, bool isListening) {
     return Padding(
       padding: EdgeInsetsDirectional.only(start: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Card title (biggest text), like "محادثات اليوم" on the other cards.
+          Text('الوضع الحالي', key: Key('home_mode_card_title'), style: HesakTextStyles.homeModeCardTitle),
+          SizedBox(height: 12),
           Row(
             children: [
               // Icon (or first letter) in a see-through rounded square.
@@ -112,9 +117,9 @@ class _HomeModeSectionState extends State<HomeModeSection> {
                   children: [
                     Flexible(
                       child: Text(
-                        'وضع ${mode.name}',
+                        mode.name, // Just the name ("النوم"), the title above says it's the mode
                         key: Key('home_mode_name'),
-                        style: HesakTextStyles.modeHeaderName.copyWith(color: HesakColors.onHomeGlass),
+                        style: HesakTextStyles.homeModeName,
                         maxLines: 2, // A long name goes to a 2nd line instead of being cut
                         overflow: TextOverflow.ellipsis,
                       ),

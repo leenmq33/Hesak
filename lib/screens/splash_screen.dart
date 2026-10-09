@@ -5,13 +5,17 @@ import 'dart:math' as math;
 
 import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_text_styles.dart';
+import '../services/auth_service.dart';
 import 'auth/auth_flow_screen.dart';
+import 'main_shell.dart';
 
 /// The first screen the user sees when the app opens.
 /// Colors and text styles come from lib/core/theme.
 /// Shows the animated logo, then the tagline. Then the two corner shapes
 /// grow until they cover the screen with the purple of the sign in / sign up
 /// screen, and the welcome screen opens on top of the same purple.
+/// Already signed in (Firebase remembers it on the phone)? Then the app opens
+/// instead of the welcome screen, like other apps that keep you signed in.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -22,6 +26,10 @@ class SplashScreen extends StatefulWidget {
 // TickerProviderStateMixin (not Single...) because we have three animation controllers.
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
+  // true = still signed in + verified -> open the app instead of the welcome screen.
+  late final Future<bool> _sessionCheck;
+  bool _isLeaving = false;
+
   // --- Sound wave animation ---
   late AnimationController _controller;
   late Animation<double> _waveAnimation;
@@ -45,6 +53,12 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
+
+    // Checks (during the animation) if the user is still signed in on this phone.
+    // Slow internet: after 8 seconds, trust the sign-in saved on the phone.
+    _sessionCheck = AuthService.instance
+        .restoreSession()
+        .timeout(Duration(seconds: 8), onTimeout: () => AuthService.instance.isLoggedIn);
 
     // One full wave movement takes 700ms.
     _controller = AnimationController(
@@ -126,19 +140,23 @@ class _SplashScreenState extends State<SplashScreen>
     }
   }
 
-  /// Replaces the splash with the welcome screen (sign in / sign up).
+  /// Replaces the splash with the welcome screen (sign in / sign up), or with
+  /// the app when the user is still signed in.
   /// The splash already ends on the same purple, so a very short fade is
   /// enough and it looks like one screen.
   /// (pushReplacement means the user can't go back to the splash).
-  void _openWelcomeScreen({
+  Future<void> _openWelcomeScreen({
     Duration fadeDuration = const Duration(milliseconds: 250),
-  }) {
+  }) async {
+    if (!mounted || _isLeaving) return;
+    _isLeaving = true; // Opens only once
+    final bool isSignedIn = await _sessionCheck; // Usually done long before the animation ends
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
         transitionDuration: fadeDuration,
-        pageBuilder: (_, __, ___) => HesakAuthFlowScreen(),
+        pageBuilder: (_, __, ___) => isSignedIn ? HesakMainShell() : HesakAuthFlowScreen(),
         transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
       ),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/hesak_palette.dart';
 import '../../core/theme/hesak_sizes.dart';
 import '../../core/theme/hesak_text_styles.dart';
-import '../auth/auth_widgets.dart' show AuthValidators;
+import '../auth/auth_widgets.dart' show AuthValidators, AuthTextField, AuthFieldLabel;
 import '../../services/auth_service.dart';
 import '../../widgets/hesak_toast.dart';
 
@@ -32,6 +32,7 @@ class SettingsButton extends StatelessWidget {
   final bool isFilled;
   final bool isLoading;
   final Color? color; // null = the appearance's accent purple
+  final Color? textColor; // Filled only: null = palette.onAccent
   final IconData? icon;
   final double height;
 
@@ -42,6 +43,7 @@ class SettingsButton extends StatelessWidget {
     this.isFilled = true,
     this.isLoading = false,
     this.color,
+    this.textColor,
     this.icon,
     this.height = HesakSizes.buttonHeight,
   });
@@ -50,7 +52,7 @@ class SettingsButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = HesakPalette.current;
     final Color main = color ?? palette.accent;
-    final Color content = isFilled ? palette.onAccent : main;
+    final Color content = isFilled ? (textColor ?? palette.onAccent) : main;
     final radius = BorderRadius.circular(height / 2);
 
     return Opacity(
@@ -617,6 +619,127 @@ class _SettingsNameSheetState extends State<_SettingsNameSheet> {
                       isFilled: false,
                       height: 44,
                       onTap: _isSaving ? null : () => Navigator.pop(context),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------
+// حذف الحساب: the password window
+// ---------------------------------------------------------------------
+
+/// "أدخل كلمة المرور للتأكيد": Firebase asks for the password before deleting.
+/// The field is the SAME as on تسجيل الدخول (tap the lock to show the text).
+/// "حذف نهائي" deletes the account right here (AuthService.deleteAccount):
+/// wrong password -> red message under the field; done -> closes with true.
+class SettingsDeleteAccountDialog extends StatefulWidget {
+  const SettingsDeleteAccountDialog({super.key});
+
+  @override
+  State<SettingsDeleteAccountDialog> createState() => _SettingsDeleteAccountDialogState();
+}
+
+class _SettingsDeleteAccountDialogState extends State<SettingsDeleteAccountDialog> {
+  final _passwordController = TextEditingController();
+  bool _isDeleting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _delete() async {
+    if (_passwordController.text.isEmpty) {
+      setState(() => _error = 'أدخل كلمة المرور');
+      return;
+    }
+    setState(() {
+      _isDeleting = true;
+      _error = null;
+    });
+    final result = await AuthService.instance.deleteAccount(password: _passwordController.text);
+    if (!mounted) return;
+    if (result.isSuccess) {
+      Navigator.pop(context, true);
+    } else {
+      setState(() {
+        _isDeleting = false;
+        _error = result.errorMessage;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = HesakPalette.current;
+    return PopScope(
+      canPop: !_isDeleting, // Can't close it while deleting
+      child: Dialog(
+        backgroundColor: palette.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(HesakSizes.radiusCard)),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(20, 24, 20, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Icon(Icons.lock_outline_rounded, size: 40, color: palette.danger),
+              SizedBox(height: 12),
+              Text(
+                'أدخل كلمة المرور للتأكيد',
+                textAlign: TextAlign.center,
+                style: HesakTextStyles.dialogTitle.copyWith(color: palette.textPrimary),
+              ),
+              SizedBox(height: 6),
+              Text(
+                'للتأكد أنك صاحب الحساب',
+                textAlign: TextAlign.center,
+                style: HesakTextStyles.dialogBody.copyWith(color: palette.textSecondary),
+              ),
+              SizedBox(height: 14),
+              AuthFieldLabel('كلمة المرور:'),
+              AuthTextField(
+                key: Key('settings_delete_password_field'),
+                controller: _passwordController,
+                hint: '••••••••',
+                isPassword: true,
+                textInputAction: TextInputAction.done,
+                errorText: _error,
+                onChanged: (_) {
+                  if (_error != null) setState(() => _error = null);
+                },
+              ),
+              SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: SettingsButton(
+                      key: Key('settings_delete_confirm_button'),
+                      label: 'حذف نهائي',
+                      color: palette.danger,
+                      textColor: palette.surface, // Same as the red buttons of the shared window
+                      height: 42,
+                      isLoading: _isDeleting,
+                      onTap: _isDeleting ? null : _delete,
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: SettingsButton(
+                      key: Key('settings_delete_cancel_button'),
+                      label: 'إلغاء',
+                      isFilled: false,
+                      height: 42,
+                      onTap: _isDeleting ? null : () => Navigator.pop(context, false),
                     ),
                   ),
                 ],

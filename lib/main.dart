@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/theme/hesak_palette.dart';
 import 'screens/splash_screen.dart';
+import 'screens/auth/new_password_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'services/auth_service.dart';
 
 /// App entry point: the first thing that runs when the app opens.
 void main() async {
@@ -13,6 +15,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  // "نسيت كلمة المرور" link from the email -> opens the new-password screen.
+  startOpeningNewPasswordScreen();
+  AuthService.instance.startListeningForLinks();
   runApp(const HesakApp());
 }
 
@@ -26,6 +31,9 @@ class HesakApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false, // Hide the red "DEBUG" banner
       title: 'Hesak', // App name in the recent-apps list
+
+      // Lets the new-password screen open from anywhere (see new_password_screen.dart).
+      navigatorKey: hesakNavigatorKey,
 
       // ---- فاتح / داكن (chosen in الإعدادات) ----
       // Our screens use HesakColors (light or dark by itself); this only makes
