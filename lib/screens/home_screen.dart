@@ -6,6 +6,8 @@ import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
 import '../services/conversation_service.dart';
+import '../services/home_mic_service.dart';
+import '../services/home_alerts_service.dart';
 import '../widgets/hesak_internet_required.dart';
 import '../widgets/hesak_page_header.dart';
 import 'chats_conversation_screen.dart';
@@ -201,7 +203,7 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
     if (isTurningOn && !await hesakRequireInternet(context)) return;
     // The store tells _syncAnimationsWithStore, which starts / stops the animation.
     HesakModeStore.instance.setListening(isTurningOn);
-    // TODO: start / stop the real microphone listening here.
+       // HomeMicService follows the store and opens / closes the microphone.
   }
 
   @override
@@ -430,54 +432,115 @@ class _HomeSectionCard extends StatelessWidget {
 // =====================================================================
 //                         CURRENT SOUNDS CARD
 // =====================================================================
-
-/// "الأصوات الحالية": sounds the app is detecting now, as chips.
+/// "الأصوات الحالية": what the microphone hears right now.
+/// Before listening: a hint. First 3 s: learning the room.
+/// A sound now: dark chip. It ends: light chip for 1 second, then gone.
 class _HomeCurrentSoundsCard extends StatelessWidget {
   const _HomeCurrentSoundsCard();
 
   @override
   Widget build(BuildContext context) {
-    // TODO: real sounds from the listening service.
-    return _HomeSectionCard(
-      key: Key('home_current_sounds_card'),
-      title: 'الأصوات الحالية',
-      // Sound waves next to the title (no box behind it).
-      titleIcon: Icon(Icons.graphic_eq_rounded, size: 22, color: HesakColors.primary),
-      child: Wrap(
-        spacing: 8, // Gap between chips
-        runSpacing: 8, // Gap between rows
-        children: [
-          _HomeSoundChip(label: 'صوت إسعاف', icon: Icons.medical_services_outlined),
-          _HomeSoundChip(label: 'صوت دق الباب', icon: Icons.door_front_door_outlined),
-          _HomeSoundChip(label: 'صوت منبه', icon: Icons.alarm_rounded),
-        ],
+    return ListenableBuilder(
+      listenable: HomeMicService.instance,
+      builder: (context, _) {
+        return _HomeSectionCard(
+          key: Key('home_current_sounds_card'),
+          title: 'الأصوات الحالية',
+          // Sound waves next to the title (no box behind it).
+          titleIcon: Icon(Icons.graphic_eq_rounded, size: 22, color: HesakColors.primary),
+          child: _buildContent(HomeMicService.instance),
+        );
+      },
+    );
+  }
+
+  Widget _buildContent(HomeMicService mic) {
+    switch (mic.status) {
+      case HomeMicStatus.off:
+        return _HomeSoundsHint(text: 'اضغط زر الاستماع لعرض الأصوات من حولك');
+      case HomeMicStatus.noPermission:
+        return _HomeSoundsHint(
+          text: 'اسمح لحِسّك باستخدام المايكروفون من إعدادات الجهاز',
+          isError: true,
+        );
+      case HomeMicStatus.warming:
+        return Wrap(
+          children: [
+            _HomeSoundChip(
+              key: Key('home_sound_warming'),
+              label: 'نتعلّم هدوء المكان…',
+              icon: Icons.hourglass_top_rounded,
+            ),
+          ],
+        );
+      case HomeMicStatus.quiet:
+      case HomeMicStatus.active:
+        final bool isSoundNow = mic.status == HomeMicStatus.active;
+        if (!isSoundNow && !mic.isShowingEnded) {
+          return _HomeSoundsHint(text: 'المكان هادئ الآن');
+        }
+        return Wrap(
+          children: [
+            // Same key -> the chip fades from dark to light when the sound ends.
+            _HomeSoundChip(
+              key: Key('home_sound_now'),
+              label: isSoundNow ? 'فيه صوت الآن' : 'صوت',
+              icon: isSoundNow ? Icons.volume_up_rounded : Icons.graphic_eq_rounded,
+              isHighlighted: isSoundNow,
+            ),
+          ],
+        );
+    }
+  }
+}
+
+/// Grey line inside the sounds card (or red for a problem).
+class _HomeSoundsHint extends StatelessWidget {
+  final String text;
+  final bool isError;
+
+  const _HomeSoundsHint({required this.text, this.isError = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 6),
+      child: Text(
+        text,
+        key: Key('home_sounds_hint'),
+        textAlign: TextAlign.center,
+        style: isError ? HesakTextStyles.caption.copyWith(color: HesakColors.urgent) : HesakTextStyles.caption,
       ),
     );
   }
 }
 
 /// One soft purple pill: label + icon.
+/// [isHighlighted] = the sound heard right now (dark purple pill).
 class _HomeSoundChip extends StatelessWidget {
   final String label;
   final IconData icon;
+  final bool isHighlighted;
 
-  const _HomeSoundChip({required this.label, required this.icon});
+  const _HomeSoundChip({super.key, required this.label, required this.icon, this.isHighlighted = false});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final Color contentColor = isHighlighted ? HesakColors.onPrimary : HesakColors.primary;
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 200),
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: HesakColors.homeItemFill,
+        color: isHighlighted ? HesakColors.primary : HesakColors.homeItemFill,
         borderRadius: BorderRadius.circular(HesakSizes.radiusChip),
-        border: Border.all(color: HesakColors.homeChipBorder),
+        border: Border.all(color: isHighlighted ? HesakColors.primary : HesakColors.homeChipBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min, // Only as wide as its content
         children: [
-          Text(label, style: HesakTextStyles.chipLabel),
+          Text(label, style: HesakTextStyles.chipLabel.copyWith(color: contentColor)),
           SizedBox(width: 6),
-          Icon(icon, size: HesakSizes.iconInChip, color: HesakColors.primary),
+          Icon(icon, size: HesakSizes.iconInChip, color: contentColor),
         ],
       ),
     );
@@ -706,44 +769,71 @@ class _HomeConversationRow extends StatelessWidget {
 //                         ALERTS CARD
 // =====================================================================
 
-/// "التنبيهات": recent alerts (last 24 hours). Urgent ones are red.
-/// Times are "منذ دقيقة" / "منذ ساعة"… never "الآن": what is heard right
-/// now shows up in "الأصوات الحالية" above, not here.
-class _HomeAlertsCard extends StatelessWidget {
+/// "التنبيهات": every sound heard while listening (last 24 hours), newest
+/// first. Saved in Firebase (HomeAlertsService). The card has a fixed
+/// height: the list scrolls inside it. "منذ ..." refreshes by itself.
+class _HomeAlertsCard extends StatefulWidget {
   const _HomeAlertsCard();
 
   @override
+  State<_HomeAlertsCard> createState() => _HomeAlertsCardState();
+}
+
+class _HomeAlertsCardState extends State<_HomeAlertsCard> {
+  /// Max height of the list inside the card: ~3 alerts, the rest scrolls.
+  static const double _listMaxHeight = 236;
+
+  /// Scrolls the list inside the card (also drives the scrollbar).
+  final ScrollController _listScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _listScrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // TODO: real alerts from the listening service.
-    return _HomeSectionCard(
-      key: Key('home_alerts_card'),
-      title: 'التنبيهات',
-      trailing: Text('آخر 24 ساعة', style: HesakTextStyles.caption),
-      child: Column(
-        children: [
-          _HomeAlertTile(
-            icon: Icons.warning_amber_rounded,
-            title: 'إنذار حريق',
-            subtitle: 'تم رصد صوت إنذار حريق',
-            time: 'منذ دقيقة',
-            isUrgent: true,
-          ),
-          SizedBox(height: 8),
-          _HomeAlertTile(
-            icon: Icons.child_care_outlined,
-            title: 'بكاء طفل',
-            subtitle: 'تم رصد صوت بكاء طفل',
-            time: 'منذ ساعة',
-          ),
-          SizedBox(height: 8),
-          _HomeAlertTile(
-            icon: Icons.notifications_none_rounded,
-            title: 'جرس الباب',
-            subtitle: 'تم رصد صوت جرس الباب',
-            time: 'منذ 3 ساعات',
-          ),
-        ],
-      ),
+    return ListenableBuilder(
+      listenable: HomeAlertsService.instance,
+      builder: (context, _) {
+        final List<HomeAlert> alerts = HomeAlertsService.instance.alerts;
+        return _HomeSectionCard(
+          key: Key('home_alerts_card'),
+          title: 'التنبيهات',
+          trailing: Text('آخر 24 ساعة', style: HesakTextStyles.caption),
+          child: alerts.isEmpty
+              ? _HomeSoundsHint(text: 'لا توجد تنبيهات خلال 24 ساعة')
+              : ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: _listMaxHeight),
+                  child: Scrollbar(
+                    controller: _listScrollController,
+                    thumbVisibility: alerts.length > 3, // Shows there is more to scroll
+                    radius: Radius.circular(4),
+                    child: Padding(
+                      // Room for the scrollbar on the side.
+                      padding: EdgeInsetsDirectional.only(end: 8),
+                      child: ListView.separated(
+                        key: Key('home_alerts_list'),
+                        controller: _listScrollController,
+                        shrinkWrap: true,
+                        padding: EdgeInsets.zero,
+                        itemCount: alerts.length,
+                        separatorBuilder: (context, index) => SizedBox(height: 8),
+                        itemBuilder: (context, i) => _HomeAlertTile(
+                          key: ValueKey('home_alert_${alerts[i].id}'),
+                          icon: Icons.notifications_none_rounded,
+                          title: alerts[i].title,
+                          subtitle: alerts[i].subtitle,
+                          time: homeFormatTimeAgo(alerts[i].createdAt),
+                          isUrgent: alerts[i].isUrgent,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+        );
+      },
     );
   }
 }
@@ -758,7 +848,8 @@ class _HomeAlertTile extends StatelessWidget {
   final String time;
   final bool isUrgent; // Red line + red icon box
 
-  const _HomeAlertTile({
+    const _HomeAlertTile({
+    super.key,
     required this.icon,
     required this.title,
     required this.subtitle,
