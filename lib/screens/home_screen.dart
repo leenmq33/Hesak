@@ -463,17 +463,11 @@ class _HomeCurrentSoundsCard extends StatelessWidget {
           text: 'اسمح لحِسّك باستخدام المايكروفون من إعدادات الجهاز',
           isError: true,
         );
-      case HomeMicStatus.warming:
-        return Wrap(
-          children: [
-            _HomeSoundChip(
-              key: Key('home_sound_warming'),
-              label: 'نتعلّم هدوء المكان…',
-              icon: Icons.hourglass_top_rounded,
-            ),
-          ],
-        );
+            case HomeMicStatus.warming:
+        // The first 3 s still learn the room, but the user doesn't need to see it.
+        return _HomeSoundsHint(text: 'المكان هادئ الآن');
       case HomeMicStatus.quiet:
+      
       case HomeMicStatus.active:
         final bool isSoundNow = mic.status == HomeMicStatus.active;
         if (!isSoundNow && !mic.isShowingEnded) {
