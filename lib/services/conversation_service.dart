@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../screens/chats_models.dart';
 
@@ -18,6 +20,11 @@ import '../screens/chats_models.dart';
 //      It is deleted automatically after that.
 //    - Saved conversation (isSaved = true): has NO "expireAt",
 //      so it is kept until the user deletes it.
+//
+//  Audio (ElevenLabs): the mp3 files are saved on the phone in
+//    <app documents folder>/hesak_tts/<conversationId>/<messageId>.mp3
+//  When a conversation is deleted (by the user or by the 24-hour rule),
+//  its audio folder is deleted from the phone too.
 //
 //  Conversation numbers ("محادثة 05") work like an id: a number is never
 //  given again, even after its conversation is deleted. The last used
@@ -41,6 +48,9 @@ class ConversationService {
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  /// Same folder name used by HesakTtsService.audioFolder.
+  static const String _audioFolder = 'hesak_tts';
+
   /// Goes up by 1 after every save / delete. الرئيسية and المحادثات listen
   /// to it and reload, so a conversation started on one page shows on the other.
   final ValueNotifier<int> changeCount = ValueNotifier<int>(0);
@@ -58,6 +68,20 @@ class ConversationService {
 
   /// How long we wait for Firebase before showing "تعذّر التحميل".
   static const Duration _loadTimeout = Duration(seconds: 12);
+
+  /// Deletes the saved audio files of one conversation from the phone.
+  Future<void> _deleteAudioFolder(String conversationId) async {
+    try {
+      final Directory docs = await getApplicationDocumentsDirectory();
+      final Directory dir =
+      Directory('${docs.path}/$_audioFolder/$conversationId');
+      if (await dir.exists()) {
+        await dir.delete(recursive: true);
+      }
+    } catch (e) {
+      debugPrint('deleteAudioFolder error: $e');
+    }
+  }
 
   /// Loads all conversations of the user, the last changed first.
   /// Expired unsaved conversations are deleted here and not returned.
@@ -88,6 +112,7 @@ class ConversationService {
 
         if (!isSaved && expireAt != null && expireAt.toDate().isBefore(now)) {
           cleanup.delete(doc.reference);
+          unawaited(_deleteAudioFolder(doc.id)); // delete its audio files too
           hasExpired = true;
           continue;
         }
@@ -196,7 +221,7 @@ class ConversationService {
     changeCount.value++;
   }
 
-  /// Deletes a conversation (saved or not).
+  /// Deletes a conversation (saved or not) and its audio files.
   Future<void> deleteConversation(String conversationId) async {
     final collection = _collection;
     if (collection == null) return;
@@ -206,6 +231,7 @@ class ConversationService {
         .doc(conversationId)
         .delete()
         .catchError((Object e) => debugPrint('deleteConversation error: $e'));
+    unawaited(_deleteAudioFolder(conversationId)); // delete its audio files too
     changeCount.value++;
   }
 

@@ -48,6 +48,7 @@ class HomeAlertsService extends ChangeNotifier {
   HomeAlertsService._() {
     // Load the user's alerts after login; clear them after logout.
     FirebaseAuth.instance.authStateChanges().listen((user) {
+      debugPrint('🟡 [HomeAlertsService] auth changed, uid = ${user?.uid}');
       if (user == null) {
         _alerts.clear();
         notifyListeners();
@@ -71,12 +72,19 @@ class HomeAlertsService extends ChangeNotifier {
   CollectionReference<Map<String, dynamic>>? get _alertsRef {
     final String? uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return null;
-    return FirebaseFirestore.instance.collection('users').doc(uid).collection('homeAlerts');
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('homeAlerts');
   }
 
   /// Called by HomeMicService when a new sound starts.
   void addSound() {
     final DocumentReference<Map<String, dynamic>>? doc = _alertsRef?.doc();
+    debugPrint(
+      '🟡 [HomeAlertsService] addSound called, '
+          'uid = ${FirebaseAuth.instance.currentUser?.uid}, doc = ${doc?.path}',
+    );
     final HomeAlert alert = HomeAlert(
       id: doc?.id ?? 'local_${DateTime.now().microsecondsSinceEpoch}',
       title: 'صوت', // YAMNet will give the real name later
@@ -89,13 +97,18 @@ class HomeAlertsService extends ChangeNotifier {
       unawaited(
         doc
             .set(<String, dynamic>{
-              'title': alert.title,
-              'subtitle': alert.subtitle,
-              'isUrgent': alert.isUrgent,
-              'createdAt': Timestamp.fromDate(alert.createdAt),
-            })
-            .catchError((e) => debugPrint('🔴 [HomeAlertsService] save error: $e')),
+          'title': alert.title,
+          'subtitle': alert.subtitle,
+          'isUrgent': alert.isUrgent,
+          'createdAt': Timestamp.fromDate(alert.createdAt),
+        })
+            .then((_) => debugPrint('🟢 [HomeAlertsService] saved: ${doc.path}'))
+            .catchError(
+              (e) => debugPrint('🔴 [HomeAlertsService] save error: $e'),
+        ),
       );
+    } else {
+      debugPrint('🔴 [HomeAlertsService] not saved: no signed-in user');
     }
   }
 
@@ -107,11 +120,13 @@ class HomeAlertsService extends ChangeNotifier {
     final CollectionReference<Map<String, dynamic>>? ref = _alertsRef;
     if (ref == null) return;
     try {
-      final Timestamp since = Timestamp.fromDate(DateTime.now().subtract(_keepFor));
+      final Timestamp since =
+      Timestamp.fromDate(DateTime.now().subtract(_keepFor));
       final QuerySnapshot<Map<String, dynamic>> snap = await ref
           .where('createdAt', isGreaterThan: since)
           .orderBy('createdAt', descending: true)
           .get();
+      debugPrint('🟢 [HomeAlertsService] loaded ${snap.docs.length} alerts');
       final List<HomeAlert> loaded = snap.docs.map(_fromDoc).toList();
       // Keep alerts added while loading.
       final Set<String> loadedIds = loaded.map((a) => a.id).toSet();
@@ -141,10 +156,13 @@ class HomeAlertsService extends ChangeNotifier {
   }
 
   /// Deletes alerts older than 24 hours from Firebase.
-  Future<void> _deleteOld(CollectionReference<Map<String, dynamic>> ref, Timestamp before) async {
+  Future<void> _deleteOld(
+      CollectionReference<Map<String, dynamic>> ref,
+      Timestamp before,
+      ) async {
     try {
       final QuerySnapshot<Map<String, dynamic>> old =
-          await ref.where('createdAt', isLessThan: before).limit(400).get();
+      await ref.where('createdAt', isLessThan: before).limit(400).get();
       if (old.docs.isEmpty) return;
       final WriteBatch batch = FirebaseFirestore.instance.batch();
       for (final doc in old.docs) {
