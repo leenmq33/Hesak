@@ -308,9 +308,12 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   /// Sends the composer text as a voice message (text shown under it).
   /// Generating new speech needs the internet. On failure the typed text
   /// stays in the field so the user can try again.
-  Future<void> _sendComposerText() async {
-    final String text = _composerController.text.trim();
-    if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
+
+Future<void> _sendComposerText() async {
+final String text = _composerController.text.trim();
+
+
+if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
 
     setState(() => _isSending = true);
     final String messageId = 'out_${DateTime.now().microsecondsSinceEpoch}';
@@ -368,6 +371,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
     final HesakTtsService tts = HesakTtsService.instance;
     final bool isStopping = _playingMessageId == message.id;
     if (isStopping || !tts.isConnected) {
+      if (isStopping) tts.stop();
       _togglePlayback(message);
       return;
     }
@@ -378,8 +382,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
       final String? fileName = message.audioFileName;
       if (fileName != null && await tts.hasSavedAudio(fileName)) {
         if (!mounted) return;
-        // TODO(models team): await tts.playSaved(fileName) here.
-        _togglePlayback(message);
+        await tts.playSaved(fileName);        _togglePlayback(message);
         return;
       }
 
@@ -392,7 +395,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
       if (!mounted) return;
       message.audioFileName = newFileName;
       ConversationService.instance.saveConversation(_conversation);
-      // TODO(models team): play it with tts.playSaved(newFileName).
+      await tts.playSaved(newFileName);
       _togglePlayback(message);
     } on HesakNetworkException catch (e) {
       _showNetworkError(e, 'يتطلب تحويل النص إلى صوت اتصالًا بالإنترنت');

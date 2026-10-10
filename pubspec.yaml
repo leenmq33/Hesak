@@ -46,6 +46,9 @@ dependencies:
   # Remembers فاتح / داكن on the phone (also before login). Used in hesak_palette.dart.
   shared_preferences: ^2.3.0
   record: ^7.1.1
+  http: ^1.6.0
+  path_provider: ^2.1.6
+  just_audio: ^0.10.6
 
 dev_dependencies:
   flutter_test:
