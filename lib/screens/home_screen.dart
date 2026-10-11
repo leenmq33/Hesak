@@ -434,7 +434,7 @@ class _HomeSectionCard extends StatelessWidget {
 // =====================================================================
 /// "الأصوات الحالية": what the microphone hears right now.
 /// Before listening: a hint. First 3 s: learning the room.
-/// A sound now: dark chip. It ends: light chip for 1 second, then gone.
+/// A sound now: dark chip. It ends: the chip is gone right away.
 class _HomeCurrentSoundsCard extends StatelessWidget {
   const _HomeCurrentSoundsCard();
 
@@ -466,21 +466,17 @@ class _HomeCurrentSoundsCard extends StatelessWidget {
             case HomeMicStatus.warming:
         // The first 3 s still learn the room, but the user doesn't need to see it.
         return _HomeSoundsHint(text: 'المكان هادئ الآن');
-      case HomeMicStatus.quiet:
-      
+            case HomeMicStatus.quiet:
+        return _HomeSoundsHint(text: 'المكان هادئ الآن');
       case HomeMicStatus.active:
-        final bool isSoundNow = mic.status == HomeMicStatus.active;
-        if (!isSoundNow && !mic.isShowingEnded) {
-          return _HomeSoundsHint(text: 'المكان هادئ الآن');
-        }
+        // Shown only while the sound is on; gone as soon as it ends.
         return Wrap(
           children: [
-            // Same key -> the chip fades from dark to light when the sound ends.
             _HomeSoundChip(
               key: Key('home_sound_now'),
-              label: isSoundNow ? 'فيه صوت الآن' : 'صوت',
-              icon: isSoundNow ? Icons.volume_up_rounded : Icons.graphic_eq_rounded,
-              isHighlighted: isSoundNow,
+              label: 'فيه صوت الآن',
+              icon: Icons.volume_up_rounded,
+              isHighlighted: true,
             ),
           ],
         );
