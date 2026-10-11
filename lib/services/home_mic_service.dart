@@ -22,9 +22,6 @@ class HomeMicService extends ChangeNotifier {
   }
   static final HomeMicService instance = HomeMicService._();
 
-  /// How long the light chip stays after a sound ends.
-  static const Duration _endedChipTime = Duration(seconds: 1);
-
   final AudioRecorder _recorder = AudioRecorder();
   final HomeActivityGate _gate = HomeActivityGate();
   final List<int> _pending = []; // Bytes waiting to fill one frame
@@ -35,12 +32,6 @@ class HomeMicService extends ChangeNotifier {
 
   HomeMicStatus _status = HomeMicStatus.off;
   HomeMicStatus get status => _status;
-
-  Timer? _endedTimer;
-  bool _isShowingEnded = false;
-
-  /// true for 1 second after a sound ends (light chip).
-  bool get isShowingEnded => _isShowingEnded;
 
   // ---------------------------------------------------------------
   // Follow the listen button (the store)
@@ -78,7 +69,6 @@ class HomeMicService extends ChangeNotifier {
     if (!await _recorder.hasPermission()) return false;
     _gate.reset();
     _pending.clear();
-    _clearEndedChip();
     final Stream<Uint8List> stream = await _recorder.startStream(const RecordConfig(
       encoder: AudioEncoder.pcm16bits,
       sampleRate: HomeActivityGate.sampleRate,
@@ -97,7 +87,6 @@ class HomeMicService extends ChangeNotifier {
     _isMicOn = false;
     _pending.clear();
     _gate.reset();
-    _clearEndedChip();
     _setStatus(HomeMicStatus.off);
   }
 
@@ -105,12 +94,6 @@ class HomeMicService extends ChangeNotifier {
     if (next == _status) return;
     _status = next;
     notifyListeners();
-  }
-
-  void _clearEndedChip() {
-    _endedTimer?.cancel();
-    _endedTimer = null;
-    _isShowingEnded = false;
   }
 
   // ---------------------------------------------------------------
@@ -138,28 +121,13 @@ class HomeMicService extends ChangeNotifier {
 
   void _onFrame(double levelDb) {
     final HomeGateEvent? event = _gate.process(levelDb);
-    if (event != null) {
-      if (event.type == HomeGateEventType.open) {
-        // New sound: dark chip + one alert.
-        _clearEndedChip();
-        HomeAlertsService.instance.addSound();
-      } else {
-        // Sound ended: light chip for 1 second, then it disappears.
-        _endedTimer?.cancel();
-        _isShowingEnded = true;
-        _endedTimer = Timer(_endedChipTime, () {
-          _isShowingEnded = false;
-          notifyListeners();
-        });
-      }
+    if (event != null && event.type == HomeGateEventType.open) {
+      HomeAlertsService.instance.addSound(); // New sound -> one alert
     }
     final HomeMicStatus next = _gate.warming
         ? HomeMicStatus.warming
         : (_gate.active ? HomeMicStatus.active : HomeMicStatus.quiet);
     // Rebuild only when something changed (not 30 times a second).
-    if (event != null || next != _status) {
-      _status = next;
-      notifyListeners();
-    }
+    _setStatus(next);
   }
 }
