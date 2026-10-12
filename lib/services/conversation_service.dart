@@ -29,6 +29,9 @@ import '../screens/chats_models.dart';
 //  Conversation numbers ("محادثة 05") work like an id: a number is never
 //  given again, even after its conversation is deleted. The last used
 //  number is kept in users/{uid} -> "lastConversationNumber".
+//  The numbers kept in memory belong to ONE user: when another user is
+//  signed in (logout, deleted account, new account) they are reset, so a
+//  new account starts again from "محادثة 01".
 //
 //  Order: the last changed conversation first (new message, rename,
 //  improved text) — "editedAt" keeps the last rename / improve time.
@@ -137,6 +140,7 @@ class ConversationService {
   // -------------------------------------------------------------------
 
   /// Highest number this app already gave (kept while the app is open).
+  /// It belongs to [_numbersOwnerUid] only.
   int _lastUsedNumberOnPhone = 0;
 
   /// New conversations whose number is not saved yet: id -> number.
@@ -144,6 +148,20 @@ class ConversationService {
   /// (first save), so an empty conversation that is closed right away
   /// does not use up a number.
   final Map<String, int> _pendingNumbers = <String, int>{};
+
+  /// The user the numbers kept in memory belong to.
+  String? _numbersOwnerUid;
+
+  /// Forgets the numbers of the previous user when another user is signed in
+  /// (logout, deleted account, new account on the same phone).
+  void _resetNumbersIfUserChanged() {
+    final String? uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != _numbersOwnerUid) {
+      _numbersOwnerUid = uid;
+      _lastUsedNumberOnPhone = 0;
+      _pendingNumbers.clear();
+    }
+  }
 
   /// users/{uid} of the signed-in user (null = not signed in).
   DocumentReference<Map<String, dynamic>>? get _userDoc {
@@ -156,6 +174,7 @@ class ConversationService {
   /// [existing] = the conversations already loaded, so the number is
   /// always bigger than every "محادثة NN" the user has.
   Future<ChatsConversation> createNewConversation(List<ChatsConversation> existing) async {
+    _resetNumbersIfUserChanged();
     // Only one new conversation is open at a time: an older one that was
     // closed without being used gives its number back.
     _pendingNumbers.clear();
@@ -184,6 +203,7 @@ class ConversationService {
 
   /// Saves "this number is used" (only goes up, never down).
   Future<void> _rememberUsedNumber(int number) async {
+    _resetNumbersIfUserChanged();
     _lastUsedNumberOnPhone = math.max(_lastUsedNumberOnPhone, number);
     final ref = _userDoc;
     if (ref == null) return;
@@ -204,6 +224,7 @@ class ConversationService {
   /// Call it after ANY change: new message, rename, start listening,
   /// save / unsave, accepting an AI enhancement.
   Future<void> saveConversation(ChatsConversation conversation) async {
+    _resetNumbersIfUserChanged();
     // First save of a new conversation: its number is now used for good.
     final int? number = _pendingNumbers.remove(conversation.id);
     if (number != null) unawaited(_rememberUsedNumber(number));

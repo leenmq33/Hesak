@@ -234,8 +234,13 @@ class AuthService extends ChangeNotifier {
     try {
       // 2) The user's data (sub-collections first, then the profile).
       final userDoc = _userDoc(user.uid);
-      for (final String name in const ['userModes', 'conversations', 'alerts']) {
-        await _deleteCollection(userDoc.collection(name));
+      for (final String name in const [
+        'userModes',
+        'conversations',
+        'alerts',
+        'homeAlerts',
+        's؛avedPhrases',
+      ]) {        await _deleteCollection(userDoc.collection(name));
       }
       await userDoc.delete();
 
