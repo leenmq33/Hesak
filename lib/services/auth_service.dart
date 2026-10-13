@@ -10,12 +10,18 @@ import '../core/theme/hesak_palette.dart';
 // =====================================================================
 //  AUTH SERVICE — the ONLY place that talks to the account system.
 //
-//  Now connected to Firebase:
+//  Connected to Firebase:
 //    - Firebase Authentication: the account (email, password, verification).
-//    - Cloud Firestore users/{uid}: the profile (name, voice, call name...).
+//    - Cloud Firestore users/{uid}: the profile (name, voice, call name,
+//      appearance...).
 //
-//  The public functions are the same as the fake version,
-//  so the screens don't need to change.
+//  Used by: the sign in / sign up screens (lib/screens/auth), the splash
+//  screen (restoreSession), الرئيسية (the name in the greeting) and
+//  الإعدادات (every account setting + حذف الحساب).
+//  Screens rebuild on changes with ListenableBuilder(listenable: AuthService.instance).
+//
+//  Sections below: sign up / log in · email verification · password reset ·
+//  call name · account settings · helpers.
 // =====================================================================
 
 /// The voice the app uses to read texts out loud.
@@ -72,7 +78,7 @@ class AuthService extends ChangeNotifier {
   /// Reading voice (from sign up).
   HesakVoice currentVoice = HesakVoice.male;
 
-  /// The name Hesak listens for (للتنبيه عند النداء). null = not added yet.
+  /// The name Hesak listens for ("الاسم للنداء"). null = not added yet.
   String? currentCallName;
 
   /// Voice picked at sign up, kept here until the email is verified
@@ -313,7 +319,7 @@ class AuthService extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------------
-  // Password reset + call name
+  // Password reset ("هل نسيت كلمة المرور؟")
   // ---------------------------------------------------------------------
 
   /// Sends an email with a secure link to choose a new password.
@@ -360,6 +366,8 @@ class AuthService extends ChangeNotifier {
     );
   }
 
+  /// Reads a link that opened the app. Only the password-reset link is used:
+  /// its code goes to [pendingResetCode] (which opens the new-password screen).
   void _handleLink(Uri uri) {
     // Firebase wraps the real link: .../__/auth/links?link=<real link>
     Uri actionLink = uri;
@@ -404,7 +412,13 @@ class AuthService extends ChangeNotifier {
   /// The user closed the new-password screen without saving.
   void cancelPasswordReset() => pendingResetCode.value = null;
 
-  /// Saves the name the app should listen for (للتنبيه عند النداء).
+  // ---------------------------------------------------------------------
+  // Call name ("الاسم للنداء")
+  // ---------------------------------------------------------------------
+
+  /// Saves the name the app should listen for ("الاسم للنداء"), right away,
+  /// also without internet. Used by the call name step after sign up and by
+  /// الإعدادات / the mode editor.
   Future<AuthResult> saveCallName({required String callName}) async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -593,6 +607,7 @@ class AuthService extends ChangeNotifier {
     return user.reauthenticateWithCredential(credential);
   }
 
+  /// The message for a failed password check ("كلمة المرور الحالية غير صحيحة").
   String _wrongCurrentPassword(String code) {
     if (code == 'wrong-password' || code == 'invalid-credential') {
       return 'كلمة المرور الحالية غير صحيحة';

@@ -17,6 +17,7 @@ import '../auth_service.dart';
 //    file only (works offline, ElevenLabs is NOT called again).
 //
 //  Voice: male / female, from the user's choice (AuthService.currentVoice).
+//  Used by: the conversation screen (send typed text / play it again).
 //
 //  Saved audio location:
 //    <app documents folder>/hesak_tts/<conversationId>/<messageId>.mp3
@@ -28,6 +29,7 @@ import '../auth_service.dart';
 //  server (Firebase Cloud Function) so the key is not inside the APK.
 // =====================================================================
 
+/// Turns typed text into speech (ElevenLabs) and plays the saved audio.
 class HesakTtsService {
   HesakTtsService._();
   static final HesakTtsService instance = HesakTtsService._();
@@ -63,6 +65,7 @@ class HesakTtsService {
   }) =>
       '$conversationId/$messageId.mp3';
 
+  /// The full path on the phone of a saved audio file.
   Future<File> _fileFor(String fileName) async {
     final Directory docs = await getApplicationDocumentsDirectory();
     return File('${docs.path}/$audioFolder/$fileName');

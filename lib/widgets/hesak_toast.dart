@@ -85,6 +85,7 @@ class _HesakToastViewState extends State<_HesakToastView> with SingleTickerProvi
     _run();
   }
 
+  /// Fade in -> wait 2 s -> fade out -> remove.
   Future<void> _run() async {
     await _fadeController.forward();
     await Future.delayed(Duration(seconds: 2));

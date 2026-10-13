@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 
-/// Everything about the listening modes (العام، النوم، السيارة ...) lives here,
-/// so every page uses the same ids, names and icons.
-///
-/// Rules for the team:
-/// - Use `HesakModeIds.xxx` instead of typing 'sleep' by hand.
-/// - A new mode = add its id here + add it to `hesakDefaultModes`.
+// =====================================================================
+//  HESAK MODES — the shape of one mode + the built-in modes + the icons
+//  the user can pick for a mode.
+//
+//  Used by: HesakModeStore (the user's real modes), the الأوضاع page,
+//  the mode editor (icon grid) and the bottom bar.
+//
+//  Rules for the team:
+//  - Use `HesakModeIds.xxx` instead of typing 'sleep' by hand.
+//  - A new built-in mode = add its id here + add it to `hesakDefaultModes`.
+// =====================================================================
 
 /// One mode (e.g. النوم).
 /// [id] must be unique (it's also used in widget Keys, e.g. navbar_mode_sleep_button).

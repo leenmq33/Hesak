@@ -6,17 +6,21 @@ import '../core/theme/hesak_palette.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
 
-/// The same top part for EVERY page:
-///   1) Logo on the left + soft twisted waves on the right
-///   2) A line of text: the page title in the center,
-///      OR a greeting on the right (home page)
-///   3) Thin lavender divider that fades at both ends
-///
-/// Usage in any screen:
-///   const HesakPageHeader(title: 'المحادثات'),          // centered page title
-///   const HesakPageHeader.greeting(text: 'مرحبًا رحاب'), // greeting on the right
-///   HesakPageHeader(title: 'الأوضاع', onBack: () => Navigator.pop(context)), // + back arrow on the right
-///   HesakPageHeader(title: 'الإعدادات', followsAppearance: true), // changes with فاتح / داكن
+// =====================================================================
+//  HESAK PAGE HEADER — the same top part for EVERY page:
+//    1) Logo on the left + soft twisted waves on the right
+//    2) A line of text: the page title in the center,
+//       OR a greeting on the right (home page)
+//    3) Thin lavender divider that fades at both ends
+//
+//  Usage in any screen:
+//    const HesakPageHeader(title: 'المحادثات'),          // centered page title
+//    const HesakPageHeader.greeting(text: 'مرحبًا رحاب'), // greeting on the right
+//    HesakPageHeader(title: 'الأوضاع', onBack: () => Navigator.pop(context)), // + back arrow on the right
+//    HesakPageHeader(title: 'الإعدادات', followsAppearance: true), // changes with light / dark
+// =====================================================================
+
+/// The header at the top of a page (logo, waves, title / greeting, divider).
 class HesakPageHeader extends StatelessWidget {
   /// The text shown under the logo (page title or greeting).
   final String title;
@@ -27,7 +31,7 @@ class HesakPageHeader extends StatelessWidget {
   /// Optional: shows a back arrow on the right (for inner pages). null = no arrow.
   final VoidCallback? onBack;
 
-  /// true = follows the appearance (فاتح / داكن) from HesakThemeController.
+  /// true = follows the appearance (light / dark) from HesakThemeController.
   /// Every page follows it now (default true).
   final bool followsAppearance;
 
@@ -49,7 +53,7 @@ class HesakPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Headers that follow فاتح / داكن rebuild by themselves when it changes
+    // Headers that follow light / dark rebuild by themselves when it changes
     // (works even when the header is created with const).
     if (followsAppearance) {
       return ListenableBuilder(
@@ -62,7 +66,7 @@ class HesakPageHeader extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    // Dark only when this header follows the appearance AND داكن is picked.
+    // Dark only when this header follows the appearance AND dark is picked.
     final bool isDark = followsAppearance && HesakThemeController.instance.isDark;
     final HesakPalette palette = isDark ? HesakPalette.dark : HesakPalette.light;
     // Waves + divider color: purple top (home) > dark appearance > normal.
@@ -225,7 +229,7 @@ class _HesakHeaderLogo extends StatelessWidget {
   }
 
   /// The full logo as a single transparent PNG.
-  /// If the white logo file isn't in the project yet, the purple logo is
+  /// If the white logo file is missing, the purple logo is
   /// painted white instead (so it still shows on dark / purple backgrounds).
   Widget _buildLogoImage(String path) {
     return Image.asset(

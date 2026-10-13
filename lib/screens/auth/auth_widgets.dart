@@ -10,7 +10,12 @@ import '../../widgets/hesak_legal_sheet.dart';
 
 // =====================================================================
 //  AUTH WIDGETS — small building blocks shared by the sign in / sign up
-//  forms (login, sign up, reset password, call name).
+//  forms (login, sign up, reset password, verify email, call name).
+//  AuthValidators (email / password / name rules) is also used by
+//  الإعدادات and the new-password screen.
+//
+//  Sections: validation · sheet header · label + field · buttons & links ·
+//  moving purple background · note box, password rules, voice, terms.
 //
 //  NAMING RULES used in this file:
 //  - Everything here starts with "Auth" (AuthTextField, AuthPrimaryButton ...).
@@ -66,7 +71,7 @@ class AuthValidators {
 
   /// Why the user's NAME is not OK, or null when it's fine.
   /// Rules: not empty, Arabic or English letters only, at least 2 letters.
-  /// Used by إنشاء حساب and الإعدادات (الاسم).
+  /// Used by "إنشاء حساب" and الإعدادات > "الاسم".
   static String? nameProblem(String name) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return 'أدخل الاسم';
@@ -78,7 +83,7 @@ class AuthValidators {
   /// true when the name passes all the rules above.
   static bool isValidName(String name) => nameProblem(name) == null;
 
-  /// Why the CALL NAME (الاسم للنداء) is not OK, or null when it's fine.
+  /// Why the CALL NAME ("الاسم للنداء") is not OK, or null when it's fine.
   /// Rules: not empty, ARABIC letters only (Hesak listens for it in Arabic), at least 2 letters.
   static String? callNameProblem(String name) {
     final trimmed = name.trim();

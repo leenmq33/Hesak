@@ -33,6 +33,10 @@ import 'home/home_mode_section.dart';
 //  - Important widgets have a unique Key: 'home_<name>'.
 //  - Colors / text styles / sizes come ONLY from lib/core/theme.
 //
+//  Data: HesakModeStore (listening + mode), HomeMicService (the mic),
+//  HomeAlertsService (التنبيهات), ConversationService (محادثات اليوم).
+//  The mode card lives in its own file: home/home_mode_section.dart.
+//
 //  This page does NOT build the bottom bar — HesakMainShell does that.
 // =====================================================================
 
@@ -84,7 +88,7 @@ class HomeScreen extends StatelessWidget {
             Column(
               children: [
                 SizedBox(height: topInset),
-                // Shared header, same as every page (purple logo + waves).
+                // ---- Header: logo + waves + "مرحبًا, ... !" ----
                 HesakPageHeader.greeting(
                   text: userName.isEmpty ? 'مرحبًا !' : 'مرحبًا, $userName !',
                 ),
@@ -95,15 +99,15 @@ class HomeScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _HomeListenButton(),
+                        _HomeListenButton(), // Big listen button + hint
                         SizedBox(height: 22),
-                        _HomeCurrentSoundsCard(),
+                        _HomeCurrentSoundsCard(), // "الأصوات الحالية"
                         SizedBox(height: HesakSizes.sectionGap + 4),
-                        HomeModeSection(),
+                        HomeModeSection(), // "الوضع الحالي" card
                         SizedBox(height: HesakSizes.sectionGap + 4),
-                        _HomeConversationsCard(),
+                        _HomeConversationsCard(), // "محادثات اليوم"
                         SizedBox(height: HesakSizes.sectionGap + 4),
-                        _HomeAlertsCard(),
+                        _HomeAlertsCard(), // "التنبيهات"
                       ],
                     ),
                   ),
@@ -163,6 +167,7 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
     HesakModeStore.instance.addListener(_syncAnimationsWithStore);
   }
 
+  /// Starts / stops the animation when the listening state changes.
   void _syncAnimationsWithStore() {
     final bool isListening = HesakModeStore.instance.isListening;
     if (isListening == _isAnimatingListening) return;
@@ -179,12 +184,14 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
     super.dispose();
   }
 
+  /// Pulse + rings + turning arc (while listening).
   void _startAnimations() {
     _listenPulseController.repeat(reverse: true);
     _listenRingsController.repeat();
     _listenArcController.repeat();
   }
 
+  /// Back to the still button.
   void _stopAnimations() {
     _listenPulseController.animateTo(0, duration: Duration(milliseconds: 200));
     _listenRingsController
@@ -200,8 +207,8 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
   Future<void> _toggleListening() async {
     final bool isTurningOn = !HesakModeStore.instance.isListening;
     // The store tells _syncAnimationsWithStore, which starts / stops the animation.
+    // HomeMicService follows the store and opens / closes the microphone.
     HesakModeStore.instance.setListening(isTurningOn);
-       // HomeMicService follows the store and opens / closes the microphone.
   }
 
   @override
@@ -298,7 +305,7 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
               ),
             ),
 
-            // Hint under the button: tells the user the mode turns on with listening.
+            // ---- Hint under the button ("اضغط لبدء الاستماع وتفعيل الوضع") ----
             AnimatedSwitcher(
               duration: Duration(milliseconds: 250),
               child: Text(
@@ -316,6 +323,7 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
     );
   }
 
+  /// Inside the button before listening: mic + "ابدأ الاستماع".
   Widget _buildIdleContent() {
     return Column(
       key: ValueKey('home_listen_idle'),
@@ -328,6 +336,7 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
     );
   }
 
+  /// Inside the button while listening: "يستمع…" + "اضغط للإيقاف".
   Widget _buildListeningContent() {
     return Column(
       key: ValueKey('home_listen_on'),
@@ -452,6 +461,7 @@ class _HomeCurrentSoundsCard extends StatelessWidget {
     );
   }
 
+  /// What the card shows for each mic status (off / no permission / quiet / sound).
   Widget _buildContent(HomeMicService mic) {
     switch (mic.status) {
       case HomeMicStatus.off:
@@ -461,10 +471,10 @@ class _HomeCurrentSoundsCard extends StatelessWidget {
           text: 'اسمح لحِسّك باستخدام المايكروفون من إعدادات الجهاز',
           isError: true,
         );
-            case HomeMicStatus.warming:
+      case HomeMicStatus.warming:
         // The first 3 s still learn the room, but the user doesn't need to see it.
         return _HomeSoundsHint(text: 'المكان هادئ الآن');
-            case HomeMicStatus.quiet:
+      case HomeMicStatus.quiet:
         return _HomeSoundsHint(text: 'المكان هادئ الآن');
       case HomeMicStatus.active:
         // Shown only while the sound is on; gone as soon as it ends.
@@ -577,6 +587,7 @@ class _HomeConversationsCardState extends State<_HomeConversationsCard> {
   /// true when loading failed (e.g. no internet) and nothing is shown yet.
   bool _hasLoadFailed = false;
 
+  /// Reads the conversations (ConversationService).
   Future<void> _loadConversations() async {
     final List<ChatsConversation>? loaded = await ConversationService.instance.loadConversations();
     if (!mounted) return;
@@ -627,6 +638,7 @@ class _HomeConversationsCardState extends State<_HomeConversationsCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // ---- "تعذّر تحميل المحادثات" (tap to try again) / empty text / the list ----
           if (today.isEmpty && _hasLoadFailed)
             // No internet / Firebase error: tap to try again.
             InkWell(
@@ -673,6 +685,7 @@ class _HomeConversationsCardState extends State<_HomeConversationsCard> {
                 ),
               ),
             ),
+          // ---- "محادثة جديدة" button ----
           SizedBox(height: 10),
           SizedBox(
             height: 48,

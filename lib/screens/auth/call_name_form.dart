@@ -4,9 +4,11 @@ import '../../services/auth_service.dart';
 import 'auth_widgets.dart';
 
 // =====================================================================
-//  CALL NAME FORM (للتنبيه عند النداء) — shown once, right after a new
-//  account is created. The user types the name Hesak should listen for;
-//  when someone says it, the user gets an alert.
+//  CALL NAME FORM ("للتنبيه عند النداء") — shown once, right after the
+//  email of a new account is verified. The user types the name Hesak
+//  should listen for; when someone says it, the user gets an alert.
+//  Saved with AuthService.saveCallName (works without internet too).
+//  Can be changed later in الإعدادات > "الاسم للنداء".
 //
 //  NAMING: everything here starts with "CallName". Keys: 'call_name_<name>'.
 // =====================================================================
@@ -67,10 +69,11 @@ class _CallNameFormState extends State<CallNameForm> {
       children: [
         AuthSheetHeader(title: 'للتنبيه عند النداء'),
 
+        // ---- Pink note (same as in الإعدادات > "الاسم للنداء") ----
         SizedBox(height: 14),
-        // Same note as in الإعدادات (الاسم للنداء).
         AuthInfoBanner('سيُنبّهك حِسّك عند سماع هذا الاسم، لتعرف أن أحدًا يناديك'),
 
+        // ---- "الاسم:" field ----
         AuthFieldLabel('الاسم:'),
         AuthTextField(
           key: Key('call_name_field'),
@@ -85,13 +88,14 @@ class _CallNameFormState extends State<CallNameForm> {
 
         SizedBox(height: 44),
 
+        // ---- Server error, above the button ----
         if (_serverError != null)
           Padding(
             padding: EdgeInsets.only(bottom: 10),
             child: Text(_serverError!, textAlign: TextAlign.center, style: HesakTextStyles.fieldError),
           ),
 
-        // Greyed out until a valid name is typed.
+        // ---- "التالي" button (greyed out until a valid name is typed) ----
         AuthPrimaryButton(
           key: Key('call_name_next_button'),
           label: 'التالي',
@@ -99,8 +103,7 @@ class _CallNameFormState extends State<CallNameForm> {
           onPressed: _canContinue ? _submitCallName : null,
         ),
 
-        // "يمكنك إضافته لاحقًا. تخطي" under the button — same style as the
-        // other links ("ليس لديك حساب؟ إنشاء حساب"). Skips this step.
+        // ---- "يمكنك إضافته لاحقًا تخطي" link: skips this step ----
         SizedBox(height: 12),
         AuthFooterLink(
           key: Key('call_name_skip_link'),

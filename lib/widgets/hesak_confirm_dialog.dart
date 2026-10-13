@@ -22,7 +22,7 @@ import '../core/theme/hesak_text_styles.dart';
 //      icon: Icons.delete_outline_rounded,
 //    );
 //
-//  [followsAppearance]: true (default) = follows فاتح / داكن like the whole app.
+//  [followsAppearance]: true (default) = follows light / dark like the whole app.
 // =====================================================================
 
 /// Asks the user to confirm. Returns true when the user taps [confirmLabel].
@@ -98,12 +98,14 @@ Future<bool?> showHesakChoiceDialog(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // ---- Icon, title, message ----
             Icon(icon, size: 40, color: confirmColor),
             SizedBox(height: 12),
             Text(title, textAlign: TextAlign.center, style: HesakTextStyles.dialogTitle.copyWith(color: palette.textPrimary)),
             SizedBox(height: 6),
             Text(message, textAlign: TextAlign.center, style: HesakTextStyles.dialogBody.copyWith(color: palette.textSecondary)),
             SizedBox(height: 18),
+            // ---- [confirm] [إلغاء] buttons ----
             Row(
               children: [
                 Expanded(

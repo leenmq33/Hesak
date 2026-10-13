@@ -8,6 +8,9 @@ import 'package:flutter/material.dart';
 //  list the USER sees and picks from. To add a sound: add one line to
 //  `hesakSounds` with a unique id and its section.
 //
+//  Used by: the mode editor ("الأصوات" list) and HesakModeStore (which
+//  sounds each mode keeps on).
+//
 //  Rules for the team:
 //  - Use the sound ids (e.g. 'doorbell') everywhere, never the Arabic text.
 //  - Emergency sounds are ALWAYS on in every mode (the user can see them
@@ -25,7 +28,7 @@ enum HesakSoundCategory {
   animals,
 }
 
-/// Arabic title + icon of each section.
+/// Title + icon of each section (as shown on the sounds list).
 extension HesakSoundCategoryInfo on HesakSoundCategory {
   String get label {
     switch (this) {

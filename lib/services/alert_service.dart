@@ -3,7 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 // =====================================================================
-//  ALERT SERVICE — saves the sound alerts (تنبيهات الأصوات) in Firebase.
+//  ALERT SERVICE — saves the sound alerts ("تنبيهات الأصوات") in Firebase.
+//
+//  Not used by any screen yet: it is ready for the real sound model
+//  (YAMNet), which will know WHICH sound was heard. Today the home page
+//  uses HomeAlertsService (users/{uid}/homeAlerts) for every new sound.
 //
 //  Firestore path: users/{uid}/alerts/{alertId}
 //
@@ -47,6 +51,7 @@ class HesakAlert {
   }
 }
 
+/// Saves, reads and deletes the alert history of the signed-in user.
 class AlertService {
   AlertService._(); // Only one AlertService in the whole app
   static final AlertService instance = AlertService._();
@@ -143,6 +148,7 @@ class AlertService {
   // Delete
   // ---------------------------------------------------------------------
 
+  /// Deletes one alert.
   Future<void> deleteAlert(String alertId) async {
     try {
       await _alerts?.doc(alertId).delete();
@@ -151,6 +157,7 @@ class AlertService {
     }
   }
 
+  /// Deletes every alert of the user.
   Future<void> deleteAllAlerts() async {
     final alerts = _alerts;
     if (alerts == null) return;
@@ -168,6 +175,7 @@ class AlertService {
     await _deleteInBatches(snap.docs);
   }
 
+  /// Deletes [docs] in groups (Firestore's limit per batch).
   Future<void> _deleteInBatches(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) async {
     // Firestore allows max 500 operations per batch.
     for (var i = 0; i < docs.length; i += 500) {

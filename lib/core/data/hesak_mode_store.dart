@@ -14,6 +14,9 @@ import 'hesak_sounds.dart';
 //    `HesakModeStore.instance`.
 //  - The bottom bar (through HesakMainShell) listens to it, so starring
 //    a mode adds it to the wheel right away.
+//  - Also holds the big listen button state (isListening): الرئيسية,
+//    HomeMicService and the conversation screen follow it.
+//  - Runs the schedule (جدولة الوضع): switches the mode by the clock.
 //
 //  Saved in Firebase (Cloud Firestore):
 //    users/{uid}/userModes/{modeId}   one document per mode the user changed
@@ -109,6 +112,7 @@ List<(int, int)> _hesakWeekRanges(HesakWeekday day, TimeOfDay start, TimeOfDay e
   return [(startMinute, _minutesPerWeek), (0, endMinute - _minutesPerWeek)];
 }
 
+/// true when any range in [a] overlaps any range in [b].
 bool _hesakRangesOverlap(List<(int, int)> a, List<(int, int)> b) =>
     a.any((x) => b.any((y) => x.$1 < y.$2 && y.$1 < x.$2));
 
@@ -175,7 +179,7 @@ class HesakModeConfig {
 
   final List<HesakSchedulePeriod> periods; // When the mode turns on by itself
 
-  // الإعدادات العامة
+  // "الإعدادات العامة" section of the mode editor
   final bool isCallNameAlertOn; // التنبيه عند نداء اسمك
   final Set<HesakAlertType> alertTypes; // اهتزاز / إشعار / وميض
   final HesakAlertRepeat alertRepeat; // مرة / مرتين / ثلاث مرات
@@ -225,6 +229,7 @@ class HesakModeConfig {
     letter: icon == null ? firstLetter : null,
   );
 
+  /// A copy with some settings changed (the mode itself is never edited in place).
   HesakModeConfig copyWith({
     String? name,
     IconData? icon,
@@ -339,12 +344,12 @@ class HesakModeStore extends ChangeNotifier {
   /// The selected mode is only really ACTIVE (مفعّل) while listening.
   bool get isListening => _isListening;
 
-  /// Called by the listen button on الرئيسية.
+  /// Called by the listen button on الرئيسية (and the "تشغيل زر الاستماع"
+  /// window). HomeMicService hears the change and opens / closes the mic.
   void setListening(bool isOn) {
     if (isOn == _isListening) return;
     _isListening = isOn;
     notifyListeners();
-    // TODO: start / stop the real microphone listening here.
   }
 
   // -------------------------------------------------------------------
@@ -404,6 +409,7 @@ class HesakModeStore extends ChangeNotifier {
     _switchBySchedule(scheduled ?? modeById(HesakModeIds.general));
   }
 
+  /// Selects [mode] for the schedule and sends the message to show.
   void _switchBySchedule(HesakModeConfig? mode) {
     if (mode == null || mode.id == _selectedModeId) return;
     selectMode(mode.id, isBySchedule: true);
@@ -504,6 +510,7 @@ class HesakModeStore extends ChangeNotifier {
   /// A new unique id for a mode the user creates.
   String newModeId() => 'custom_${DateTime.now().microsecondsSinceEpoch}';
 
+  /// Puts [updated] in place of the mode with the same id, then saves it.
   void _replace(HesakModeConfig updated) {
     final index = _modes.indexWhere((m) => m.id == updated.id);
     if (index == -1) return;
@@ -641,6 +648,7 @@ class HesakModeStore extends ChangeNotifier {
 
   // ---- Converting HesakModeConfig <-> Firestore (same field names) ----
 
+  /// HesakModeConfig -> the map saved in userModes/{id}.
   Map<String, dynamic> _modeToMap(HesakModeConfig mode, int order) {
     final int iconIndex = mode.icon == null ? -1 : hesakModeIconChoices.indexOf(mode.icon!);
     return <String, dynamic>{
@@ -658,6 +666,8 @@ class HesakModeStore extends ChangeNotifier {
     };
   }
 
+  /// The saved map -> HesakModeConfig. Missing fields come from [fallback]
+  /// (the built-in default) or the normal defaults.
   HesakModeConfig _modeFromMap(String id, Map<String, dynamic> d, {HesakModeConfig? fallback}) {
     IconData? icon = fallback?.icon;
     if (d.containsKey('icon')) {
@@ -693,12 +703,14 @@ class HesakModeStore extends ChangeNotifier {
     );
   }
 
+  /// One period -> {days: [0..6], start: "22:00", end: "06:00"}.
   Map<String, dynamic> _periodToMap(HesakSchedulePeriod period) => <String, dynamic>{
     'days': (period.days.map((day) => day.index).toList()..sort()),
     'start': _timeToHhmm(period.start),
     'end': _timeToHhmm(period.end),
   };
 
+  /// The saved map -> one period.
   HesakSchedulePeriod _periodFromMap(Map<String, dynamic> d) => HesakSchedulePeriod(
     days: (d['days'] as List<dynamic>? ?? const [])
         .map((i) => HesakWeekday.values[(i as num).toInt()])

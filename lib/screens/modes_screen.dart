@@ -203,7 +203,7 @@ class _ModesPageContentState extends State<_ModesPageContent> {
           ),
           SizedBox(height: 4),
 
-          // ---- إضافة وضع جديد ----
+          // ---- "إضافة وضع جديد" card ----
           _ModesAddCard(),
         ],
       ),
@@ -265,8 +265,10 @@ class _ModesModeCard extends StatefulWidget {
 class _ModesModeCardState extends State<_ModesModeCard> {
   bool _isOpen = false; // Closed when the page opens
 
+  /// Opens / closes "إعدادات الوضع" + "جدولة الوضع" under the card.
   void _toggleOpen() => setState(() => _isOpen = !_isOpen);
 
+  /// Pencil: opens "تعديل الوضع" inside the الأوضاع tab.
   void _openEditor() => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => ModeEditorScreen(modeId: widget.mode.id)),
       );
@@ -308,6 +310,7 @@ class _ModesModeCardState extends State<_ModesModeCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // ---- Line 1 (icon, name, switch) + line 2 (star, pencil, arrow) ----
             // Tap on the card = same as the arrow.
             InkWell(
               key: Key(isSelected ? 'modes_selected_tap' : 'modes_row_tap_${mode.id}'),
@@ -325,7 +328,7 @@ class _ModesModeCardState extends State<_ModesModeCard> {
               ),
             ),
 
-            // "إعدادات الوضع" + "جدولة الوضع" (open with the arrow).
+            // ---- "إعدادات الوضع" + "جدولة الوضع" (open with the arrow) ----
             AnimatedSize(
               duration: Duration(milliseconds: 250),
               curve: Curves.easeOut,
@@ -345,7 +348,7 @@ class _ModesModeCardState extends State<_ModesModeCard> {
                   : SizedBox(width: double.infinity),
             ),
 
-            // Listening is off: how to really turn the selected mode on.
+            // ---- Hint strip "اضغط زر الاستماع ..." (selected + listening off) ----
             if (showListenHint) _ModesListenHintStrip(),
           ],
         ),

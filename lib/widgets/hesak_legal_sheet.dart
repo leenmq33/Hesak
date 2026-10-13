@@ -11,13 +11,14 @@ import '../core/theme/hesak_text_styles.dart';
 //    the text (scrolls): purple numbered titles, paragraphs, bullet points
 //    "حسنًا" at the bottom
 //  Closes with ✕, "حسنًا", tapping outside, or dragging it down.
-//  Follows فاتح / داكن (colors come from HesakColors).
+//  Follows light / dark (colors come from HesakColors).
 //
 //  How to use:
 //    showHesakLegalSheet(context, hesakTermsDoc);   // الشروط والأحكام
 //    showHesakLegalSheet(context, hesakPrivacyDoc); // سياسة الخصوصية
 //
 //  The texts live in lib/core/data/hesak_legal_texts.dart.
+//  Used by: the links next to the terms checkbox (sign up page).
 //  NAMING: everything here starts with "Hesak". Keys: 'hesak_legal_<name>'.
 // =====================================================================
 
@@ -32,6 +33,7 @@ Future<void> showHesakLegalSheet(BuildContext context, HesakLegalDoc doc) {
   );
 }
 
+/// The sheet itself: header, the text, and "حسنًا".
 class _HesakLegalSheet extends StatelessWidget {
   final HesakLegalDoc doc;
 

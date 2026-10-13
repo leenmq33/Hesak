@@ -1,4 +1,20 @@
 // ============================================================================
+// ONE CONVERSATION — full screen (opened from المحادثات or "محادثات اليوم").
+//
+// Layout (top -> bottom):
+//   header: back · title (tap to rename) · save button
+//   messages: heard speech on the LEFT (+ "تحسين النص"),
+//             the user's typed text as a voice message on the RIGHT
+//   bottom bar: typing field + ✦ (improve), then the mic or send button
+// A brand-new conversation shows the start card instead of the messages.
+//
+// Needs internet: mic (speech -> text), send (text -> speech), ✦ improve.
+// Works offline: typing, reading, playing saved audio, saved improvements.
+// The mic also needs the big listen button (الرئيسية) on.
+//
+// Sections below: back / leave · title · listening · sending · playback ·
+// AI enhancement · scrolling · build · then the small widgets.
+//
 // NAMING RULES (Chats page)
 // - Private classes in this file start with "_Chats" (e.g. _ChatsComposerBar).
 // - Public classes shared between the chats files start with "Chats".
@@ -330,7 +346,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   /// Generating new speech needs the internet. On failure the typed text
   /// stays in the field so the user can try again.
 
-Future<void> _sendComposerText() async {
+  Future<void> _sendComposerText() async {
 final String text = _composerController.text.trim();
 
 
@@ -609,6 +625,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
     );
   }
 
+  /// The whole page: header, messages (or start card), bottom bar.
   Widget _buildPage(BuildContext context) {
     final bool isShowingStartCard = _isUntouchedNewConversation;
 
@@ -622,6 +639,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
         body: SafeArea(
           child: Column(
             children: <Widget>[
+              // ---- Header: back · title · save ----
               _ChatsConversationHeader(
                 title: _conversation.title,
                 isEditingTitle: _isEditingTitle,
@@ -632,6 +650,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
                 onSaveTitle: _saveEditedTitle,
                 onToggleSaved: _toggleConversationSaved,
               ),
+              // ---- Start card (new conversation) OR the messages ----
               Expanded(
                 child: isShowingStartCard
                     ? Center(
@@ -655,6 +674,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
                         ],
                       ),
               ),
+              // ---- Bottom bar: typing field + ✦, mic / send ----
               _ChatsComposerBar(
                 controller: _composerController,
                 isListening: _isListening,
@@ -1003,6 +1023,7 @@ class _ChatsFadingDivider extends StatelessWidget {
 // Start card (only for a brand-new conversation, only once)
 // ---------------------------------------------------------------------------
 
+/// The big card in the middle of a new conversation (starts listening).
 class _ChatsStartListeningCard extends StatelessWidget {
   const _ChatsStartListeningCard({required this.onStart});
 

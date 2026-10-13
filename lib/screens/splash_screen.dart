@@ -9,13 +9,22 @@ import '../services/auth_service.dart';
 import 'auth/auth_flow_screen.dart';
 import 'main_shell.dart';
 
+// =====================================================================
+//  SPLASH SCREEN — the first screen when the app opens (from main.dart).
+//
+//  Timeline (about 5 s):
+//    0 s    animated logo (the sound waves pulse)
+//    1.5 s  the tagline appears under the logo
+//    3.8 s  the two corner shapes grow and cover the screen with purple
+//    ~5 s   opens the next screen on the same purple
+//
+//  Next screen: signed in + verified -> HesakMainShell (the app),
+//  otherwise -> HesakAuthFlowScreen (welcome). Checked with
+//  AuthService.restoreSession during the animation (works offline too).
+//  Colors and text styles come from lib/core/theme.
+// =====================================================================
+
 /// The first screen the user sees when the app opens.
-/// Colors and text styles come from lib/core/theme.
-/// Shows the animated logo, then the tagline. Then the two corner shapes
-/// grow until they cover the screen with the purple of the sign in / sign up
-/// screen, and the welcome screen opens on top of the same purple.
-/// Already signed in (Firebase remembers it on the phone)? Then the app opens
-/// instead of the welcome screen, like other apps that keep you signed in.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 

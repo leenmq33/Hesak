@@ -10,7 +10,8 @@
 //    - empty lines are ignored
 //  Also update [hesakLegalUpdatedAt] when a text changes.
 //
-//  Shown by showHesakLegalSheet (lib/widgets/hesak_legal_sheet.dart).
+//  Shown by showHesakLegalSheet (lib/widgets/hesak_legal_sheet.dart), from
+//  the links next to the terms checkbox on the sign up page.
 // =====================================================================
 
 /// "آخر تحديث" shown under the title of both texts.
@@ -24,7 +25,7 @@ class HesakLegalDoc {
   const HesakLegalDoc({required this.title, required this.body});
 }
 
-/// الشروط والأحكام
+/// The "الشروط والأحكام" text.
 const HesakLegalDoc hesakTermsDoc = HesakLegalDoc(
   title: 'الشروط والأحكام',
   body: r'''
@@ -140,7 +141,7 @@ const HesakLegalDoc hesakTermsDoc = HesakLegalDoc(
 ''',
 );
 
-/// سياسة الخصوصية
+/// The "سياسة الخصوصية" text.
 const HesakLegalDoc hesakPrivacyDoc = HesakLegalDoc(
   title: 'سياسة الخصوصية',
   body: r'''

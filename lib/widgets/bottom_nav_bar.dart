@@ -7,6 +7,12 @@ import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
 
 // =====================================================================
+//  HESAK BOTTOM NAV BAR — the bar at the bottom of the app: the 4 tabs
+//  and the raised mode button in the middle (opens the modes wheel).
+//
+//  Used by: HesakMainShell (main_shell.dart), which gives it the user's
+//  modes from HesakModeStore and opens the pages.
+//
 //  NAMING RULES used in this file (so team files never clash):
 //  - Public names start with "Hesak" + what they are (HesakNavTab ...).
 //  - Private names say exactly what they belong to
@@ -327,7 +333,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
                     child: Listener(
                       onPointerDown: (_) => _closeModeMenu(),
                       child: CustomPaint(
-                      painter: _HesakNavBarNotchPainter(color: HesakPalette.current.navBar), // Follows فاتح / داكن
+                      painter: _HesakNavBarNotchPainter(color: HesakPalette.current.navBar), // Follows light / dark
                       child: Padding(
                         // Extra bottom padding keeps the icons above the home indicator.
                         padding: EdgeInsets.fromLTRB(8, 8, 8, 6 + bottomInset),
@@ -643,7 +649,7 @@ class _HesakBottomNavBarState extends State<HesakBottomNavBar>
 /// The bar covers its bottom edge, so only the top half is drawn.
 class _HesakModeMenuHalfCirclePainter extends CustomPainter {
   final double diameter; // Size of the square this is painted in
-  final Color fillColor; // See-through fill (follows فاتح / داكن)
+  final Color fillColor; // See-through fill (follows light / dark)
   final Color borderColor; // Thin outline
 
   _HesakModeMenuHalfCirclePainter({required this.diameter, required this.fillColor, required this.borderColor});
