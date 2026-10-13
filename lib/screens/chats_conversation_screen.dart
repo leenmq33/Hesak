@@ -105,9 +105,10 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
     super.initState();
     _messagesScrollController.addListener(_updateScrollIndicator);
     _composerController.addListener(() => setState(() {}));
-    // The big listen button turned off (by the user or because the internet
-    // dropped) -> stop listening here too.
+    // The big listen button turned off -> stop listening here too.
     HesakModeStore.instance.addListener(_stopIfMainListeningOff);
+    // The internet dropped -> speech-to-text stops (it runs on the server).
+    HesakConnection.instance.addListener(_stopIfInternetDropped);
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _updateScrollIndicator());
   }
@@ -115,6 +116,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   @override
   void dispose() {
     HesakModeStore.instance.removeListener(_stopIfMainListeningOff);
+    HesakConnection.instance.removeListener(_stopIfInternetDropped);
     _playbackTimer?.cancel();
     _demoTranscriptTimer?.cancel();
     _listeningBarsController.dispose();
@@ -214,6 +216,25 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
       setState(() {}); // Just redraw the mic (faded or normal)
       return;
     }
+    _stopSpeechToText();
+  }
+
+  /// The internet dropped while turning speech into text -> stop it and tell
+  /// the user. The big listen button stays on (it works without internet).
+  void _stopIfInternetDropped() {
+    if (!mounted || !_isListening || HesakConnection.instance.isOnline) return;
+    if (!HesakSpeechToTextService.instance.needsInternet) return;
+    _stopSpeechToText();
+    showHesakToast(
+      context,
+      'انقطع الاتصال بالإنترنت',
+      icon: Icons.wifi_off_rounded,
+      atTop: true, // The keyboard may cover the bottom here
+    );
+  }
+
+  /// Stops listening in this conversation (the bars and the text stop).
+  void _stopSpeechToText() {
     setState(() => _isListening = false);
     _listeningBarsController.stop();
     _demoTranscriptTimer?.cancel();
@@ -253,7 +274,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
         if (stt.needsInternet && !await HesakConnection.instance.checkNow()) {
           _showNetworkError(
             HesakNetworkException(wasOffline: true),
-            'يتطلب تحويل الكلام إلى نص اتصالًا بالإنترنت',
+            'تحويل الكلام إلى نص يتطلب اتصالًا بالإنترنت',
           );
           return;
         }
@@ -330,7 +351,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
         );
       });
     } on HesakNetworkException catch (e) {
-      _showNetworkError(e, 'يتطلب تحويل النص إلى صوت اتصالًا بالإنترنت');
+      _showNetworkError(e, 'تحويل النص إلى صوت يتطلب اتصالًا بالإنترنت');
       return;
     } catch (e) {
       debugPrint('tts error: $e');
@@ -398,7 +419,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
       await tts.playSaved(newFileName);
       _togglePlayback(message);
     } on HesakNetworkException catch (e) {
-      _showNetworkError(e, 'يتطلب تحويل النص إلى صوت اتصالًا بالإنترنت');
+      _showNetworkError(e, 'تحويل النص إلى صوت يتطلب اتصالًا بالإنترنت');
     } catch (e) {
       debugPrint('tts error: $e');
       _showFailure('تعذّر تحويل النص إلى صوت، حاول مرة أخرى');
@@ -457,7 +478,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
         message.enhancedText = await hesakRunOnline(
             () => HesakTextEnhanceService.instance.enhance(message.originalText));
       } on HesakNetworkException catch (e) {
-        _showNetworkError(e, 'يتطلب تحسين النص اتصالًا بالإنترنت');
+        _showNetworkError(e, 'تحسين النص يتطلب اتصالًا بالإنترنت');
         return;
       } catch (e) {
         debugPrint('enhance error: $e');
@@ -493,7 +514,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
       enhanced = await hesakRunOnline(
           () => HesakTextEnhanceService.instance.enhance(original));
     } on HesakNetworkException catch (e) {
-      _showNetworkError(e, 'يتطلب تحسين النص اتصالًا بالإنترنت');
+      _showNetworkError(e, 'تحسين النص يتطلب اتصالًا بالإنترنت');
       return;
     } catch (e) {
       debugPrint('enhance error: $e');

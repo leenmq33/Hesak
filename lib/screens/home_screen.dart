@@ -8,7 +8,6 @@ import '../core/theme/hesak_text_styles.dart';
 import '../services/conversation_service.dart';
 import '../services/home_mic_service.dart';
 import '../services/home_alerts_service.dart';
-import '../widgets/hesak_internet_required.dart';
 import '../widgets/hesak_page_header.dart';
 import 'chats_conversation_screen.dart';
 import 'chats_models.dart';
@@ -160,7 +159,7 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
     super.initState();
     // Coming back to the page while listening -> keep the animation going.
     _syncAnimationsWithStore();
-    // Listening can also be turned on from a conversation ("تشغيل الاستماع").
+    // Listening can also be turned on from a conversation ("تشغيل زر الاستماع").
     HesakModeStore.instance.addListener(_syncAnimationsWithStore);
   }
 
@@ -197,10 +196,9 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
   }
 
   /// Start or stop listening. The mode card + الأوضاع page follow the store.
-  /// Starting needs the internet (no internet -> window, stays off).
+  /// Works without internet too (sounds are heard on the phone).
   Future<void> _toggleListening() async {
     final bool isTurningOn = !HesakModeStore.instance.isListening;
-    if (isTurningOn && !await hesakRequireInternet(context)) return;
     // The store tells _syncAnimationsWithStore, which starts / stops the animation.
     HesakModeStore.instance.setListening(isTurningOn);
        // HomeMicService follows the store and opens / closes the microphone.
