@@ -7,7 +7,6 @@ import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_palette.dart';
 import '../services/auth_service.dart';
 import '../widgets/bottom_nav_bar.dart';
-import '../widgets/hesak_confirm_dialog.dart';
 import '../widgets/hesak_toast.dart';
 import 'chats_screen.dart';
 import 'home_screen.dart';
@@ -23,8 +22,8 @@ import 'settings_screen.dart';
 //  - Passing the user's modes (from HesakModeStore) to the middle button.
 //  - Showing the message when the schedule switches the mode, and checking
 //    the schedule again when the app comes back from the background.
-//  - Watching the internet: if it drops while listening, listening turns
-//    off and a window says so (on any page, even inside a conversation).
+//  - Starting the internet watcher. The big listen button works without
+//    internet; only speech-to-text inside a conversation stops when it drops.
 //
 //  Each page lives in its own file, so each teammate can work on one page
 //  without touching the others:
@@ -68,30 +67,14 @@ class _HesakMainShellState extends State<HesakMainShell> with WidgetsBindingObse
       });
     });
     _modeStore.checkSchedule(isAppStart: true);
-    HesakConnection.instance
-      ..start()
-      ..addListener(_handleConnectionChanged);
-  }
-
-  /// Internet dropped while listening -> stop listening + tell the user.
-  void _handleConnectionChanged() {
-    if (HesakConnection.instance.isOnline || !_modeStore.isListening) return;
-    _modeStore.setListening(false);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      showHesakNoticeDialog(
-        context,
-        title: 'انقطع الاتصال بالإنترنت',
-        message: 'تم إيقاف الاستماع، شغّل الإنترنت ثم اضغط زر الاستماع مرة أخرى',
-        icon: Icons.wifi_off_rounded,
-      );
-    });
+    // Watches the internet (conversations use it). Listening stays on without
+    // internet: only the speech-to-text inside a conversation stops.
+    HesakConnection.instance.start();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    HesakConnection.instance.removeListener(_handleConnectionChanged);
     _scheduleMessagesSubscription?.cancel();
     super.dispose();
   }

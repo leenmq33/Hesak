@@ -410,43 +410,44 @@ class AuthService extends ChangeNotifier {
     if (user == null) {
       return const AuthResult.failure('يرجى تسجيل الدخول أولًا');
     }
-    try {
-      await _userDoc(user.uid).update({
+    // Changes right away (also without internet). Firestore keeps the change
+    // on the phone and sends it to Firebase when the internet is back.
+    currentCallName = callName.trim();
+    notifyListeners();
+    unawaited(
+      _userDoc(user.uid).update({
         'nameRecognition': {
           'enabled': true,
           'names': [callName.trim()],
           'updatedAt': FieldValue.serverTimestamp(),
         },
-      });
-      currentCallName = callName.trim();
-      notifyListeners();
-      return const AuthResult.success();
-    } catch (e) {
-      debugPrint('saveCallName error: $e');
-      return const AuthResult.failure('تعذّر حفظ الاسم، حاول مرة أخرى');
-    }
+      }).catchError((e) => debugPrint('saveCallName error: $e')),
+    );
+    return const AuthResult.success();
   }
 
   // ---------------------------------------------------------------------
   // Account settings (الإعدادات)
   // ---------------------------------------------------------------------
 
-  /// Changes the user's name.
+  /// Changes the user's name (right away, also without internet).
   Future<AuthResult> updateName({required String name}) async {
     final user = _auth.currentUser;
     if (user == null) {
       return const AuthResult.failure('يرجى تسجيل الدخول أولًا');
     }
-    try {
-      await _userDoc(user.uid).update({'displayName': name.trim()});
-      await user.updateDisplayName(name.trim());
-      currentUserName = name.trim();
-      notifyListeners();
-      return const AuthResult.success();
-    } catch (e) {
-      debugPrint('updateName error: $e');
-      return const AuthResult.failure('تعذّر حفظ الاسم، حاول مرة أخرى');
-    }
+    // Changes right away (also without internet), like الجنس.
+    // Firestore sends it to Firebase when the internet is back.
+    currentUserName = name.trim();
+    notifyListeners();
+    unawaited(
+      _userDoc(user.uid)
+          .update({'displayName': name.trim()})
+          .catchError((e) => debugPrint('updateName error: $e')),
+    );
+    // The name inside the verification emails (needs internet; not important offline).
+    unawaited(user.updateDisplayName(name.trim()).catchError((e) => debugPrint('updateDisplayName error: $e')));
+    return const AuthResult.success();
   }
 
   /// Changes the reading voice (saved right away, no loading).
