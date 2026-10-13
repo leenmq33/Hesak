@@ -30,9 +30,14 @@ import '../../widgets/hesak_toast.dart';
 //   Required before "إنشاء الوضع": name + at least one alert type + repeat.
 //   Until then the button is faded and a grey line says what's missing.
 //
+//  Opened from: الأوضاع (pencil / "إضافة وضع جديد"), the bar wheel
+//  ("إضافة") and the pencil on the الرئيسية mode card.
+//  Saves through HesakModeStore. Shared pieces: modes_widgets.dart.
+//
 //  NAMING: everything here starts with "ModeEditor". Keys: 'mode_editor_<name>'.
 // =====================================================================
 
+/// "تعديل الوضع" (with [modeId]) or "إضافة وضع" (without it).
 class ModeEditorScreen extends StatefulWidget {
   /// The mode to edit. null = add a new mode.
   final String? modeId;
@@ -88,12 +93,14 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
     super.dispose();
   }
 
+  /// "إلغاء" in "الإعدادات العامة": back to the saved values.
   void _resetGeneralDraft(HesakModeConfig saved) {
     _draftCallNameAlert = saved.isCallNameAlertOn;
     _draftAlertTypes = {...saved.alertTypes};
     _draftAlertRepeat = saved.alertRepeat;
   }
 
+  /// "إلغاء" in "إعدادات الأصوات": back to the saved sounds.
   void _resetSoundsDraft(HesakModeConfig saved) {
     _draftSoundIds = {...saved.soundIds};
   }
@@ -107,6 +114,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
 
   bool _isSoundsChanged(HesakModeConfig saved) => !modesSameSet(_draftSoundIds, saved.soundIds);
 
+  /// true = leaving now would lose something (asks first).
   bool get _hasUnsavedChanges {
     if (_isNew) return _hasTouchedNewMode;
     final saved = _savedMode;
@@ -116,6 +124,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
 
   // ---- Actions ----
 
+  /// "حفظ" in "الإعدادات العامة".
   void _saveGeneral(HesakModeConfig saved) {
     _store.updateMode(saved.copyWith(
       isCallNameAlertOn: _draftCallNameAlert,
@@ -125,6 +134,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
     showHesakToast(context, 'تم حفظ التعديلات');
   }
 
+  /// "حفظ" in "إعدادات الأصوات".
   void _saveSounds(HesakModeConfig saved) {
     _store.updateMode(saved.copyWith(soundIds: {..._draftSoundIds}));
     showHesakToast(context, 'تم حفظ التعديلات');
@@ -137,6 +147,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
   bool get _isRepeatMissing => _draftAlertRepeat == null;
   bool get _canCreate => !_isNameMissing && !_isAlertTypeMissing && !_isRepeatMissing;
 
+  /// "إنشاء الوضع": checks the name, adds the mode, goes back.
   void _createMode() {
     if (!_canCreate) return;
     final problem = modesNameProblem(_nameController.text);
@@ -160,6 +171,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
     Navigator.pop(context);
   }
 
+  /// "حذف الوضع": asks first, then goes back.
   Future<void> _deleteMode(HesakModeConfig saved) async {
     final isDeleted = await modesDeleteWithConfirm(context, saved);
     if (isDeleted && mounted) Navigator.pop(context);
@@ -213,6 +225,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
   // EDIT page
   // =====================================================================
 
+  /// The "تعديل الوضع" page.
   Widget _buildEditPage() {
     final saved = _savedMode;
     if (saved == null) return SizedBox.shrink(); // Deleted, page is closing
@@ -259,7 +272,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
         Text(saved.name, textAlign: TextAlign.center, style: HesakTextStyles.modeName),
         SizedBox(height: 16),
 
-        // ---- جدولة الوضع (first on the edit page, saved right away) ----
+        // ---- "جدولة الوضع" (first on the edit page, saved right away) ----
         ModesSectionCard(
           title: 'جدولة الوضع',
           icon: Icons.calendar_month_outlined,
@@ -271,7 +284,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
           ),
         ),
 
-        // ---- الإعدادات العامة ----
+        // ---- "الإعدادات العامة" card ----
         ModesSectionCard(
           title: 'الإعدادات العامة',
           child: Column(
@@ -288,7 +301,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
           ),
         ),
 
-        // ---- إعدادات الأصوات ----
+        // ---- "إعدادات الأصوات" card ----
         ModesSectionCard(
           title: 'إعدادات الأصوات',
           child: Column(
@@ -311,7 +324,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
           ),
         ),
 
-        // ---- Delete (not for العام) ----
+        // ---- "حذف الوضع" (not for العام) ----
         SizedBox(height: 8),
         if (saved.isGeneral)
           Text(
@@ -337,6 +350,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
   // ADD page
   // =====================================================================
 
+  /// The "إضافة وضع" page.
   Widget _buildAddPage() {
     // Column (not ListView) so the sections keep their state when scrolled off screen.
     return SingleChildScrollView(
@@ -371,10 +385,11 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
         ),
         SizedBox(height: HesakSizes.sectionGap),
 
+        // ---- "الإعدادات العامة" + "إعدادات الأصوات" cards ----
         ModesSectionCard(title: 'الإعدادات العامة', child: _buildGeneralFields()),
         ModesSectionCard(title: 'إعدادات الأصوات', child: _buildSoundsPicker()),
 
-        // ---- جدولة الوضع (last on the add page) ----
+        // ---- "جدولة الوضع" (last on the add page) ----
         ModesSectionCard(
           title: 'جدولة الوضع',
           icon: Icons.calendar_month_outlined,
@@ -389,7 +404,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
         ),
 
         SizedBox(height: 8),
-        // Faded until the name, an alert type and the repeat are picked.
+        // ---- "إنشاء الوضع" button: faded until the name, an alert type and the repeat are picked ----
         ModesPillButton(
           key: Key('mode_editor_create_button'),
           label: 'إنشاء الوضع',
@@ -441,6 +456,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
     );
   }
 
+  /// Inside "الإعدادات العامة": call name alert, alert types, repeat.
   Widget _buildGeneralFields() {
     return ModesGeneralSettingsFields(
       isCallNameAlertOn: _draftCallNameAlert,
@@ -465,6 +481,7 @@ class _ModeEditorScreenState extends State<ModeEditorScreen> {
     );
   }
 
+  /// Inside "إعدادات الأصوات": the sounds by section (emergency always on).
   Widget _buildSoundsPicker() {
     return ModesSoundsPicker(
       selectedIds: _draftSoundIds,

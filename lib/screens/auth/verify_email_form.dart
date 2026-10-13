@@ -89,7 +89,7 @@ class _VerifyEmailFormState extends State<VerifyEmailForm> with WidgetsBindingOb
     }
   }
 
-  /// Sends a new link, then locks the link for 30 seconds.
+  /// Sends a new link, then locks the link for 60 seconds.
   Future<void> _resendLink() async {
     if (_secondsLeft > 0 || _isSending) return;
     if (!await hesakRequireInternet(context)) return; // No internet -> window
@@ -137,6 +137,7 @@ class _VerifyEmailFormState extends State<VerifyEmailForm> with WidgetsBindingOb
         AuthSheetHeader(title: 'تأكيد البريد', onBack: widget.onBack),
         SizedBox(height: 28),
 
+        // ---- Email icon + "تحقق من بريدك" ----
         Icon(Icons.mark_email_read_outlined, size: 64, color: HesakColors.primary),
         SizedBox(height: 16),
         Text(
@@ -146,7 +147,7 @@ class _VerifyEmailFormState extends State<VerifyEmailForm> with WidgetsBindingOb
         ),
         SizedBox(height: 8),
 
-        // "أرسلنا رابط تأكيد إلى / email / افتح الرابط وبعدها ارجع هنا"
+        // ---- "أرسلنا رابط تأكيد إلى / email / افتح الرابط وبعدها ارجع هنا" ----
         Text.rich(
           TextSpan(
             style: HesakTextStyles.body.copyWith(color: HesakColors.textSecondary, fontSize: 13, height: 1.7),
@@ -163,6 +164,7 @@ class _VerifyEmailFormState extends State<VerifyEmailForm> with WidgetsBindingOb
           textAlign: TextAlign.center,
         ),
 
+        // ---- "متابعة" button ----
         SizedBox(height: 30),
         AuthPrimaryButton(
           key: Key('verify_email_continue_button'),
@@ -171,6 +173,7 @@ class _VerifyEmailFormState extends State<VerifyEmailForm> with WidgetsBindingOb
           onPressed: _checkVerified,
         ),
 
+        // ---- "إعادة إرسال الرابط" link (or the countdown) ----
         SizedBox(height: 8),
         _buildResendLink(),
       ],

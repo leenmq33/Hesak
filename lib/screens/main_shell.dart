@@ -14,7 +14,8 @@ import 'modes_screen.dart';
 import 'settings_screen.dart';
 
 // =====================================================================
-//  MAIN SHELL — the frame around the 4 pages.
+//  MAIN SHELL — the frame around the 4 pages. Opened by the splash (or
+//  the sign in flow) once the user is signed in.
 //
 //  It owns:
 //  - The page background and the bottom bar (HesakBottomNavBar).
@@ -130,7 +131,7 @@ class _HesakMainShellState extends State<HesakMainShell> with WidgetsBindingObse
       ),
 
       // Rebuilds the bar when the modes change (e.g. a mode is starred on the الأوضاع page).
-      // Also rebuilds when the appearance (فاتح / داكن) changes.
+      // Also rebuilds when the appearance (light / dark) changes.
       bottomNavigationBar: ListenableBuilder(
         listenable: Listenable.merge([_modeStore, HesakThemeController.instance]),
         builder: (context, _) => HesakBottomNavBar(

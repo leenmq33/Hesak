@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
 import 'hesak_colors.dart';
 
-/// ALL text styles used in the Hesak app live here.
-///
-/// Rules for the team:
-/// - Never write `TextStyle(fontSize: ...)` inside a screen. Use `HesakTextStyles.xxx`.
-/// - Need a small change (e.g. different color)? Use `.copyWith(...)`:
-///     HesakTextStyles.body.copyWith(color: HesakColors.urgent)
-/// - Need a new style? Add it here first.
-/// - The styles follow فاتح / داكن (their colors come from HesakColors), so they
-///   are not `const`: don't write `const` in front of a widget that uses them.
+// =====================================================================
+//  HESAK TEXT STYLES — ALL text styles used in the app live here.
+//
+//  Rules for the team:
+//  - Never write `TextStyle(fontSize: ...)` inside a screen. Use `HesakTextStyles.xxx`.
+//  - Need a small change (e.g. different color)? Use `.copyWith(...)`:
+//      HesakTextStyles.body.copyWith(color: HesakColors.urgent)
+//  - Need a new style? Add it here first.
+//  - The styles follow light / dark (their colors come from HesakColors), so
+//    they are not `const`: don't write `const` in front of a widget that uses them.
+//
+//  Each comment says where the style is used + its size / weight.
+// =====================================================================
+
+/// Every text style of the app.
 class HesakTextStyles {
   HesakTextStyles._(); // Use HesakTextStyles.xxx directly
 
@@ -33,7 +39,7 @@ class HesakTextStyles {
     fontFamily: fontFamily,
     fontSize: 22,
     fontWeight: FontWeight.w600,
-    color: HesakColorsLight.primaryDark, // Always the dark purple: sits on the same light purple in فاتح and داكن
+    color: HesakColorsLight.primaryDark, // Always the dark purple: sits on the same light purple in light and dark
     height: 1.4,
   );
 
@@ -219,7 +225,7 @@ class HesakTextStyles {
     fontFamily: fontFamily,
     fontSize: 18,
     fontWeight: FontWeight.w700,
-    color: HesakColorsLight.primaryDark, // Always the dark purple: sits on the same light purple in فاتح and داكن
+    color: HesakColorsLight.primaryDark, // Always the dark purple: sits on the same light purple in light and dark
   );
 
   /// Text on the light glass button ("تسجيل الدخول"). 18 / Bold / white.

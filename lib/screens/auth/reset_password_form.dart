@@ -11,8 +11,9 @@ import 'auth_widgets.dart';
 //  The real flow (how Firebase and most apps do it):
 //   1) The user types their email here.
 //   2) We send them an email with a secure link.
-//   3) They open the link and choose the new password there.
-//   4) They come back and log in with the new password.
+//   3) The link opens Hesak on the new-password screen
+//      (new_password_screen.dart), where they choose the new password.
+//   4) They log in with the new password.
 //  The app never sets the password directly — only the owner of the
 //  email can, which keeps accounts safe.
 //
@@ -45,6 +46,7 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
     super.dispose();
   }
 
+  /// Empty or wrong-looking email.
   String? get _emailError {
     if (!_hasTriedSubmit) return null;
     if (_emailController.text.trim().isEmpty) return 'أدخل البريد الإلكتروني';
@@ -82,7 +84,7 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
         AuthSheetHeader(title: 'استعادة كلمة المرور', onBack: widget.onBack),
         SizedBox(height: 8),
 
-        // Soft switch between "enter email" and "check your email".
+        // Soft switch between step 1 (enter email) and step 2 (check your email).
         AnimatedSwitcher(
           duration: Duration(milliseconds: 300),
           child: _isEmailSent ? _buildEmailSentStep() : _buildEnterEmailStep(),
@@ -98,8 +100,10 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(height: 8),
+        // ---- Pink note ----
         AuthInfoBanner('أدخل بريدك الإلكتروني المسجّل، وسنرسل لك رابطًا لإنشاء كلمة مرور جديدة'),
 
+        // ---- "البريد الإلكتروني:" field ----
         AuthFieldLabel('البريد الإلكتروني:'),
         AuthTextField(
           key: Key('reset_password_email_field'),
@@ -114,12 +118,14 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
 
         SizedBox(height: 40),
 
+        // ---- Server error, above the button ----
         if (_serverError != null)
           Padding(
             padding: EdgeInsets.only(bottom: 10),
             child: Text(_serverError!, textAlign: TextAlign.center, style: HesakTextStyles.fieldError),
           ),
 
+        // ---- "إرسال رابط الاستعادة" button ----
         AuthPrimaryButton(
           key: Key('reset_password_send_button'),
           label: 'إرسال رابط الاستعادة',
@@ -136,6 +142,7 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
       key: ValueKey('reset_password_email_sent_step'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // ---- Email icon + "تحقق من بريدك الإلكتروني" + the message ----
         SizedBox(height: 24),
         Icon(Icons.mark_email_read_outlined, size: 64, color: HesakColors.primaryMuted),
         SizedBox(height: 16),
@@ -152,6 +159,7 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
           style: HesakTextStyles.body.copyWith(fontSize: 13, height: 1.6),
         ),
 
+        // ---- "العودة لتسجيل الدخول" button ----
         SizedBox(height: 40),
         AuthPrimaryButton(
           key: Key('reset_password_back_to_login_button'),
@@ -159,7 +167,7 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
           onPressed: widget.onBack,
         ),
 
-        // Didn't get it? Go back to step 1 to send again.
+        // ---- "لم يصلك البريد؟ إعادة الإرسال": back to step 1 to send again ----
         SizedBox(height: 8),
         AuthFooterLink(
           key: Key('reset_password_resend_link'),

@@ -8,18 +8,19 @@ import '../auth/auth_widgets.dart' show AuthValidators;
 import 'settings_widgets.dart';
 
 // =====================================================================
-//  CHANGE EMAIL (تغيير البريد الإلكتروني) — opened from الإعدادات.
+//  CHANGE EMAIL ("البريد الإلكتروني") — opened from الإعدادات.
 //
 //  Safe flow (like Firebase): the user types the NEW email + the current
 //  password -> we send a confirmation link to the NEW email -> the email
 //  only changes after the user opens that link.
-//  (For now the sending is fake — see AuthService.requestEmailChange.)
+//  Sent by Firebase (AuthService.requestEmailChange). Needs internet.
 //
 //  Step 1: form.  Step 2: "تحقق من بريدك الجديد".
 //
 //  NAMING: everything here starts with "SettingsEmail". Keys: 'settings_email_<name>'.
 // =====================================================================
 
+/// The change-email page (form, then "تحقق من بريدك الجديد").
 class SettingsEmailScreen extends StatefulWidget {
   const SettingsEmailScreen({super.key});
 
@@ -44,6 +45,7 @@ class _SettingsEmailScreenState extends State<SettingsEmailScreen> {
 
   String get _newEmail => _emailController.text.trim();
 
+  /// Wrong-looking email, or the same as the current one.
   String? get _emailError {
     if (_newEmail.isEmpty) return null;
     if (!AuthValidators.isValidEmail(_newEmail)) return 'البريد الإلكتروني غير صحيح';
@@ -53,9 +55,11 @@ class _SettingsEmailScreenState extends State<SettingsEmailScreen> {
     return null;
   }
 
+  /// The button works only when both fields are filled correctly.
   bool get _canSubmit =>
       _newEmail.isNotEmpty && _emailError == null && _passwordController.text.isNotEmpty && !_isLoading;
 
+  /// "إرسال رابط التأكيد": sends the link, then shows step 2.
   Future<void> _submit() async {
     setState(() {
       _isLoading = true;
@@ -117,10 +121,11 @@ class _SettingsEmailScreenState extends State<SettingsEmailScreen> {
       key: ValueKey('settings_email_form_step'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // ---- Note ----
         SizedBox(height: 8),
         SettingsNote('سنرسل رابط تأكيد إلى بريدك الجديد، ولن يتغيّر البريد إلا بعد فتح الرابط'),
 
-        // Current email (read only).
+        // ---- "البريد الحالي:" (read only) ----
         Padding(
           padding: EdgeInsets.only(top: 16, bottom: 8),
           child: Text('البريد الحالي:', style: HesakTextStyles.fieldLabel.copyWith(color: palette.textPrimary)),
@@ -132,6 +137,7 @@ class _SettingsEmailScreenState extends State<SettingsEmailScreen> {
           style: HesakTextStyles.body.copyWith(color: palette.textSecondary, fontSize: 14),
         ),
 
+        // ---- "البريد الجديد:" + "كلمة المرور الحالية:" fields ----
         SettingsTextField(
           key: Key('settings_email_new_field'),
           label: 'البريد الجديد:',
@@ -152,6 +158,7 @@ class _SettingsEmailScreenState extends State<SettingsEmailScreen> {
           onChanged: (_) => setState(() => _serverError = null),
         ),
 
+        // ---- Server error + "إرسال رابط التأكيد" button ----
         SizedBox(height: 24),
         if (_serverError != null)
           Padding(

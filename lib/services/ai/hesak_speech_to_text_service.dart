@@ -6,8 +6,10 @@
 //
 //  Until it is connected, the conversation screen keeps its demo
 //  transcript (one fake heard sentence) for testing.
+//  Used by: the mic button inside a conversation (chats_conversation_screen.dart).
 // =====================================================================
 
+/// Turns what is heard in a conversation into text (server side).
 class HesakSpeechToTextService {
   HesakSpeechToTextService._();
   static final HesakSpeechToTextService instance = HesakSpeechToTextService._();

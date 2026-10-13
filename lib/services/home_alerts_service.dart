@@ -4,6 +4,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+// =====================================================================
+//  HOME ALERTS SERVICE — the "التنبيهات" list on الرئيسية.
+//
+//  Gets: one new alert from HomeMicService each time a new sound starts.
+//  Used by: home_screen.dart (the "التنبيهات" card).
+//  Saved in Firebase: users/{uid}/homeAlerts/{alertId}
+//    title, subtitle, isUrgent, createdAt
+//  Keeps only the last 24 hours: older alerts leave the list and are
+//  deleted from Firebase (as written in the terms and privacy texts).
+// =====================================================================
+
 /// One alert on the home page.
 class HomeAlert {
   final String id;
@@ -41,8 +52,6 @@ String homeFormatTimeAgo(DateTime time) {
 }
 
 /// Every sound heard while listening, newest first (last 24 hours).
-/// Saved in Firebase: users/{uid}/homeAlerts/{alertId}
-///   title, subtitle, isUrgent, createdAt
 /// Widgets rebuild with ListenableBuilder(listenable: HomeAlertsService.instance).
 class HomeAlertsService extends ChangeNotifier {
   HomeAlertsService._() {
@@ -78,7 +87,8 @@ class HomeAlertsService extends ChangeNotifier {
         .collection('homeAlerts');
   }
 
-  /// Called by HomeMicService when a new sound starts.
+  /// Called by HomeMicService when a new sound starts: shows the alert
+  /// right away, then saves it in Firebase.
   void addSound() {
     final DocumentReference<Map<String, dynamic>>? doc = _alertsRef?.doc();
     debugPrint(
@@ -116,6 +126,7 @@ class HomeAlertsService extends ChangeNotifier {
   // Firebase
   // ---------------------------------------------------------------
 
+  /// Reads the last 24 hours of alerts, then deletes the older ones.
   Future<void> _load() async {
     final CollectionReference<Map<String, dynamic>>? ref = _alertsRef;
     if (ref == null) return;
@@ -144,6 +155,7 @@ class HomeAlertsService extends ChangeNotifier {
     }
   }
 
+  /// One Firestore document -> HomeAlert.
   HomeAlert _fromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
     final Map<String, dynamic> d = doc.data();
     return HomeAlert(
@@ -174,6 +186,7 @@ class HomeAlertsService extends ChangeNotifier {
     }
   }
 
+  /// Every 30 s: drops alerts older than 24 hours from the list.
   void _onClockTick() {
     if (_alerts.isEmpty) return;
     final DateTime since = DateTime.now().subtract(_keepFor);

@@ -9,7 +9,7 @@ import 'auth_flow_screen.dart';
 import 'auth_widgets.dart' show AuthValidators;
 
 // =====================================================================
-//  NEW PASSWORD (كلمة مرور جديدة) — opens when the user taps the
+//  NEW PASSWORD ("كلمة مرور جديدة") — opens when the user taps the
 //  "نسيت كلمة المرور" link in the email (on the phone, the link opens Hesak).
 //
 //  The link carries a secret code (AuthService.pendingResetCode).
@@ -17,7 +17,7 @@ import 'auth_widgets.dart' show AuthValidators;
 //  2) New password (same rules + green dots) + confirm.
 //  3) Save -> AuthService.confirmNewPassword -> "تم" step -> تسجيل الدخول.
 //
-//  Built from the الإعدادات widgets, so it looks like تغيير كلمة المرور.
+//  Built from the الإعدادات widgets, so it looks like "تغيير كلمة المرور".
 //  NAMING: everything here starts with "NewPassword". Keys: 'new_password_<name>'.
 // =====================================================================
 
@@ -25,7 +25,7 @@ import 'auth_widgets.dart' show AuthValidators;
 /// so this screen can open from anywhere in the app.
 final GlobalKey<NavigatorState> hesakNavigatorKey = GlobalKey<NavigatorState>();
 
-bool _isNewPasswordScreenOpen = false;
+bool _isNewPasswordScreenOpen = false; // Stops the screen opening twice
 
 /// Call ONCE in main(), before AuthService.startListeningForLinks().
 /// Opens the screen every time a reset link opens the app.
@@ -92,6 +92,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
     super.dispose();
   }
 
+  /// Asks Firebase if the link is still valid (gets the account's email).
   Future<void> _checkLink() async {
     final email = await AuthService.instance.checkResetCode(widget.code);
     if (!mounted) return;
@@ -103,6 +104,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
 
   // ---- Checks (shown only after the user typed something) ----
 
+  /// The two passwords are different.
   String? get _confirmError {
     if (_confirmController.text.isEmpty) return null;
     if (_confirmController.text != _newController.text) return 'كلمتا المرور غير متطابقتين';
@@ -115,6 +117,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
           _confirmController.text == _newController.text &&
           !_isLoading;
 
+  /// "حفظ كلمة المرور" tapped: saves the new password, then shows "تم".
   Future<void> _submit() async {
     setState(() {
       _isLoading = true;
@@ -274,10 +277,11 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
       key: ValueKey('new_password_form_step'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // ---- Note ----
         SizedBox(height: 8),
         SettingsNote('اختر كلمة مرور جديدة لحسابك، ثم سجّل الدخول بها'),
 
-        // The account (read only).
+        // ---- "الحساب:" + the email (read only) ----
         Padding(
           padding: EdgeInsets.only(top: 16, bottom: 8),
           child: Text('الحساب:', style: HesakTextStyles.fieldLabel.copyWith(color: palette.textPrimary)),
@@ -289,6 +293,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
           style: HesakTextStyles.body.copyWith(color: palette.textSecondary, fontSize: 14),
         ),
 
+        // ---- "كلمة المرور الجديدة:" field + the rules under it ----
         SettingsTextField(
           key: Key('new_password_new_field'),
           label: 'كلمة المرور الجديدة:',
@@ -298,6 +303,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
           onChanged: (_) => setState(() => _serverError = null), // Updates the rule dots
         ),
         SettingsPasswordRules(password: _newController.text),
+        // ---- "تأكيد كلمة المرور الجديدة:" field ----
         SettingsTextField(
           key: Key('new_password_confirm_field'),
           label: 'تأكيد كلمة المرور الجديدة:',
@@ -309,6 +315,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
           onChanged: (_) => setState(() => _serverError = null),
         ),
 
+        // ---- Server error + "حفظ كلمة المرور" button ----
         SizedBox(height: 24),
         if (_serverError != null)
           Padding(

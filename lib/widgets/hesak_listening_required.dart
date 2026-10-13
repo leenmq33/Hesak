@@ -3,10 +3,11 @@ import '../core/data/hesak_mode_store.dart';
 import 'hesak_confirm_dialog.dart';
 
 // =====================================================================
-//  LISTENING REQUIRED — conversations work only while the big listen
-//  button (الرئيسية) is on.
+//  LISTENING REQUIRED — the mic inside a conversation works only while
+//  the big listen button (الرئيسية) is on.
 //
-//  Use it before starting / using a conversation:
+//  Used by: the mic button in chats_conversation_screen.dart.
+//  Use it before the action:
 //    if (!await hesakRequireListening(context)) return;
 //
 //  Listening already on  -> returns true right away (no window).

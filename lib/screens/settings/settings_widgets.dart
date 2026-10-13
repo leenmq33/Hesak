@@ -9,9 +9,13 @@ import '../../widgets/hesak_toast.dart';
 // =====================================================================
 //  SETTINGS WIDGETS — building blocks for the الإعدادات pages
 //  (settings_screen.dart, settings_password_screen.dart,
-//   settings_email_screen.dart).
+//   settings_email_screen.dart). Also used by the new-password screen,
+//  the chats rename sheet and the mode editor ("الاسم للنداء" sheet).
 //
-//  Everything here follows the appearance (فاتح / داكن): colors come from
+//  Sections: buttons · sections & rows · fields · one-field sheet ·
+//  the "حذف الحساب" password window.
+//
+//  Everything here follows the appearance (light / dark): colors come from
 //  HesakPalette.current, text styles from HesakTextStyles + palette colors.
 //
 //  NAMING: everything here starts with "Settings". Keys: 'settings_<name>'.
@@ -206,7 +210,7 @@ class SettingsRow extends StatelessWidget {
 }
 
 /// Two (or more) options side by side, the picked one is a raised white pill.
-/// Used for الصوت (ذكر / أنثى) and المظهر (فاتح / داكن).
+/// Used for "الجنس" (ذكر / أنثى) and "المظهر" (فاتح / داكن).
 class SettingsSegmented<T> extends StatelessWidget {
   final List<T> values;
   final T selected;
@@ -545,14 +549,17 @@ class _SettingsNameSheetState extends State<_SettingsNameSheet> {
   String get _text => _controller.text.trim();
 
   /// Red message while typing something wrong (not shown when empty).
+  /// The red message under the field (null = OK).
   String? get _error {
     if (_text.isEmpty) return null;
     if (widget.problemOf != null) return widget.problemOf!(_text);
     return widget.isCallName ? AuthValidators.callNameProblem(_text) : AuthValidators.nameProblem(_text);
   }
 
+  /// "حفظ" works only when the text really changed and is valid.
   bool get _canSave => _text.isNotEmpty && _text != widget.initialValue.trim() && _error == null && !_isSaving;
 
+  /// "حفظ": calls [onSave]; closes the sheet when it returns true.
   Future<void> _save() async {
     setState(() => _isSaving = true);
     final bool isDone = await widget.onSave(_text);
@@ -657,6 +664,7 @@ class _SettingsDeleteAccountDialogState extends State<SettingsDeleteAccountDialo
     super.dispose();
   }
 
+  /// "حذف نهائي": deletes the account with the typed password.
   Future<void> _delete() async {
     if (_passwordController.text.isEmpty) {
       setState(() => _error = 'أدخل كلمة المرور');

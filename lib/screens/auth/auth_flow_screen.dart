@@ -29,6 +29,8 @@ import 'verify_email_form.dart';
 //    (AuthBreathingBackground in auth_widgets.dart).
 //
 //  Each form lives in its own file (login_form.dart, signup_form.dart ...).
+//  Opened by: the splash (not signed in), الإعدادات (logout / delete
+//  account) and the new-password screen (back to login).
 //
 //  NAMING: everything here starts with "AuthFlow". Keys: 'auth_<name>'.
 // =====================================================================
