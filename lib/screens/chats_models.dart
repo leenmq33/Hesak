@@ -208,6 +208,23 @@ String chatsFormatVoiceDuration(Duration duration) {
 }
 
 /// Rough speaking time for typed text (about 2 words per second).
+/// Where each word ENDS in the spoken audio, from 0.0 (start) to 1.0 (end).
+/// Long words take longer to say, and a comma / full stop / question mark
+/// adds a short pause, so each word gets a share by its letters (+ pauses).
+/// Used to move the word highlight with the real audio position.
+List<double> chatsWordEndFractions(List<String> words) {
+  final RegExp pauseAfter = RegExp(r'[،,.؟?!:؛;]$');
+  final List<double> weights = words
+      .map((word) => word.length + 1.0 + (pauseAfter.hasMatch(word) ? 3.0 : 0.0))
+      .toList();
+  final double total = weights.fold(0.0, (sum, w) => sum + w);
+  double running = 0;
+  return weights.map((w) {
+    running += w;
+    return total == 0 ? 1.0 : running / total;
+  }).toList();
+}
+
 Duration chatsEstimateVoiceDuration(String text) {
   final int words = text.trim().split(RegExp(r'\s+')).length;
   final int seconds = (words / 2).ceil().clamp(2, 600).toInt();

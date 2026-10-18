@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show TextInputFormatter;
 import '../../core/theme/hesak_palette.dart';
 import '../../core/theme/hesak_sizes.dart';
 import '../../core/theme/hesak_text_styles.dart';
@@ -326,6 +327,7 @@ class SettingsTextField extends StatefulWidget {
   final String? errorText;
   final ValueChanged<String>? onChanged;
   final TextInputAction textInputAction;
+  final List<TextInputFormatter>? inputFormatters; // e.g. the name length limit
 
   const SettingsTextField({
     super.key,
@@ -338,6 +340,7 @@ class SettingsTextField extends StatefulWidget {
     this.errorText,
     this.onChanged,
     this.textInputAction = TextInputAction.next,
+    this.inputFormatters,
   });
 
   @override
@@ -381,6 +384,7 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
           obscureText: _isTextHidden,
           onChanged: widget.onChanged,
           textInputAction: widget.textInputAction,
+          inputFormatters: widget.inputFormatters,
           keyboardType: widget.isEmail ? TextInputType.emailAddress : TextInputType.text,
           textDirection: widget.isPassword || widget.isEmail ? TextDirection.ltr : null,
           style: HesakTextStyles.fieldInput.copyWith(color: palette.textPrimary),
@@ -604,6 +608,13 @@ class _SettingsNameSheetState extends State<_SettingsNameSheet> {
                 hint: widget.hint,
                 errorText: _error,
                 textInputAction: TextInputAction.done,
+                // الاسم: 30 characters · الاسم للنداء: 20 letters, no spaces.
+                // Other texts (e.g. a conversation name, [problemOf]) have no limit here.
+                inputFormatters: widget.problemOf != null
+                    ? null
+                    : (widget.isCallName
+                        ? AuthValidators.callNameInputFormatters
+                        : AuthValidators.nameInputFormatters),
                 onChanged: (_) => setState(() {}),
               ),
               SizedBox(height: 20),

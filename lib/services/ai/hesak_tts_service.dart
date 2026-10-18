@@ -123,6 +123,16 @@ class HesakTtsService {
     return duration;
   }
 
+  /// Where the playing audio is now (updates many times a second).
+  /// The conversation screen moves the word highlight from it, so the
+  /// highlight follows the REAL voice (male and female speak at different speeds).
+  Stream<Duration> get positionStream => _player.positionStream;
+
+  /// Fires when the audio reaches its end.
+  Stream<void> get completedStream => _player.processingStateStream
+      .where((state) => state == ProcessingState.completed)
+      .map((_) {});
+
   /// Stops any audio that is playing.
   Future<void> stop() => _player.stop();
 }

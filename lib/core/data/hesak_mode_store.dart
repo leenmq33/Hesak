@@ -180,7 +180,9 @@ class HesakModeConfig {
   final List<HesakSchedulePeriod> periods; // When the mode turns on by itself
 
   // "الإعدادات العامة" section of the mode editor
-  final bool isCallNameAlertOn; // التنبيه عند نداء اسمك
+  // التنبيه عند نداء اسمك. OFF by default in every mode (the built-in ones too):
+  // only the user turns it on, in تعديل الوضع. Adding الاسم للنداء never turns it on.
+  final bool isCallNameAlertOn;
   final Set<HesakAlertType> alertTypes; // اهتزاز / إشعار / وميض
   final HesakAlertRepeat alertRepeat; // مرة / مرتين / ثلاث مرات
 
@@ -192,7 +194,7 @@ class HesakModeConfig {
     required this.icon,
     this.isFavorite = false,
     this.periods = const [],
-    this.isCallNameAlertOn = true,
+    this.isCallNameAlertOn = false,
     this.alertTypes = const {HesakAlertType.vibration, HesakAlertType.flash},
     this.alertRepeat = HesakAlertRepeat.twice,
     required this.soundIds,
@@ -459,6 +461,22 @@ class HesakModeStore extends ChangeNotifier {
   /// Saves changes to an existing mode.
   void updateMode(HesakModeConfig mode) => _replace(mode);
 
+  /// Turns "التنبيه عند نداء اسمك" OFF in every mode (and saves it).
+  /// Called when the user adds الاسم للنداء for the FIRST time: before that the
+  /// switch was locked, so an "on" value was never the user's choice (e.g. old
+  /// built-in modes saved as on). After this, only the user turns it on.
+  void turnOffCallNameAlerts() {
+    bool isChanged = false;
+    for (int i = 0; i < _modes.length; i++) {
+      if (!_modes[i].isCallNameAlertOn) continue;
+      _modes[i] = _modes[i].copyWith(isCallNameAlertOn: false);
+      isChanged = true;
+    }
+    if (!isChanged) return;
+    notifyListeners();
+    _saveAllModes();
+  }
+
   /// Adds a new mode at the end.
   void addMode(HesakModeConfig mode) {
     _modes.add(mode);
@@ -687,7 +705,7 @@ class HesakModeStore extends ChangeNotifier {
       icon: icon,
       isFavorite: d['isFavorite'] as bool? ?? fallback?.isFavorite ?? false,
       periods: rawPeriods.map((p) => _periodFromMap(Map<String, dynamic>.from(p as Map))).toList(),
-      isCallNameAlertOn: d['isCallNameAlertOn'] as bool? ?? fallback?.isCallNameAlertOn ?? true,
+      isCallNameAlertOn: d['isCallNameAlertOn'] as bool? ?? fallback?.isCallNameAlertOn ?? false,
       alertTypes: rawTypes == null
           ? (fallback?.alertTypes ?? const {HesakAlertType.vibration, HesakAlertType.flash})
           : HesakAlertType.values.where((type) => rawTypes.contains(type.name)).toSet(),

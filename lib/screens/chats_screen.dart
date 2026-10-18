@@ -25,7 +25,9 @@ import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
 import '../widgets/hesak_confirm_dialog.dart';
+import '../widgets/bottom_nav_bar.dart' show HesakNavTab;
 import '../widgets/hesak_page_header.dart';
+import '../widgets/hesak_tab_scroll.dart';
 import '../widgets/hesak_toast.dart';
 import 'settings/settings_widgets.dart';
 import 'chats_conversation_screen.dart';
@@ -352,6 +354,8 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
                     )
                   : ListView.separated(
                 key: Key('chats_conversations_list'),
+                // Tapping المحادثات again on the bar scrolls back to the top.
+                controller: HesakTabScroll.controllerFor(HesakNavTab.chats),
                 padding: EdgeInsets.fromLTRB(
                   HesakSizes.pagePadding,
                   HesakSizes.sectionGap,

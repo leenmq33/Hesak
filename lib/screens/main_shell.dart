@@ -7,6 +7,7 @@ import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_palette.dart';
 import '../services/auth_service.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/hesak_tab_scroll.dart';
 import '../widgets/hesak_toast.dart';
 import 'chats_screen.dart';
 import 'home_screen.dart';
@@ -19,7 +20,8 @@ import 'settings_screen.dart';
 //
 //  It owns:
 //  - The page background and the bottom bar (HesakBottomNavBar).
-//  - Which page is open (tapping a tab switches the page).
+//  - Which page is open (tapping a tab switches the page; tapping the open
+//    tab again scrolls its page back to the top — HesakTabScroll).
 //  - Passing the user's modes (from HesakModeStore) to the middle button.
 //  - Showing the message when the schedule switches the mode, and checking
 //    the schedule again when the app comes back from the background.
@@ -137,7 +139,12 @@ class _HesakMainShellState extends State<HesakMainShell> with WidgetsBindingObse
         builder: (context, _) => HesakBottomNavBar(
           // Tabs: tapping one opens its page.
           selectedTab: _selectedTab,
+          // Tapping the tab that is ALREADY open -> its page goes back to the top.
           onTabSelected: (tab) {
+            if (tab == _selectedTab) {
+              HesakTabScroll.scrollToTop(tab);
+              return;
+            }
             setState(() {
               _selectedTab = tab;
             });

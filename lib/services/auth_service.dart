@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../core/data/hesak_mode_store.dart';
 import '../core/theme/hesak_palette.dart';
 
 // =====================================================================
@@ -424,6 +425,11 @@ class AuthService extends ChangeNotifier {
     if (user == null) {
       return const AuthResult.failure('يرجى تسجيل الدخول أولًا');
     }
+    // First call name ever (sign up, الإعدادات, or "إضافة الاسم" in a mode):
+    // "التنبيه عند نداء اسمك" must NOT turn on by itself in the existing modes.
+    // It stays off everywhere until the user turns it on in تعديل الوضع.
+    if (currentCallName == null) HesakModeStore.instance.turnOffCallNameAlerts();
+
     // Changes right away (also without internet). Firestore keeps the change
     // on the phone and sends it to Firebase when the internet is back.
     currentCallName = callName.trim();

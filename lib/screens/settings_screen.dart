@@ -3,7 +3,9 @@ import '../core/theme/hesak_palette.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
 import '../services/auth_service.dart';
+import '../widgets/bottom_nav_bar.dart' show HesakNavTab;
 import '../widgets/hesak_page_header.dart';
+import '../widgets/hesak_tab_scroll.dart';
 import 'auth/auth_flow_screen.dart';
 import 'settings/settings_email_screen.dart';
 import 'settings/settings_password_screen.dart';
@@ -104,6 +106,8 @@ class _SettingsPageContent extends StatelessWidget {
     final theme = HesakThemeController.instance;
 
     return SingleChildScrollView(
+      // Tapping الإعدادات again on the bar scrolls back to the top.
+      controller: HesakTabScroll.controllerFor(HesakNavTab.settings),
       padding: EdgeInsets.fromLTRB(
           HesakSizes.pagePadding, 0, HesakSizes.pagePadding, HesakSizes.pageBottomSafeSpace),
       child: Column(
