@@ -142,6 +142,7 @@ class _SignUpFormState extends State<SignUpForm> {
           hint: 'اكتب اسمك',
           icon: Icons.person_outline_rounded,
           keyboardType: TextInputType.text,
+          inputFormatters: AuthValidators.nameInputFormatters, // 30 characters at most
           errorText: _nameError,
           onChanged: (_) => setState(() {}),
         ),

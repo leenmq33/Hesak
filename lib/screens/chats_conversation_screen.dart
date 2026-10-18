@@ -97,6 +97,10 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   int _playingWordIndex = 0;
   Timer? _playbackTimer;
 
+  /// Real audio playback: the highlight follows the audio position.
+  StreamSubscription<Duration>? _audioPositionSubscription;
+  StreamSubscription<void>? _audioCompletedSubscription;
+
   /// Demo only: fake incoming speech while listening.
   Timer? _demoTranscriptTimer;
 
@@ -134,6 +138,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
     HesakModeStore.instance.removeListener(_stopIfMainListeningOff);
     HesakConnection.instance.removeListener(_stopIfInternetDropped);
     _playbackTimer?.cancel();
+    _stopFollowingAudio();
     _demoTranscriptTimer?.cancel();
     _listeningBarsController.dispose();
     _messagesScrollController.dispose();
@@ -409,6 +414,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
     final bool isStopping = _playingMessageId == message.id;
     if (isStopping || !tts.isConnected) {
       if (isStopping) tts.stop();
+      _stopFollowingAudio();
       _togglePlayback(message);
       return;
     }
@@ -419,7 +425,8 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
       final String? fileName = message.audioFileName;
       if (fileName != null && await tts.hasSavedAudio(fileName)) {
         if (!mounted) return;
-        await tts.playSaved(fileName);        _togglePlayback(message);
+        final Duration? duration = await tts.playSaved(fileName);
+        _followAudio(message, duration);
         return;
       }
 
@@ -432,8 +439,8 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
       if (!mounted) return;
       message.audioFileName = newFileName;
       ConversationService.instance.saveConversation(_conversation);
-      await tts.playSaved(newFileName);
-      _togglePlayback(message);
+      final Duration? duration = await tts.playSaved(newFileName);
+      _followAudio(message, duration);
     } on HesakNetworkException catch (e) {
       _showNetworkError(e, 'تحويل النص إلى صوت يتطلب اتصالًا بالإنترنت');
     } catch (e) {
@@ -442,6 +449,50 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
     } finally {
       if (mounted) setState(() => _preparingAudioIds.remove(message.id));
     }
+  }
+
+  /// Real audio is playing: the highlight follows WHERE the audio is now
+  /// (not a guessed timer), so it stays with the voice (male or female).
+  /// Unknown length -> falls back to the timer below.
+  void _followAudio(ChatsMessage message, Duration? duration) {
+    if (!mounted) return;
+    if (duration == null || duration == Duration.zero) {
+      _togglePlayback(message);
+      return;
+    }
+    _playbackTimer?.cancel();
+    _stopFollowingAudio();
+
+    final List<double> wordEnds = chatsWordEndFractions(message.originalWords);
+    final double totalMs = duration.inMilliseconds.toDouble();
+    setState(() {
+      _playingMessageId = message.id;
+      _playingWordIndex = 0;
+    });
+
+    final HesakTtsService tts = HesakTtsService.instance;
+    _audioPositionSubscription = tts.positionStream.listen((position) {
+      if (!mounted || _playingMessageId != message.id) return;
+      final double progress = position.inMilliseconds / totalMs;
+      // The word being spoken = the first word that hasn't ended yet.
+      int index = wordEnds.indexWhere((end) => progress < end);
+      if (index == -1) index = wordEnds.length - 1;
+      if (index != _playingWordIndex) setState(() => _playingWordIndex = index);
+    });
+    _audioCompletedSubscription = tts.completedStream.listen((_) {
+      _stopFollowingAudio();
+      if (mounted && _playingMessageId == message.id) {
+        setState(() => _playingMessageId = null);
+      }
+    });
+  }
+
+  /// Stops moving the highlight with the audio.
+  void _stopFollowingAudio() {
+    _audioPositionSubscription?.cancel();
+    _audioPositionSubscription = null;
+    _audioCompletedSubscription?.cancel();
+    _audioCompletedSubscription = null;
   }
 
   /// Mock playback: moves the word highlight (no real audio yet).

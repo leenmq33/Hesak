@@ -4,7 +4,9 @@ import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
 import '../services/auth_service.dart';
+import '../widgets/bottom_nav_bar.dart' show HesakNavTab;
 import '../widgets/hesak_page_header.dart';
+import '../widgets/hesak_tab_scroll.dart';
 import 'modes/mode_editor_screen.dart';
 import 'modes/modes_widgets.dart';
 
@@ -117,13 +119,8 @@ class _ModesPageContent extends StatefulWidget {
 }
 
 class _ModesPageContentState extends State<_ModesPageContent> {
-  final ScrollController _scrollController = ScrollController();
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
+  // Shared with the bar: tapping الأوضاع again scrolls back to the top.
+  ScrollController get _scrollController => HesakTabScroll.controllerFor(HesakNavTab.modes);
 
   /// Switch turned on: that mode becomes the selected one. It stays in its
   /// place in the list (nothing moves) — only its colors change.

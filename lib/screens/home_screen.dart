@@ -8,7 +8,9 @@ import '../core/theme/hesak_text_styles.dart';
 import '../services/conversation_service.dart';
 import '../services/home_mic_service.dart';
 import '../services/home_alerts_service.dart';
+import '../widgets/bottom_nav_bar.dart' show HesakNavTab;
 import '../widgets/hesak_page_header.dart';
+import '../widgets/hesak_tab_scroll.dart';
 import 'chats_conversation_screen.dart';
 import 'chats_models.dart';
 import 'home/home_mode_section.dart';
@@ -62,6 +64,8 @@ class HomeScreen extends StatelessWidget {
       color: HesakColors.tabPageBackground,
       child: SingleChildScrollView(
         key: Key('home_scroll'),
+        // Tapping الرئيسية again on the bar scrolls back to the top.
+        controller: HesakTabScroll.controllerFor(HesakNavTab.home),
         // Bottom space keeps the last card above the floating nav bar.
         padding: EdgeInsets.only(bottom: HesakSizes.pageBottomSafeSpace),
         child: Stack(

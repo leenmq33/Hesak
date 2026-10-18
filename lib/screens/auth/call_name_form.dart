@@ -82,6 +82,7 @@ class _CallNameFormState extends State<CallNameForm> {
           // Plain text keyboard: the "name" keyboard can be locked to English.
           keyboardType: TextInputType.text,
           textInputAction: TextInputAction.done,
+          inputFormatters: AuthValidators.callNameInputFormatters, // 20 letters, no spaces
           errorText: _callNameError,
           onChanged: (_) => setState(() {}), // Enables "التالي" once a valid name is typed
         ),

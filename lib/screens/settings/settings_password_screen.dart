@@ -14,7 +14,7 @@ import '../../widgets/hesak_toast.dart';
 //
 //  Current password + new password (same rules as إنشاء حساب) + confirm.
 //  The button works only when everything is filled correctly.
-//  "نسيت كلمة المرور الحالية؟" sends a reset link to the user's email.
+//  "هل نسيت كلمة المرور الحالية؟" sends a reset link to the user's email.
 //
 //  NAMING: everything here starts with "SettingsPassword". Keys: 'settings_password_<name>'.
 // =====================================================================
@@ -89,7 +89,7 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
     }
   }
 
-  /// "نسيت كلمة المرور الحالية؟" -> reset link to the account email.
+  /// "هل نسيت كلمة المرور الحالية؟" -> reset link to the account email.
   Future<void> _sendResetLink() async {
     final email = AuthService.instance.currentEmail;
     if (email == null) {
@@ -175,23 +175,16 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
                           onTap: _canSubmit ? _submit : null,
                         ),
 
-                        // ---- "نسيت كلمة المرور الحالية؟ إرسال رابط الاستعادة" ----
+                        // ---- "هل نسيت كلمة المرور الحالية؟" (dark purple, bold) ----
+                        // Tapping it still sends the reset link to the account email.
                         SizedBox(height: 10),
                         Center(
                           child: TextButton(
                             key: Key('settings_password_forgot_button'),
                             onPressed: _sendResetLink,
-                            child: Text.rich(
-                              TextSpan(
-                                text: 'نسيت كلمة المرور الحالية؟ ',
-                                style: HesakTextStyles.authHint.copyWith(color: palette.textSecondary),
-                                children: [
-                                  TextSpan(
-                                    text: 'إرسال رابط الاستعادة',
-                                    style: HesakTextStyles.authLink.copyWith(color: palette.accent),
-                                  ),
-                                ],
-                              ),
+                            child: Text(
+                              'هل نسيت كلمة المرور الحالية؟',
+                              style: HesakTextStyles.authLink.copyWith(color: palette.title),
                             ),
                           ),
                         ),
