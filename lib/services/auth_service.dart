@@ -70,7 +70,7 @@ class AuthService extends ChangeNotifier {
 
   // ---- The signed-in user's info (loaded from Firestore) ----
 
-  /// Name (from sign up). Shown in the home greeting ("مرحبًا, فلان !"). null = unknown.
+  /// Name (from sign up). Shown in the home greeting ("مرحبًا، فلان!"). null = unknown.
   String? currentUserName;
 
   /// Email (from sign up / login). null = unknown.

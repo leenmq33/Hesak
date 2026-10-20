@@ -503,7 +503,7 @@ Future<void> showSettingsCallNameSheet(BuildContext context) {
     title: 'الاسم للنداء',
     note: 'سيُنبّهك حِسّك عند سماع هذا الاسم، لتعرف أن أحدًا يناديك',
     fieldLabel: 'الاسم:',
-    hint: 'اكتب الاسم بالعربي',
+    hint: 'اكتب الاسم بالحروف العربية',
     initialValue: auth.currentCallName ?? '',
     isCallName: true,
     onSave: (callName) async {

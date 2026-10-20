@@ -96,7 +96,7 @@ class AuthValidators {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return 'أدخل الاسم';
     if (!_arabicOrEnglishLettersPattern.hasMatch(trimmed)) return 'اكتب الاسم بالحروف فقط (بدون أرقام أو رموز)';
-    if (trimmed.replaceAll(' ', '').length < 2) return 'الاسم قصير جدًا (حرفين على الأقل)';
+    if (trimmed.replaceAll(' ', '').length < 2) return 'الاسم قصير جدًا (حرفان على الأقل)';
     if (trimmed.length > maxNameLength) return 'الاسم طويل جدًا ($maxNameLength حرفًا كحد أقصى)';
     return null;
   }
@@ -112,7 +112,7 @@ class AuthValidators {
     if (trimmed.isEmpty) return 'أدخل الاسم';
     if (!_arabicLettersPattern.hasMatch(trimmed)) return 'اكتب الاسم بالحروف العربية فقط (بدون أرقام أو رموز)';
     if (trimmed.contains(' ')) return 'اكتب الاسم بدون مسافات';
-    if (trimmed.length < 2) return 'الاسم قصير جدًا (حرفين على الأقل)';
+    if (trimmed.length < 2) return 'الاسم قصير جدًا (حرفان على الأقل)';
     if (trimmed.length > maxCallNameLength) return 'الاسم طويل جدًا ($maxCallNameLength حرفًا كحد أقصى)';
     return null;
   }

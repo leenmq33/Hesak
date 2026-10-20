@@ -154,7 +154,7 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
         SizedBox(height: 8),
         Text(
           'أرسلنا رابط استعادة كلمة المرور إلى\n${_emailController.text.trim()}\n'
-          'افتح الرابط واختر كلمة مرور جديدة، ثم ارجع لتسجيل الدخول',
+          'افتح الرابط واختر كلمة مرور جديدة، ثم عُد لتسجيل الدخول',
           textAlign: TextAlign.center,
           style: HesakTextStyles.body.copyWith(fontSize: 13, height: 1.6),
         ),

@@ -101,7 +101,7 @@ class _VerifyEmailFormState extends State<VerifyEmailForm> with WidgetsBindingOb
     setState(() => _isSending = false);
 
     if (result.isSuccess) {
-      showHesakToast(context, 'تم إرسال الرابط مرة ثانية', icon: Icons.mark_email_read_outlined);
+      showHesakToast(context, 'تم إرسال الرابط مرة أخرى', icon: Icons.mark_email_read_outlined);
     } else {
       showHesakToast(context, result.errorMessage ?? 'حدث خطأ، حاول مرة أخرى', icon: Icons.error_outline_rounded);
     }
@@ -147,7 +147,7 @@ class _VerifyEmailFormState extends State<VerifyEmailForm> with WidgetsBindingOb
         ),
         SizedBox(height: 8),
 
-        // ---- "أرسلنا رابط تأكيد إلى / email / افتح الرابط وبعدها ارجع هنا" ----
+        // ---- "أرسلنا رابط تأكيد إلى / email / افتح الرابط ثم عُد إلى هنا" ----
         Text.rich(
           TextSpan(
             style: HesakTextStyles.body.copyWith(color: HesakColors.textSecondary, fontSize: 13, height: 1.7),
@@ -157,7 +157,7 @@ class _VerifyEmailFormState extends State<VerifyEmailForm> with WidgetsBindingOb
                 text: email,
                 style: TextStyle(color: HesakColors.primary, fontWeight: FontWeight.w700),
               ),
-              TextSpan(text: '\nافتح الرابط وبعدها ارجع هنا'),
+              TextSpan(text: '\nافتح الرابط ثم عُد إلى هنا'),
             ],
           ),
           key: Key('verify_email_message'),
@@ -180,7 +180,7 @@ class _VerifyEmailFormState extends State<VerifyEmailForm> with WidgetsBindingOb
     );
   }
 
-  /// "ما وصلك الرابط؟ إعادة إرسال الرابط" — or the 60 second countdown.
+  /// "ألم يصلك الرابط؟ إعادة إرسال الرابط" — or the 60 second countdown.
   Widget _buildResendLink() {
     final bool isLocked = _secondsLeft > 0;
 
@@ -191,7 +191,7 @@ class _VerifyEmailFormState extends State<VerifyEmailForm> with WidgetsBindingOb
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('ما وصلك الرابط؟ ', style: HesakTextStyles.authHint),
+            Text('ألم يصلك الرابط؟ ', style: HesakTextStyles.authHint),
             Icon(Icons.schedule_rounded, size: 15, color: HesakColors.iconInactive),
             SizedBox(width: 4),
             Text(
@@ -205,7 +205,7 @@ class _VerifyEmailFormState extends State<VerifyEmailForm> with WidgetsBindingOb
 
     return AuthFooterLink(
       key: Key('verify_email_resend_link'),
-      question: 'ما وصلك الرابط؟',
+      question: 'ألم يصلك الرابط؟',
       linkText: 'إعادة إرسال الرابط',
       onTap: _resendLink,
     );
