@@ -78,7 +78,7 @@ class _CallNameFormState extends State<CallNameForm> {
         AuthTextField(
           key: Key('call_name_field'),
           controller: _callNameController,
-          hint: 'اكتب الاسم بالعربي',
+          hint: 'اكتب الاسم بالحروف العربية',
           // Plain text keyboard: the "name" keyboard can be locked to English.
           keyboardType: TextInputType.text,
           textInputAction: TextInputAction.done,

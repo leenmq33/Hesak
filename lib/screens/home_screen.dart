@@ -19,7 +19,7 @@ import 'home/home_mode_section.dart';
 //  HOME PAGE (الرئيسية)
 //
 //  Layout (top -> bottom):
-//    1) Shared header (purple logo + waves + "مرحبًا, رحاب !") on a light
+//    1) Shared header (purple logo + waves + "مرحبًا، رحاب!") on a light
 //       lavender tint. Under it a long soft band: it turns purple behind the
 //       listen button and fades back into the light purple page (no hard line).
 //         big listen button + a hint line under it
@@ -44,7 +44,7 @@ import 'home/home_mode_section.dart';
 
 /// The home page.
 class HomeScreen extends StatelessWidget {
-  /// The user's name shown in the greeting ("مرحبًا, رحاب !").
+  /// The user's name shown in the greeting ("مرحبًا، رحاب!").
   final String userName;
 
   /// Opens the المحادثات tab. Not used on the page for now (kept so
@@ -92,9 +92,9 @@ class HomeScreen extends StatelessWidget {
             Column(
               children: [
                 SizedBox(height: topInset),
-                // ---- Header: logo + waves + "مرحبًا, ... !" ----
+                // ---- Header: logo + waves + "مرحبًا، ...!" ----
                 HesakPageHeader.greeting(
-                  text: userName.isEmpty ? 'مرحبًا !' : 'مرحبًا, $userName !',
+                  text: userName.isEmpty ? 'مرحبًا!' : 'مرحبًا، $userName!',
                 ),
                 Directionality(
                   textDirection: TextDirection.rtl,
@@ -472,7 +472,7 @@ class _HomeCurrentSoundsCard extends StatelessWidget {
         return _HomeSoundsHint(text: 'اضغط زر الاستماع لعرض الأصوات من حولك');
       case HomeMicStatus.noPermission:
         return _HomeSoundsHint(
-          text: 'اسمح لحِسّك باستخدام المايكروفون من إعدادات الجهاز',
+          text: 'اسمح لحِسّك باستخدام الميكروفون من إعدادات الجهاز',
           isError: true,
         );
       case HomeMicStatus.warming:
@@ -486,7 +486,7 @@ class _HomeCurrentSoundsCard extends StatelessWidget {
           children: [
             _HomeSoundChip(
               key: Key('home_sound_now'),
-              label: 'فيه صوت الآن',
+              label: 'يوجد صوت الآن',
               icon: Icons.volume_up_rounded,
               isHighlighted: true,
             ),

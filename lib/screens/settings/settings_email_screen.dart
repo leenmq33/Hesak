@@ -187,7 +187,7 @@ class _SettingsEmailScreenState extends State<SettingsEmailScreen> {
         Text('تحقق من بريدك الجديد', textAlign: TextAlign.center, style: HesakTextStyles.fieldLabel.copyWith(color: palette.textPrimary)),
         SizedBox(height: 8),
         Text(
-          'أرسلنا رابط تأكيد إلى\n$_newEmail\nافتح الرابط لتأكيد بريدك الجديد، وبعدها يتغيّر في حسابك',
+          'أرسلنا رابط تأكيد إلى\n$_newEmail\nافتح الرابط لتأكيد بريدك الجديد، وبعد ذلك سيُحدَّث في حسابك',
           textAlign: TextAlign.center,
           style: HesakTextStyles.body.copyWith(color: palette.textSecondary, fontSize: 13, height: 1.6),
         ),
