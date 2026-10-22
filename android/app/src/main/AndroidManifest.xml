@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-<uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="hesak"
@@ -28,7 +28,9 @@
             </intent-filter>
 
             <!-- Hesak: open Firebase email links (password reset) inside the app.
-                 The app reads the link with the app_links package (see auth_service.dart). -->
+                 The app reads the link with the app_links package (see auth_service.dart).
+                 pathPrefix /__/auth/ covers both link shapes:
+                 /__/auth/links?link=... (old, wrapped) and /__/auth/action?... (direct). -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -36,7 +38,7 @@
                 <data
                     android:scheme="https"
                     android:host="hesak-4f175.firebaseapp.com"
-                    android:pathPrefix="/__/auth/links" />
+                    android:pathPrefix="/__/auth/" />
             </intent-filter>
 
             <!-- Hesak: the app handles links itself (app_links), not Flutter's router. -->
