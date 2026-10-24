@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 
 import '../core/data/hesak_mode_store.dart';
 import '../core/theme/hesak_palette.dart';
+import 'ai/hesak_tts_service.dart';
 
 // =====================================================================
 //  AUTH SERVICE — the ONLY place that talks to the account system.
@@ -221,7 +222,10 @@ class AuthService extends ChangeNotifier {
   ///  2) deletes everything in Firestore: users/{uid} and its
   ///     userModes, conversations and alerts
   ///  3) deletes the Firebase account itself (the email can sign up again)
+  ///  4) deletes the voice messages saved on this phone (hesak_tts folder)
   /// Needs the Firestore security rules to let users delete their own data.
+  /// Each Firestore step has a time limit: if the internet drops in the middle,
+  /// the window stops waiting and says so (instead of hanging on "deleting").
   Future<AuthResult> deleteAccount({required String password}) async {
     final user = _auth.currentUser;
     if (user == null || user.email == null) {
@@ -241,33 +245,49 @@ class AuthService extends ChangeNotifier {
     try {
       // 2) The user's data (sub-collections first, then the profile).
       final userDoc = _userDoc(user.uid);
+      // Only the collections the app really writes under users/{uid}.
       for (final String name in const [
         'userModes',
         'conversations',
         'alerts',
         'homeAlerts',
-        's؛avedPhrases',
-      ]) {        await _deleteCollection(userDoc.collection(name));
+      ]) {
+        await _deleteCollection(userDoc.collection(name)).timeout(_deleteTimeLimit);
       }
-      await userDoc.delete();
+      await userDoc.delete().timeout(_deleteTimeLimit);
 
       // 3) The account itself.
-      await user.delete();
+      await user.delete().timeout(_deleteTimeLimit);
+    } on TimeoutException {
+      debugPrint('deleteAccount error: timed out (internet dropped?)');
+      return const AuthResult.failure('انقطع الاتصال بالإنترنت، حاول مرة أخرى');
     } on FirebaseAuthException catch (e) {
+      debugPrint('deleteAccount auth error: ${e.code}');
       return AuthResult.failure(_arabicError(e.code));
+    } on FirebaseException catch (e) {
+      // e.g. permission-denied = the Firestore security rules don't allow deleting.
+      debugPrint('deleteAccount firestore error: ${e.code} ${e.message}');
+      return const AuthResult.failure('تعذّر حذف الحساب، حاول مرة أخرى');
     } catch (e) {
-      debugPrint('deleteAccount error: $e'); // e.g. the security rules don't allow deleting
+      debugPrint('deleteAccount error: $e');
       return const AuthResult.failure('تعذّر حذف الحساب، حاول مرة أخرى');
     }
+
+    // 4) Voice messages saved on this phone (not needed any more).
+    await HesakTtsService.instance.deleteAllSavedAudio();
 
     // Forget everything on this phone (same as تسجيل الخروج).
     await logOut();
     return const AuthResult.success();
   }
 
+  /// How long each delete step may wait for Firebase before giving up.
+  static const Duration _deleteTimeLimit = Duration(seconds: 20);
+
   /// Deletes every document of [collection], 400 at a time (Firestore's limit is 500).
   Future<void> _deleteCollection(CollectionReference<Map<String, dynamic>> collection) async {
-    final snapshot = await collection.get();
+    // From the server (not the phone's copy), so nothing is left behind.
+    final snapshot = await collection.get(const GetOptions(source: Source.server));
     WriteBatch batch = _db.batch();
     int count = 0;
     for (final doc in snapshot.docs) {

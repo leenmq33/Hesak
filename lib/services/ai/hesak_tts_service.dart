@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
@@ -135,4 +136,16 @@ class HesakTtsService {
 
   /// Stops any audio that is playing.
   Future<void> stop() => _player.stop();
+
+  /// Deletes ALL voice messages saved on this phone (after حذف الحساب).
+  Future<void> deleteAllSavedAudio() async {
+    try {
+      await _player.stop();
+      final Directory docs = await getApplicationDocumentsDirectory();
+      final Directory folder = Directory('${docs.path}/$audioFolder');
+      if (await folder.exists()) await folder.delete(recursive: true);
+    } catch (e) {
+      debugPrint('deleteAllSavedAudio error: $e'); // Never blocks the account deletion
+    }
+  }
 }
