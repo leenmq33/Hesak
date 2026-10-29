@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/theme/hesak_colors.dart';
 import '../../core/theme/hesak_sizes.dart';
 import '../../core/theme/hesak_text_styles.dart';
@@ -10,7 +11,12 @@ import '../../widgets/hesak_legal_sheet.dart';
 
 // =====================================================================
 //  AUTH WIDGETS — small building blocks shared by the sign in / sign up
-//  forms (login, sign up, reset password, call name).
+//  forms (login, sign up, reset password, verify email, call name).
+//  AuthValidators (email / password / name rules) is also used by
+//  الإعدادات and the new-password screen.
+//
+//  Sections: validation · sheet header · label + field · buttons & links ·
+//  moving purple background · note box, password rules, voice, terms.
 //
 //  NAMING RULES used in this file:
 //  - Everything here starts with "Auth" (AuthTextField, AuthPrimaryButton ...).
@@ -64,27 +70,50 @@ class AuthValidators {
   static final RegExp _arabicOrEnglishLettersPattern =
       RegExp(r'^[\u0621-\u064A\u064B-\u0652\u0640A-Za-z ]+$');
 
+  /// Longest NAME (الاسم): 30 characters, spaces included.
+  static const int maxNameLength = 30;
+
+  /// Longest CALL NAME (الاسم للنداء): 20 letters, no spaces at all.
+  static const int maxCallNameLength = 20;
+
+  /// For the NAME fields: stops typing (and pasting) after [maxNameLength] characters.
+  static List<TextInputFormatter> get nameInputFormatters => [
+        LengthLimitingTextInputFormatter(maxNameLength),
+      ];
+
+  /// For the CALL NAME fields: spaces can't be typed, and typing stops after
+  /// [maxCallNameLength] letters.
+  static List<TextInputFormatter> get callNameInputFormatters => [
+        FilteringTextInputFormatter.deny(RegExp(r'\s')),
+        LengthLimitingTextInputFormatter(maxCallNameLength),
+      ];
+
   /// Why the user's NAME is not OK, or null when it's fine.
-  /// Rules: not empty, Arabic or English letters only, at least 2 letters.
-  /// Used by إنشاء حساب and الإعدادات (الاسم).
+  /// Rules: not empty, Arabic or English letters only, at least 2 letters,
+  /// at most [maxNameLength] characters.
+  /// Used by "إنشاء حساب" and الإعدادات > "الاسم".
   static String? nameProblem(String name) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return 'أدخل الاسم';
     if (!_arabicOrEnglishLettersPattern.hasMatch(trimmed)) return 'اكتب الاسم بالحروف فقط (بدون أرقام أو رموز)';
-    if (trimmed.replaceAll(' ', '').length < 2) return 'الاسم قصير جدًا (حرفين على الأقل)';
+    if (trimmed.replaceAll(' ', '').length < 2) return 'الاسم قصير جدًا (حرفان على الأقل)';
+    if (trimmed.length > maxNameLength) return 'الاسم طويل جدًا ($maxNameLength حرفًا كحد أقصى)';
     return null;
   }
 
   /// true when the name passes all the rules above.
   static bool isValidName(String name) => nameProblem(name) == null;
 
-  /// Why the CALL NAME (الاسم للنداء) is not OK, or null when it's fine.
-  /// Rules: not empty, ARABIC letters only (Hesak listens for it in Arabic), at least 2 letters.
+  /// Why the CALL NAME ("الاسم للنداء") is not OK, or null when it's fine.
+  /// Rules: not empty, ARABIC letters only (Hesak listens for it in Arabic),
+  /// no spaces, at least 2 letters, at most [maxCallNameLength] letters.
   static String? callNameProblem(String name) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return 'أدخل الاسم';
     if (!_arabicLettersPattern.hasMatch(trimmed)) return 'اكتب الاسم بالحروف العربية فقط (بدون أرقام أو رموز)';
-    if (trimmed.replaceAll(' ', '').length < 2) return 'الاسم قصير جدًا (حرفين على الأقل)';
+    if (trimmed.contains(' ')) return 'اكتب الاسم بدون مسافات';
+    if (trimmed.length < 2) return 'الاسم قصير جدًا (حرفان على الأقل)';
+    if (trimmed.length > maxCallNameLength) return 'الاسم طويل جدًا ($maxCallNameLength حرفًا كحد أقصى)';
     return null;
   }
 
@@ -179,6 +208,7 @@ class AuthTextField extends StatefulWidget {
   final TextInputAction textInputAction;
   final String? errorText; // null = no error
   final ValueChanged<String>? onChanged;
+  final List<TextInputFormatter>? inputFormatters; // e.g. the name length limit
 
   const AuthTextField({
     super.key,
@@ -190,6 +220,7 @@ class AuthTextField extends StatefulWidget {
     this.textInputAction = TextInputAction.next,
     this.errorText,
     this.onChanged,
+    this.inputFormatters,
   });
 
   @override
@@ -229,6 +260,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
             keyboardType: widget.keyboardType,
             textInputAction: widget.textInputAction,
             onChanged: widget.onChanged,
+            inputFormatters: widget.inputFormatters,
             style: HesakTextStyles.fieldInput,
             // Emails and passwords are typed left-to-right.
             textDirection: (widget.isPassword || widget.keyboardType == TextInputType.emailAddress)

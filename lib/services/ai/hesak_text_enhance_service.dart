@@ -17,6 +17,9 @@ import '../../screens/chats_models.dart';
 //  No key -> enhance() returns the local mock (chatsEnhanceText),
 //  so the app still works for anyone without a key.
 //
+//  Used by: "تحسين النص" on a heard message and the ✦ button next to the
+//  typing field (chats_conversation_screen.dart).
+//
 //  TODO(production): move this call to a server (Cloud Function) so the
 //  key is not inside the app, then point [_endpoint] to it.
 // =====================================================================
@@ -30,6 +33,7 @@ enum HesakTextSource {
   heard,
 }
 
+/// Improves a text (clearer wording) without changing the original.
 class HesakTextEnhanceService {
   HesakTextEnhanceService._();
   static final HesakTextEnhanceService instance = HesakTextEnhanceService._();

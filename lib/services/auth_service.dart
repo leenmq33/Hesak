@@ -5,17 +5,25 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../core/data/hesak_mode_store.dart';
 import '../core/theme/hesak_palette.dart';
+import 'ai/hesak_tts_service.dart';
 
 // =====================================================================
 //  AUTH SERVICE — the ONLY place that talks to the account system.
 //
-//  Now connected to Firebase:
+//  Connected to Firebase:
 //    - Firebase Authentication: the account (email, password, verification).
-//    - Cloud Firestore users/{uid}: the profile (name, voice, call name...).
+//    - Cloud Firestore users/{uid}: the profile (name, voice, call name,
+//      appearance...).
 //
-//  The public functions are the same as the fake version,
-//  so the screens don't need to change.
+//  Used by: the sign in / sign up screens (lib/screens/auth), the splash
+//  screen (restoreSession), الرئيسية (the name in the greeting) and
+//  الإعدادات (every account setting + حذف الحساب).
+//  Screens rebuild on changes with ListenableBuilder(listenable: AuthService.instance).
+//
+//  Sections below: sign up / log in · email verification · password reset ·
+//  call name · account settings · helpers.
 // =====================================================================
 
 /// The voice the app uses to read texts out loud.
@@ -63,7 +71,7 @@ class AuthService extends ChangeNotifier {
 
   // ---- The signed-in user's info (loaded from Firestore) ----
 
-  /// Name (from sign up). Shown in the home greeting ("مرحبًا, فلان !"). null = unknown.
+  /// Name (from sign up). Shown in the home greeting ("مرحبًا، فلان!"). null = unknown.
   String? currentUserName;
 
   /// Email (from sign up / login). null = unknown.
@@ -72,7 +80,7 @@ class AuthService extends ChangeNotifier {
   /// Reading voice (from sign up).
   HesakVoice currentVoice = HesakVoice.male;
 
-  /// The name Hesak listens for (للتنبيه عند النداء). null = not added yet.
+  /// The name Hesak listens for ("الاسم للنداء"). null = not added yet.
   String? currentCallName;
 
   /// Voice picked at sign up, kept here until the email is verified
@@ -214,7 +222,10 @@ class AuthService extends ChangeNotifier {
   ///  2) deletes everything in Firestore: users/{uid} and its
   ///     userModes, conversations and alerts
   ///  3) deletes the Firebase account itself (the email can sign up again)
+  ///  4) deletes the voice messages saved on this phone (hesak_tts folder)
   /// Needs the Firestore security rules to let users delete their own data.
+  /// Each Firestore step has a time limit: if the internet drops in the middle,
+  /// the window stops waiting and says so (instead of hanging on "deleting").
   Future<AuthResult> deleteAccount({required String password}) async {
     final user = _auth.currentUser;
     if (user == null || user.email == null) {
@@ -234,33 +245,49 @@ class AuthService extends ChangeNotifier {
     try {
       // 2) The user's data (sub-collections first, then the profile).
       final userDoc = _userDoc(user.uid);
+      // Only the collections the app really writes under users/{uid}.
       for (final String name in const [
         'userModes',
         'conversations',
         'alerts',
         'homeAlerts',
-        's؛avedPhrases',
-      ]) {        await _deleteCollection(userDoc.collection(name));
+      ]) {
+        await _deleteCollection(userDoc.collection(name)).timeout(_deleteTimeLimit);
       }
-      await userDoc.delete();
+      await userDoc.delete().timeout(_deleteTimeLimit);
 
       // 3) The account itself.
-      await user.delete();
+      await user.delete().timeout(_deleteTimeLimit);
+    } on TimeoutException {
+      debugPrint('deleteAccount error: timed out (internet dropped?)');
+      return const AuthResult.failure('انقطع الاتصال بالإنترنت، حاول مرة أخرى');
     } on FirebaseAuthException catch (e) {
+      debugPrint('deleteAccount auth error: ${e.code}');
       return AuthResult.failure(_arabicError(e.code));
+    } on FirebaseException catch (e) {
+      // e.g. permission-denied = the Firestore security rules don't allow deleting.
+      debugPrint('deleteAccount firestore error: ${e.code} ${e.message}');
+      return const AuthResult.failure('تعذّر حذف الحساب، حاول مرة أخرى');
     } catch (e) {
-      debugPrint('deleteAccount error: $e'); // e.g. the security rules don't allow deleting
+      debugPrint('deleteAccount error: $e');
       return const AuthResult.failure('تعذّر حذف الحساب، حاول مرة أخرى');
     }
+
+    // 4) Voice messages saved on this phone (not needed any more).
+    await HesakTtsService.instance.deleteAllSavedAudio();
 
     // Forget everything on this phone (same as تسجيل الخروج).
     await logOut();
     return const AuthResult.success();
   }
 
+  /// How long each delete step may wait for Firebase before giving up.
+  static const Duration _deleteTimeLimit = Duration(seconds: 20);
+
   /// Deletes every document of [collection], 400 at a time (Firestore's limit is 500).
   Future<void> _deleteCollection(CollectionReference<Map<String, dynamic>> collection) async {
-    final snapshot = await collection.get();
+    // From the server (not the phone's copy), so nothing is left behind.
+    final snapshot = await collection.get(const GetOptions(source: Source.server));
     WriteBatch batch = _db.batch();
     int count = 0;
     for (final doc in snapshot.docs) {
@@ -313,7 +340,7 @@ class AuthService extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------------
-  // Password reset + call name
+  // Password reset ("هل نسيت كلمة المرور؟")
   // ---------------------------------------------------------------------
 
   /// Sends an email with a secure link to choose a new password.
@@ -360,6 +387,8 @@ class AuthService extends ChangeNotifier {
     );
   }
 
+  /// Reads a link that opened the app. Only the password-reset link is used:
+  /// its code goes to [pendingResetCode] (which opens the new-password screen).
   void _handleLink(Uri uri) {
     // Firebase wraps the real link: .../__/auth/links?link=<real link>
     Uri actionLink = uri;
@@ -404,49 +433,61 @@ class AuthService extends ChangeNotifier {
   /// The user closed the new-password screen without saving.
   void cancelPasswordReset() => pendingResetCode.value = null;
 
-  /// Saves the name the app should listen for (للتنبيه عند النداء).
+  // ---------------------------------------------------------------------
+  // Call name ("الاسم للنداء")
+  // ---------------------------------------------------------------------
+
+  /// Saves the name the app should listen for ("الاسم للنداء"), right away,
+  /// also without internet. Used by the call name step after sign up and by
+  /// الإعدادات / the mode editor.
   Future<AuthResult> saveCallName({required String callName}) async {
     final user = _auth.currentUser;
     if (user == null) {
       return const AuthResult.failure('يرجى تسجيل الدخول أولًا');
     }
-    try {
-      await _userDoc(user.uid).update({
+    // First call name ever (sign up, الإعدادات, or "إضافة الاسم" in a mode):
+    // "التنبيه عند نداء اسمك" must NOT turn on by itself in the existing modes.
+    // It stays off everywhere until the user turns it on in تعديل الوضع.
+    if (currentCallName == null) HesakModeStore.instance.turnOffCallNameAlerts();
+
+    // Changes right away (also without internet). Firestore keeps the change
+    // on the phone and sends it to Firebase when the internet is back.
+    currentCallName = callName.trim();
+    notifyListeners();
+    unawaited(
+      _userDoc(user.uid).update({
         'nameRecognition': {
           'enabled': true,
           'names': [callName.trim()],
           'updatedAt': FieldValue.serverTimestamp(),
         },
-      });
-      currentCallName = callName.trim();
-      notifyListeners();
-      return const AuthResult.success();
-    } catch (e) {
-      debugPrint('saveCallName error: $e');
-      return const AuthResult.failure('تعذّر حفظ الاسم، حاول مرة أخرى');
-    }
+      }).catchError((e) => debugPrint('saveCallName error: $e')),
+    );
+    return const AuthResult.success();
   }
 
   // ---------------------------------------------------------------------
   // Account settings (الإعدادات)
   // ---------------------------------------------------------------------
 
-  /// Changes the user's name.
+  /// Changes the user's name (right away, also without internet).
   Future<AuthResult> updateName({required String name}) async {
     final user = _auth.currentUser;
     if (user == null) {
       return const AuthResult.failure('يرجى تسجيل الدخول أولًا');
     }
-    try {
-      await _userDoc(user.uid).update({'displayName': name.trim()});
-      await user.updateDisplayName(name.trim());
-      currentUserName = name.trim();
-      notifyListeners();
-      return const AuthResult.success();
-    } catch (e) {
-      debugPrint('updateName error: $e');
-      return const AuthResult.failure('تعذّر حفظ الاسم، حاول مرة أخرى');
-    }
+    // Changes right away (also without internet), like الجنس.
+    // Firestore sends it to Firebase when the internet is back.
+    currentUserName = name.trim();
+    notifyListeners();
+    unawaited(
+      _userDoc(user.uid)
+          .update({'displayName': name.trim()})
+          .catchError((e) => debugPrint('updateName error: $e')),
+    );
+    // The name inside the verification emails (needs internet; not important offline).
+    unawaited(user.updateDisplayName(name.trim()).catchError((e) => debugPrint('updateDisplayName error: $e')));
+    return const AuthResult.success();
   }
 
   /// Changes the reading voice (saved right away, no loading).
@@ -592,6 +633,7 @@ class AuthService extends ChangeNotifier {
     return user.reauthenticateWithCredential(credential);
   }
 
+  /// The message for a failed password check ("كلمة المرور الحالية غير صحيحة").
   String _wrongCurrentPassword(String code) {
     if (code == 'wrong-password' || code == 'invalid-credential') {
       return 'كلمة المرور الحالية غير صحيحة';

@@ -42,9 +42,12 @@ import '../screens/chats_models.dart';
 //  it at once and uploaded when the internet returns. Nothing is deleted
 //  because of the internet; only the 24-hour rule deletes (unsaved only).
 //
+//  Used by: المحادثات list (chats_screen.dart), one conversation
+//  (chats_conversation_screen.dart) and "محادثات اليوم" on الرئيسية.
 //  This file only converts the models (chats_models.dart) to / from Firestore.
 // =====================================================================
 
+/// Loads, creates, saves and deletes the user's conversations.
 class ConversationService {
   ConversationService._(); // Only one in the whole app
   static final ConversationService instance = ConversationService._();
@@ -260,6 +263,7 @@ class ConversationService {
   // Converting models <-> Firestore maps
   // -------------------------------------------------------------------
 
+  /// One conversation -> the map saved in Firestore.
   Map<String, dynamic> _conversationToMap(ChatsConversation c) {
     return <String, dynamic>{
       'title': c.title,
@@ -278,6 +282,7 @@ class ConversationService {
     };
   }
 
+  /// The saved map -> one conversation.
   ChatsConversation _conversationFromMap(String id, Map<String, dynamic> d) {
     final List<dynamic> rawMessages = d['messages'] as List<dynamic>? ?? [];
     return ChatsConversation(
@@ -294,6 +299,7 @@ class ConversationService {
     );
   }
 
+  /// One message -> the map saved inside the conversation.
   Map<String, dynamic> _messageToMap(ChatsMessage m) {
     return <String, dynamic>{
       'id': m.id,
@@ -308,6 +314,7 @@ class ConversationService {
     };
   }
 
+  /// The saved map -> one message.
   ChatsMessage _messageFromMap(Map<String, dynamic> d) {
     final int? voiceMs = d['voiceDurationMs'] as int?;
     return ChatsMessage(

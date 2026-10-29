@@ -1,10 +1,14 @@
-/// ALL shared sizes (spacing, corner radius, icon sizes) live here,
-/// so every page has the same margins and roundness.
-///
-/// Rules for the team:
-/// - Use `HesakSizes.xxx` instead of typing numbers for padding / radius.
-/// - Numbers that belong to ONE special widget only (like the listen
-///   button's 170) can stay inside that widget.
+// =====================================================================
+//  HESAK SIZES — ALL shared sizes (spacing, corner radius, icon sizes)
+//  live here, so every page has the same margins and roundness.
+//
+//  Rules for the team:
+//  - Use `HesakSizes.xxx` instead of typing numbers for padding / radius.
+//  - Numbers that belong to ONE special widget only (like the listen
+//    button's 170) can stay inside that widget.
+// =====================================================================
+
+/// Shared spacing, corner radius and icon sizes.
 class HesakSizes {
   HesakSizes._(); // Use HesakSizes.xxx directly
 

@@ -12,14 +12,13 @@ import 'package:flutter/foundation.dart';
 //    addListener(...)                    -> told when it changes
 //
 //  Started once in HesakMainShell.
+//  Used by: hesakRequireInternet (the "لا يوجد اتصال" window), hesakRunOnline
+//  (AI requests), and the conversation screen (stops speech-to-text when
+//  the internet drops).
 //
 //  How it checks: it really tries to reach the internet (looks up
 //  google.com), every few seconds. No extra package is needed, so it also
 //  catches "Wi-Fi is on but there is no internet".
-//
-//  When the real models are connected (speech-to-text / text-to-speech),
-//  their own errors (no reply, timeout) should show the same
-//  "لا يوجد اتصال بالإنترنت" window too.
 // =====================================================================
 
 class HesakConnection extends ChangeNotifier {
@@ -51,6 +50,7 @@ class HesakConnection extends ChangeNotifier {
   Future<bool> checkNow() =>
       _runningCheck ??= _check().whenComplete(() => _runningCheck = null);
 
+  /// One real check; tells the listeners only when the answer changed.
   Future<bool> _check() async {
     bool isOnlineNow;
     try {

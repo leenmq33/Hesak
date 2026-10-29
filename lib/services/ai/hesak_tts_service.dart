@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
@@ -17,6 +18,7 @@ import '../auth_service.dart';
 //    file only (works offline, ElevenLabs is NOT called again).
 //
 //  Voice: male / female, from the user's choice (AuthService.currentVoice).
+//  Used by: the conversation screen (send typed text / play it again).
 //
 //  Saved audio location:
 //    <app documents folder>/hesak_tts/<conversationId>/<messageId>.mp3
@@ -28,6 +30,7 @@ import '../auth_service.dart';
 //  server (Firebase Cloud Function) so the key is not inside the APK.
 // =====================================================================
 
+/// Turns typed text into speech (ElevenLabs) and plays the saved audio.
 class HesakTtsService {
   HesakTtsService._();
   static final HesakTtsService instance = HesakTtsService._();
@@ -63,6 +66,7 @@ class HesakTtsService {
   }) =>
       '$conversationId/$messageId.mp3';
 
+  /// The full path on the phone of a saved audio file.
   Future<File> _fileFor(String fileName) async {
     final Directory docs = await getApplicationDocumentsDirectory();
     return File('${docs.path}/$audioFolder/$fileName');
@@ -120,6 +124,28 @@ class HesakTtsService {
     return duration;
   }
 
+  /// Where the playing audio is now (updates many times a second).
+  /// The conversation screen moves the word highlight from it, so the
+  /// highlight follows the REAL voice (male and female speak at different speeds).
+  Stream<Duration> get positionStream => _player.positionStream;
+
+  /// Fires when the audio reaches its end.
+  Stream<void> get completedStream => _player.processingStateStream
+      .where((state) => state == ProcessingState.completed)
+      .map((_) {});
+
   /// Stops any audio that is playing.
   Future<void> stop() => _player.stop();
+
+  /// Deletes ALL voice messages saved on this phone (after حذف الحساب).
+  Future<void> deleteAllSavedAudio() async {
+    try {
+      await _player.stop();
+      final Directory docs = await getApplicationDocumentsDirectory();
+      final Directory folder = Directory('${docs.path}/$audioFolder');
+      if (await folder.exists()) await folder.delete(recursive: true);
+    } catch (e) {
+      debugPrint('deleteAllSavedAudio error: $e'); // Never blocks the account deletion
+    }
+  }
 }

@@ -1,4 +1,11 @@
 // ============================================================================
+// CHATS MODELS — what a conversation and a message are, plus small helpers
+// (dates, "تُحذف بعد ...", voice length, "محادثة NN" numbers).
+//
+// Used by: chats_screen.dart (the list), chats_conversation_screen.dart
+// (one conversation), الرئيسية ("محادثات اليوم") and ConversationService
+// (saves them in Firebase).
+//
 // NAMING RULES (Chats page)
 // - Public classes shared between the chats files start with "Chats"
 //   (e.g. ChatsConversation). Private classes start with "_Chats".
@@ -9,10 +16,7 @@
 // - Spelling: hesak (not heask).
 // ============================================================================
 
-/// Data models, sample data and small helpers for the Chats page.
-///
-/// Used by chats_screen.dart (the list) and
-/// chats_conversation_screen.dart (one conversation).
+/// Data models and small helpers for the Chats page.
 library;
 
 /// How long an unsaved conversation stays before it is deleted automatically.
@@ -204,6 +208,23 @@ String chatsFormatVoiceDuration(Duration duration) {
 }
 
 /// Rough speaking time for typed text (about 2 words per second).
+/// Where each word ENDS in the spoken audio, from 0.0 (start) to 1.0 (end).
+/// Long words take longer to say, and a comma / full stop / question mark
+/// adds a short pause, so each word gets a share by its letters (+ pauses).
+/// Used to move the word highlight with the real audio position.
+List<double> chatsWordEndFractions(List<String> words) {
+  final RegExp pauseAfter = RegExp(r'[،,.؟?!:؛;]$');
+  final List<double> weights = words
+      .map((word) => word.length + 1.0 + (pauseAfter.hasMatch(word) ? 3.0 : 0.0))
+      .toList();
+  final double total = weights.fold(0.0, (sum, w) => sum + w);
+  double running = 0;
+  return weights.map((w) {
+    running += w;
+    return total == 0 ? 1.0 : running / total;
+  }).toList();
+}
+
 Duration chatsEstimateVoiceDuration(String text) {
   final int words = text.trim().split(RegExp(r'\s+')).length;
   final int seconds = (words / 2).ceil().clamp(2, 600).toInt();
@@ -214,10 +235,9 @@ Duration chatsEstimateVoiceDuration(String text) {
 // AI text enhancement
 // ---------------------------------------------------------------------------
 
-/// Returns an improved version of [text].
-///
-/// TODO: connect to the real AI service. This local version only fixes a
-/// few common colloquial words and adds final punctuation, so the UI can be
+/// Returns an improved version of [text] — the local mock used by
+/// HesakTextEnhanceService until OpenAI is connected. It only fixes a few
+/// common colloquial words and adds final punctuation, so the UI can be
 /// tested now.
 Future<String> chatsEnhanceText(String text) async {
   String result = text.trim().replaceAll(RegExp(r'\s+'), ' ');
@@ -255,10 +275,8 @@ Future<String> chatsEnhanceText(String text) async {
 // Sample data
 // ---------------------------------------------------------------------------
 
-/// Demo conversations so the page can be tested before real storage exists.
-///
-/// TODO: replace with the real conversations source (local DB / backend) and
-/// delete unsaved conversations older than [chatsAutoDeleteAfter].
+/// Demo conversations (for testing only). Not used by the app anymore:
+/// the real conversations come from ConversationService (Firebase).
 List<ChatsConversation> chatsSampleConversations() {
   final DateTime now = DateTime.now();
   final DateTime meetingStart = now.subtract(Duration(hours: 6));

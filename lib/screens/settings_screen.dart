@@ -3,7 +3,9 @@ import '../core/theme/hesak_palette.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
 import '../services/auth_service.dart';
+import '../widgets/bottom_nav_bar.dart' show HesakNavTab;
 import '../widgets/hesak_page_header.dart';
+import '../widgets/hesak_tab_scroll.dart';
 import 'auth/auth_flow_screen.dart';
 import 'settings/settings_email_screen.dart';
 import 'settings/settings_password_screen.dart';
@@ -28,13 +30,15 @@ import '../widgets/hesak_internet_required.dart';
 //  Every change has its own "حفظ" (faded until something really changes),
 //  so there's no big "حفظ التعديلات" button. الجنس / المظهر save right away.
 //
-//  This page (and the bottom bar) follows the appearance فاتح / داكن
-//  (TRIAL — the other pages stay light for now). See hesak_palette.dart.
+//  Colors come from HesakPalette (light / dark, see hesak_palette.dart).
+//  Data: AuthService (every account setting is saved there).
+//  Shared pieces: settings/settings_widgets.dart.
 //
 //  NAMING: everything here starts with "Settings". Keys: 'settings_<name>'.
 //  This page does NOT build the bottom bar — HesakMainShell does that.
 // =====================================================================
 
+/// The الإعدادات tab (with its own navigator for the inner pages).
 class SettingsScreen extends StatelessWidget {
   /// true while the الإعدادات tab is on screen. The phone back button
   /// only goes back inside this tab while it's shown.
@@ -78,7 +82,7 @@ class _SettingsHomePage extends StatelessWidget {
             bottom: false, // The bottom bar handles the bottom edge
             child: Column(
               children: [
-                // Shared Hesak header (follows فاتح / داكن on this page).
+                // Shared Hesak header (follows light / dark).
                 HesakPageHeader(title: 'الإعدادات', followsAppearance: true),
                 Expanded(child: _SettingsPageContent(auth: AuthService.instance)),
               ],
@@ -102,12 +106,14 @@ class _SettingsPageContent extends StatelessWidget {
     final theme = HesakThemeController.instance;
 
     return SingleChildScrollView(
+      // Tapping الإعدادات again on the bar scrolls back to the top.
+      controller: HesakTabScroll.controllerFor(HesakNavTab.settings),
       padding: EdgeInsets.fromLTRB(
           HesakSizes.pagePadding, 0, HesakSizes.pagePadding, HesakSizes.pageBottomSafeSpace),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ---------------- الحساب ----------------
+          // ---------------- "الحساب" card: الاسم · البريد الإلكتروني · تغيير كلمة المرور ----------------
           SettingsSectionTitle('الحساب'),
           SettingsCard(
             children: [
@@ -138,7 +144,7 @@ class _SettingsPageContent extends StatelessWidget {
             ],
           ),
 
-          // ---------------- التفضيلات ----------------
+          // ---------------- "التفضيلات" card: الجنس · المظهر ----------------
           SettingsSectionTitle('التفضيلات'),
           SettingsCard(
             children: [
@@ -187,7 +193,7 @@ class _SettingsPageContent extends StatelessWidget {
             ],
           ),
 
-          // ---------------- للتنبيه عند النداء ----------------
+          // ---------------- "للتنبيه عند النداء" card: الاسم للنداء ----------------
           SettingsSectionTitle('للتنبيه عند النداء'),
           SettingsCard(
             children: [
@@ -203,7 +209,7 @@ class _SettingsPageContent extends StatelessWidget {
             ],
           ),
 
-          // ---------------- تسجيل الخروج ----------------
+          // ---------------- "تسجيل الخروج" button ----------------
           SizedBox(height: 24),
           SettingsButton(
             key: Key('settings_logout_button'),
@@ -215,7 +221,7 @@ class _SettingsPageContent extends StatelessWidget {
             onTap: () => _logOut(context),
           ),
 
-          // ---------------- حذف الحساب ----------------
+          // ---------------- "حذف الحساب" link ----------------
           // Small red link under "تسجيل الخروج": there, but hard to tap by mistake.
           SizedBox(height: 10),
           Center(
@@ -260,6 +266,7 @@ class _SettingsPageContent extends StatelessWidget {
 
   // ---- Actions ----
 
+  /// "الاسم" row: opens the name sheet (saved right away, also offline).
   void _editName(BuildContext context) {
     showSettingsNameSheet(
       context,
@@ -280,7 +287,7 @@ class _SettingsPageContent extends StatelessWidget {
   /// Shared sheet (also opened from the الأوضاع editor).
   void _editCallName(BuildContext context) => showSettingsCallNameSheet(context);
 
-  /// حذف الحساب: 1) are you sure?  2) password  3) delete -> welcome screen.
+  /// "حذف الحساب": 1) are you sure?  2) password  3) delete -> welcome screen.
   Future<void> _deleteAccount(BuildContext context) async {
     final bool isConfirmed = await showHesakConfirmDialog(
       context,
@@ -312,6 +319,7 @@ class _SettingsPageContent extends StatelessWidget {
     );
   }
 
+  /// "تسجيل الخروج": asks first, then signs out and opens the welcome screen.
   Future<void> _logOut(BuildContext context) async {
     final bool isConfirmed = await showHesakConfirmDialog(
       context,

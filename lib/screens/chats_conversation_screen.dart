@@ -1,4 +1,20 @@
 // ============================================================================
+// ONE CONVERSATION — full screen (opened from المحادثات or "محادثات اليوم").
+//
+// Layout (top -> bottom):
+//   header: back · title (tap to rename) · save button
+//   messages: heard speech on the LEFT (+ "تحسين النص"),
+//             the user's typed text as a voice message on the RIGHT
+//   bottom bar: typing field + ✦ (improve), then the mic or send button
+// A brand-new conversation shows the start card instead of the messages.
+//
+// Needs internet: mic (speech -> text), send (text -> speech), ✦ improve.
+// Works offline: typing, reading, playing saved audio, saved improvements.
+// The mic also needs the big listen button (الرئيسية) on.
+//
+// Sections below: back / leave · title · listening · sending · playback ·
+// AI enhancement · scrolling · build · then the small widgets.
+//
 // NAMING RULES (Chats page)
 // - Private classes in this file start with "_Chats" (e.g. _ChatsComposerBar).
 // - Public classes shared between the chats files start with "Chats".
@@ -81,6 +97,10 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   int _playingWordIndex = 0;
   Timer? _playbackTimer;
 
+  /// Real audio playback: the highlight follows the audio position.
+  StreamSubscription<Duration>? _audioPositionSubscription;
+  StreamSubscription<void>? _audioCompletedSubscription;
+
   /// Demo only: fake incoming speech while listening.
   Timer? _demoTranscriptTimer;
 
@@ -105,9 +125,10 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
     super.initState();
     _messagesScrollController.addListener(_updateScrollIndicator);
     _composerController.addListener(() => setState(() {}));
-    // The big listen button turned off (by the user or because the internet
-    // dropped) -> stop listening here too.
+    // The big listen button turned off -> stop listening here too.
     HesakModeStore.instance.addListener(_stopIfMainListeningOff);
+    // The internet dropped -> speech-to-text stops (it runs on the server).
+    HesakConnection.instance.addListener(_stopIfInternetDropped);
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _updateScrollIndicator());
   }
@@ -115,7 +136,9 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   @override
   void dispose() {
     HesakModeStore.instance.removeListener(_stopIfMainListeningOff);
+    HesakConnection.instance.removeListener(_stopIfInternetDropped);
     _playbackTimer?.cancel();
+    _stopFollowingAudio();
     _demoTranscriptTimer?.cancel();
     _listeningBarsController.dispose();
     _messagesScrollController.dispose();
@@ -214,6 +237,25 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
       setState(() {}); // Just redraw the mic (faded or normal)
       return;
     }
+    _stopSpeechToText();
+  }
+
+  /// The internet dropped while turning speech into text -> stop it and tell
+  /// the user. The big listen button stays on (it works without internet).
+  void _stopIfInternetDropped() {
+    if (!mounted || !_isListening || HesakConnection.instance.isOnline) return;
+    if (!HesakSpeechToTextService.instance.needsInternet) return;
+    _stopSpeechToText();
+    showHesakToast(
+      context,
+      'انقطع الاتصال بالإنترنت',
+      icon: Icons.wifi_off_rounded,
+      atTop: true, // The keyboard may cover the bottom here
+    );
+  }
+
+  /// Stops listening in this conversation (the bars and the text stop).
+  void _stopSpeechToText() {
     setState(() => _isListening = false);
     _listeningBarsController.stop();
     _demoTranscriptTimer?.cancel();
@@ -253,7 +295,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
         if (stt.needsInternet && !await HesakConnection.instance.checkNow()) {
           _showNetworkError(
             HesakNetworkException(wasOffline: true),
-            'يتطلب تحويل الكلام إلى نص اتصالًا بالإنترنت',
+            'تحويل الكلام إلى نص يتطلب اتصالًا بالإنترنت',
           );
           return;
         }
@@ -309,7 +351,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   /// Generating new speech needs the internet. On failure the typed text
   /// stays in the field so the user can try again.
 
-Future<void> _sendComposerText() async {
+  Future<void> _sendComposerText() async {
 final String text = _composerController.text.trim();
 
 
@@ -330,7 +372,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
         );
       });
     } on HesakNetworkException catch (e) {
-      _showNetworkError(e, 'يتطلب تحويل النص إلى صوت اتصالًا بالإنترنت');
+      _showNetworkError(e, 'تحويل النص إلى صوت يتطلب اتصالًا بالإنترنت');
       return;
     } catch (e) {
       debugPrint('tts error: $e');
@@ -372,6 +414,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
     final bool isStopping = _playingMessageId == message.id;
     if (isStopping || !tts.isConnected) {
       if (isStopping) tts.stop();
+      _stopFollowingAudio();
       _togglePlayback(message);
       return;
     }
@@ -382,7 +425,8 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
       final String? fileName = message.audioFileName;
       if (fileName != null && await tts.hasSavedAudio(fileName)) {
         if (!mounted) return;
-        await tts.playSaved(fileName);        _togglePlayback(message);
+        final Duration? duration = await tts.playSaved(fileName);
+        _followAudio(message, duration);
         return;
       }
 
@@ -395,16 +439,60 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
       if (!mounted) return;
       message.audioFileName = newFileName;
       ConversationService.instance.saveConversation(_conversation);
-      await tts.playSaved(newFileName);
-      _togglePlayback(message);
+      final Duration? duration = await tts.playSaved(newFileName);
+      _followAudio(message, duration);
     } on HesakNetworkException catch (e) {
-      _showNetworkError(e, 'يتطلب تحويل النص إلى صوت اتصالًا بالإنترنت');
+      _showNetworkError(e, 'تحويل النص إلى صوت يتطلب اتصالًا بالإنترنت');
     } catch (e) {
       debugPrint('tts error: $e');
       _showFailure('تعذّر تحويل النص إلى صوت، حاول مرة أخرى');
     } finally {
       if (mounted) setState(() => _preparingAudioIds.remove(message.id));
     }
+  }
+
+  /// Real audio is playing: the highlight follows WHERE the audio is now
+  /// (not a guessed timer), so it stays with the voice (male or female).
+  /// Unknown length -> falls back to the timer below.
+  void _followAudio(ChatsMessage message, Duration? duration) {
+    if (!mounted) return;
+    if (duration == null || duration == Duration.zero) {
+      _togglePlayback(message);
+      return;
+    }
+    _playbackTimer?.cancel();
+    _stopFollowingAudio();
+
+    final List<double> wordEnds = chatsWordEndFractions(message.originalWords);
+    final double totalMs = duration.inMilliseconds.toDouble();
+    setState(() {
+      _playingMessageId = message.id;
+      _playingWordIndex = 0;
+    });
+
+    final HesakTtsService tts = HesakTtsService.instance;
+    _audioPositionSubscription = tts.positionStream.listen((position) {
+      if (!mounted || _playingMessageId != message.id) return;
+      final double progress = position.inMilliseconds / totalMs;
+      // The word being spoken = the first word that hasn't ended yet.
+      int index = wordEnds.indexWhere((end) => progress < end);
+      if (index == -1) index = wordEnds.length - 1;
+      if (index != _playingWordIndex) setState(() => _playingWordIndex = index);
+    });
+    _audioCompletedSubscription = tts.completedStream.listen((_) {
+      _stopFollowingAudio();
+      if (mounted && _playingMessageId == message.id) {
+        setState(() => _playingMessageId = null);
+      }
+    });
+  }
+
+  /// Stops moving the highlight with the audio.
+  void _stopFollowingAudio() {
+    _audioPositionSubscription?.cancel();
+    _audioPositionSubscription = null;
+    _audioCompletedSubscription?.cancel();
+    _audioCompletedSubscription = null;
   }
 
   /// Mock playback: moves the word highlight (no real audio yet).
@@ -457,7 +545,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
         message.enhancedText = await hesakRunOnline(
             () => HesakTextEnhanceService.instance.enhance(message.originalText));
       } on HesakNetworkException catch (e) {
-        _showNetworkError(e, 'يتطلب تحسين النص اتصالًا بالإنترنت');
+        _showNetworkError(e, 'تحسين النص يتطلب اتصالًا بالإنترنت');
         return;
       } catch (e) {
         debugPrint('enhance error: $e');
@@ -493,7 +581,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
       enhanced = await hesakRunOnline(
           () => HesakTextEnhanceService.instance.enhance(original));
     } on HesakNetworkException catch (e) {
-      _showNetworkError(e, 'يتطلب تحسين النص اتصالًا بالإنترنت');
+      _showNetworkError(e, 'تحسين النص يتطلب اتصالًا بالإنترنت');
       return;
     } catch (e) {
       debugPrint('enhance error: $e');
@@ -588,6 +676,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
     );
   }
 
+  /// The whole page: header, messages (or start card), bottom bar.
   Widget _buildPage(BuildContext context) {
     final bool isShowingStartCard = _isUntouchedNewConversation;
 
@@ -601,6 +690,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
         body: SafeArea(
           child: Column(
             children: <Widget>[
+              // ---- Header: back · title · save ----
               _ChatsConversationHeader(
                 title: _conversation.title,
                 isEditingTitle: _isEditingTitle,
@@ -611,6 +701,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
                 onSaveTitle: _saveEditedTitle,
                 onToggleSaved: _toggleConversationSaved,
               ),
+              // ---- Start card (new conversation) OR the messages ----
               Expanded(
                 child: isShowingStartCard
                     ? Center(
@@ -634,6 +725,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
                         ],
                       ),
               ),
+              // ---- Bottom bar: typing field + ✦, mic / send ----
               _ChatsComposerBar(
                 controller: _composerController,
                 isListening: _isListening,
@@ -982,6 +1074,7 @@ class _ChatsFadingDivider extends StatelessWidget {
 // Start card (only for a brand-new conversation, only once)
 // ---------------------------------------------------------------------------
 
+/// The big card in the middle of a new conversation (starts listening).
 class _ChatsStartListeningCard extends StatelessWidget {
   const _ChatsStartListeningCard({required this.onStart});
 

@@ -8,8 +8,9 @@ import '../core/theme/hesak_text_styles.dart';
 import '../services/conversation_service.dart';
 import '../services/home_mic_service.dart';
 import '../services/home_alerts_service.dart';
-import '../widgets/hesak_internet_required.dart';
+import '../widgets/bottom_nav_bar.dart' show HesakNavTab;
 import '../widgets/hesak_page_header.dart';
+import '../widgets/hesak_tab_scroll.dart';
 import 'chats_conversation_screen.dart';
 import 'chats_models.dart';
 import 'home/home_mode_section.dart';
@@ -18,7 +19,7 @@ import 'home/home_mode_section.dart';
 //  HOME PAGE (الرئيسية)
 //
 //  Layout (top -> bottom):
-//    1) Shared header (purple logo + waves + "مرحبًا, رحاب !") on a light
+//    1) Shared header (purple logo + waves + "مرحبًا، رحاب!") on a light
 //       lavender tint. Under it a long soft band: it turns purple behind the
 //       listen button and fades back into the light purple page (no hard line).
 //         big listen button + a hint line under it
@@ -34,12 +35,16 @@ import 'home/home_mode_section.dart';
 //  - Important widgets have a unique Key: 'home_<name>'.
 //  - Colors / text styles / sizes come ONLY from lib/core/theme.
 //
+//  Data: HesakModeStore (listening + mode), HomeMicService (the mic),
+//  HomeAlertsService (التنبيهات), ConversationService (محادثات اليوم).
+//  The mode card lives in its own file: home/home_mode_section.dart.
+//
 //  This page does NOT build the bottom bar — HesakMainShell does that.
 // =====================================================================
 
 /// The home page.
 class HomeScreen extends StatelessWidget {
-  /// The user's name shown in the greeting ("مرحبًا, رحاب !").
+  /// The user's name shown in the greeting ("مرحبًا، رحاب!").
   final String userName;
 
   /// Opens the المحادثات tab. Not used on the page for now (kept so
@@ -59,6 +64,8 @@ class HomeScreen extends StatelessWidget {
       color: HesakColors.tabPageBackground,
       child: SingleChildScrollView(
         key: Key('home_scroll'),
+        // Tapping الرئيسية again on the bar scrolls back to the top.
+        controller: HesakTabScroll.controllerFor(HesakNavTab.home),
         // Bottom space keeps the last card above the floating nav bar.
         padding: EdgeInsets.only(bottom: HesakSizes.pageBottomSafeSpace),
         child: Stack(
@@ -85,9 +92,9 @@ class HomeScreen extends StatelessWidget {
             Column(
               children: [
                 SizedBox(height: topInset),
-                // Shared header, same as every page (purple logo + waves).
+                // ---- Header: logo + waves + "مرحبًا، ...!" ----
                 HesakPageHeader.greeting(
-                  text: userName.isEmpty ? 'مرحبًا !' : 'مرحبًا, $userName !',
+                  text: userName.isEmpty ? 'مرحبًا!' : 'مرحبًا، $userName!',
                 ),
                 Directionality(
                   textDirection: TextDirection.rtl,
@@ -96,15 +103,15 @@ class HomeScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _HomeListenButton(),
+                        _HomeListenButton(), // Big listen button + hint
                         SizedBox(height: 22),
-                        _HomeCurrentSoundsCard(),
+                        _HomeCurrentSoundsCard(), // "الأصوات الحالية"
                         SizedBox(height: HesakSizes.sectionGap + 4),
-                        HomeModeSection(),
+                        HomeModeSection(), // "الوضع الحالي" card
                         SizedBox(height: HesakSizes.sectionGap + 4),
-                        _HomeConversationsCard(),
+                        _HomeConversationsCard(), // "محادثات اليوم"
                         SizedBox(height: HesakSizes.sectionGap + 4),
-                        _HomeAlertsCard(),
+                        _HomeAlertsCard(), // "التنبيهات"
                       ],
                     ),
                   ),
@@ -160,10 +167,11 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
     super.initState();
     // Coming back to the page while listening -> keep the animation going.
     _syncAnimationsWithStore();
-    // Listening can also be turned on from a conversation ("تشغيل الاستماع").
+    // Listening can also be turned on from a conversation ("تشغيل زر الاستماع").
     HesakModeStore.instance.addListener(_syncAnimationsWithStore);
   }
 
+  /// Starts / stops the animation when the listening state changes.
   void _syncAnimationsWithStore() {
     final bool isListening = HesakModeStore.instance.isListening;
     if (isListening == _isAnimatingListening) return;
@@ -180,12 +188,14 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
     super.dispose();
   }
 
+  /// Pulse + rings + turning arc (while listening).
   void _startAnimations() {
     _listenPulseController.repeat(reverse: true);
     _listenRingsController.repeat();
     _listenArcController.repeat();
   }
 
+  /// Back to the still button.
   void _stopAnimations() {
     _listenPulseController.animateTo(0, duration: Duration(milliseconds: 200));
     _listenRingsController
@@ -197,13 +207,12 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
   }
 
   /// Start or stop listening. The mode card + الأوضاع page follow the store.
-  /// Starting needs the internet (no internet -> window, stays off).
+  /// Works without internet too (sounds are heard on the phone).
   Future<void> _toggleListening() async {
     final bool isTurningOn = !HesakModeStore.instance.isListening;
-    if (isTurningOn && !await hesakRequireInternet(context)) return;
     // The store tells _syncAnimationsWithStore, which starts / stops the animation.
+    // HomeMicService follows the store and opens / closes the microphone.
     HesakModeStore.instance.setListening(isTurningOn);
-       // HomeMicService follows the store and opens / closes the microphone.
   }
 
   @override
@@ -300,7 +309,7 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
               ),
             ),
 
-            // Hint under the button: tells the user the mode turns on with listening.
+            // ---- Hint under the button ("اضغط لبدء الاستماع وتفعيل الوضع") ----
             AnimatedSwitcher(
               duration: Duration(milliseconds: 250),
               child: Text(
@@ -318,6 +327,7 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
     );
   }
 
+  /// Inside the button before listening: mic + "ابدأ الاستماع".
   Widget _buildIdleContent() {
     return Column(
       key: ValueKey('home_listen_idle'),
@@ -330,6 +340,7 @@ class _HomeListenButtonState extends State<_HomeListenButton> with TickerProvide
     );
   }
 
+  /// Inside the button while listening: "يستمع…" + "اضغط للإيقاف".
   Widget _buildListeningContent() {
     return Column(
       key: ValueKey('home_listen_on'),
@@ -454,19 +465,20 @@ class _HomeCurrentSoundsCard extends StatelessWidget {
     );
   }
 
+  /// What the card shows for each mic status (off / no permission / quiet / sound).
   Widget _buildContent(HomeMicService mic) {
     switch (mic.status) {
       case HomeMicStatus.off:
         return _HomeSoundsHint(text: 'اضغط زر الاستماع لعرض الأصوات من حولك');
       case HomeMicStatus.noPermission:
         return _HomeSoundsHint(
-          text: 'اسمح لحِسّك باستخدام المايكروفون من إعدادات الجهاز',
+          text: 'اسمح لحِسّك باستخدام الميكروفون من إعدادات الجهاز',
           isError: true,
         );
-            case HomeMicStatus.warming:
+      case HomeMicStatus.warming:
         // The first 3 s still learn the room, but the user doesn't need to see it.
         return _HomeSoundsHint(text: 'المكان هادئ الآن');
-            case HomeMicStatus.quiet:
+      case HomeMicStatus.quiet:
         return _HomeSoundsHint(text: 'المكان هادئ الآن');
       case HomeMicStatus.active:
         // Shown only while the sound is on; gone as soon as it ends.
@@ -474,7 +486,7 @@ class _HomeCurrentSoundsCard extends StatelessWidget {
           children: [
             _HomeSoundChip(
               key: Key('home_sound_now'),
-              label: 'فيه صوت الآن',
+              label: 'يوجد صوت الآن',
               icon: Icons.volume_up_rounded,
               isHighlighted: true,
             ),
@@ -579,6 +591,7 @@ class _HomeConversationsCardState extends State<_HomeConversationsCard> {
   /// true when loading failed (e.g. no internet) and nothing is shown yet.
   bool _hasLoadFailed = false;
 
+  /// Reads the conversations (ConversationService).
   Future<void> _loadConversations() async {
     final List<ChatsConversation>? loaded = await ConversationService.instance.loadConversations();
     if (!mounted) return;
@@ -629,6 +642,7 @@ class _HomeConversationsCardState extends State<_HomeConversationsCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // ---- "تعذّر تحميل المحادثات" (tap to try again) / empty text / the list ----
           if (today.isEmpty && _hasLoadFailed)
             // No internet / Firebase error: tap to try again.
             InkWell(
@@ -675,6 +689,7 @@ class _HomeConversationsCardState extends State<_HomeConversationsCard> {
                 ),
               ),
             ),
+          // ---- "محادثة جديدة" button ----
           SizedBox(height: 10),
           SizedBox(
             height: 48,

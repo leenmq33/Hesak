@@ -7,22 +7,31 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 
+// =====================================================================
+//  MAIN — where the app starts.
+//
+//  Order on open: light/dark choice -> Firebase -> email links
+//  (new password) -> HesakApp -> SplashScreen.
+//  HesakApp holds the app-wide settings: Arabic, right-to-left, light/dark.
+//  Shared file — don't edit without telling the team.
+// =====================================================================
+
 /// App entry point: the first thing that runs when the app opens.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // فاتح / داكن: the last choice on this phone (before anything shows).
+  // "فاتح / داكن": the last choice saved on this phone (before anything shows).
   await HesakThemeController.instance.loadFromPhone();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
   // "نسيت كلمة المرور" link from the email -> opens the new-password screen.
+  // (AuthService catches the link, the screen opens when it arrives.)
   startOpeningNewPasswordScreen();
   AuthService.instance.startListeningForLinks();
   runApp(const HesakApp());
 }
 
 /// The whole app: global settings + the first screen.
-/// Shared file — don't edit without telling the team.
 class HesakApp extends StatelessWidget {
   const HesakApp({super.key});
 
@@ -35,7 +44,7 @@ class HesakApp extends StatelessWidget {
       // Lets the new-password screen open from anywhere (see new_password_screen.dart).
       navigatorKey: hesakNavigatorKey,
 
-      // ---- فاتح / داكن (chosen in الإعدادات) ----
+      // ---- "فاتح / داكن" (chosen in الإعدادات) ----
       // Our screens use HesakColors (light or dark by itself); this only makes
       // Flutter's own parts (default text, cursor, ripples ...) match.
       theme: ThemeData(brightness: Brightness.light),

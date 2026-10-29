@@ -12,7 +12,12 @@ import '../../widgets/hesak_toast.dart';
 // =====================================================================
 //  MODES WIDGETS — building blocks shared by the الأوضاع pages:
 //    modes_screen.dart (main page),
-//    mode_editor_screen.dart (edit / add a mode).
+//    mode_editor_screen.dart (edit / add a mode),
+//    and the mode card on الرئيسية (home/home_mode_section.dart).
+//
+//  Sections: messages · buttons · state badge · mode circle · section card ·
+//  chips · schedule (جدولة الوضع) · general settings · sounds ·
+//  icon + name picker.
 //
 //  NAMING: everything here starts with "Modes". Keys: 'modes_<name>'.
 //  Colors / text styles / sizes come ONLY from lib/core/theme.
@@ -544,6 +549,7 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
     }
   }
 
+  /// Opens the edit box: [index] = a saved period, _newPeriodIndex = a new one.
   void _startEditing(int index) {
     setState(() {
       _editingIndex = index;
@@ -561,6 +567,7 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
     });
   }
 
+  /// "إلغاء": closes the edit box without saving.
   void _cancelEditing() => setState(() {
         _editingIndex = null;
         _clashMessage = null;
@@ -644,6 +651,7 @@ class _ModesScheduleEditorState extends State<ModesScheduleEditor> {
     showHesakToast(context, editingIndex == _newPeriodIndex ? 'تمت إضافة الفترة' : 'تم تعديل الفترة');
   }
 
+  /// Asks first, then deletes the period.
   Future<void> _deletePeriod(int index) async {
     final period = widget.periods[index];
     final bool isConfirmed = await showHesakConfirmDialog(
@@ -1226,12 +1234,14 @@ class _ModesSoundsPickerState extends State<ModesSoundsPicker> {
   /// Sends the new selection (emergency sounds are always kept).
   void _emit(Set<String> ids) => widget.onChanged({...ids, ...hesakEmergencySoundIds});
 
+  /// Turns one sound on / off.
   void _toggleSound(String id) {
     final updated = {...widget.selectedIds};
     updated.contains(id) ? updated.remove(id) : updated.add(id);
     _emit(updated);
   }
 
+  /// "تحديد الكل" / "إلغاء الكل" for one section.
   void _setAll(HesakSoundCategory category, bool isOn) {
     final ids = hesakSoundsIn(category).map((s) => s.id);
     final updated = {...widget.selectedIds};
@@ -1285,6 +1295,7 @@ class _ModesSoundsPickerState extends State<ModesSoundsPicker> {
     );
   }
 
+  /// One section: its title (opens / closes) and its sound chips.
   List<Widget> _buildCategory(HesakSoundCategory category) {
     final allSounds = hesakSoundsIn(category);
     // While searching: only matching sounds, and matching sections open by themselves.
@@ -1541,6 +1552,7 @@ class _ModesIconNameSheetState extends State<_ModesIconNameSheet> {
   /// true when the name or the icon is different from the saved one.
   bool get _hasChanges => _nameController.text.trim() != widget.mode.name || _icon != widget.mode.icon;
 
+  /// "حفظ": checks the name, saves name + icon, closes the sheet.
   void _save() {
     final problem = modesNameProblem(_nameController.text, exceptId: widget.mode.id);
     if (problem != null) {

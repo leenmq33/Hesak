@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show TextInputFormatter;
 import '../../core/theme/hesak_palette.dart';
 import '../../core/theme/hesak_sizes.dart';
 import '../../core/theme/hesak_text_styles.dart';
@@ -9,9 +10,13 @@ import '../../widgets/hesak_toast.dart';
 // =====================================================================
 //  SETTINGS WIDGETS — building blocks for the الإعدادات pages
 //  (settings_screen.dart, settings_password_screen.dart,
-//   settings_email_screen.dart).
+//   settings_email_screen.dart). Also used by the new-password screen,
+//  the chats rename sheet and the mode editor ("الاسم للنداء" sheet).
 //
-//  Everything here follows the appearance (فاتح / داكن): colors come from
+//  Sections: buttons · sections & rows · fields · one-field sheet ·
+//  the "حذف الحساب" password window.
+//
+//  Everything here follows the appearance (light / dark): colors come from
 //  HesakPalette.current, text styles from HesakTextStyles + palette colors.
 //
 //  NAMING: everything here starts with "Settings". Keys: 'settings_<name>'.
@@ -206,7 +211,7 @@ class SettingsRow extends StatelessWidget {
 }
 
 /// Two (or more) options side by side, the picked one is a raised white pill.
-/// Used for الصوت (ذكر / أنثى) and المظهر (فاتح / داكن).
+/// Used for "الجنس" (ذكر / أنثى) and "المظهر" (فاتح / داكن).
 class SettingsSegmented<T> extends StatelessWidget {
   final List<T> values;
   final T selected;
@@ -322,6 +327,7 @@ class SettingsTextField extends StatefulWidget {
   final String? errorText;
   final ValueChanged<String>? onChanged;
   final TextInputAction textInputAction;
+  final List<TextInputFormatter>? inputFormatters; // e.g. the name length limit
 
   const SettingsTextField({
     super.key,
@@ -334,6 +340,7 @@ class SettingsTextField extends StatefulWidget {
     this.errorText,
     this.onChanged,
     this.textInputAction = TextInputAction.next,
+    this.inputFormatters,
   });
 
   @override
@@ -377,6 +384,7 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
           obscureText: _isTextHidden,
           onChanged: widget.onChanged,
           textInputAction: widget.textInputAction,
+          inputFormatters: widget.inputFormatters,
           keyboardType: widget.isEmail ? TextInputType.emailAddress : TextInputType.text,
           textDirection: widget.isPassword || widget.isEmail ? TextDirection.ltr : null,
           style: HesakTextStyles.fieldInput.copyWith(color: palette.textPrimary),
@@ -495,7 +503,7 @@ Future<void> showSettingsCallNameSheet(BuildContext context) {
     title: 'الاسم للنداء',
     note: 'سيُنبّهك حِسّك عند سماع هذا الاسم، لتعرف أن أحدًا يناديك',
     fieldLabel: 'الاسم:',
-    hint: 'اكتب الاسم بالعربي',
+    hint: 'اكتب الاسم بالحروف العربية',
     initialValue: auth.currentCallName ?? '',
     isCallName: true,
     onSave: (callName) async {
@@ -545,14 +553,17 @@ class _SettingsNameSheetState extends State<_SettingsNameSheet> {
   String get _text => _controller.text.trim();
 
   /// Red message while typing something wrong (not shown when empty).
+  /// The red message under the field (null = OK).
   String? get _error {
     if (_text.isEmpty) return null;
     if (widget.problemOf != null) return widget.problemOf!(_text);
     return widget.isCallName ? AuthValidators.callNameProblem(_text) : AuthValidators.nameProblem(_text);
   }
 
+  /// "حفظ" works only when the text really changed and is valid.
   bool get _canSave => _text.isNotEmpty && _text != widget.initialValue.trim() && _error == null && !_isSaving;
 
+  /// "حفظ": calls [onSave]; closes the sheet when it returns true.
   Future<void> _save() async {
     setState(() => _isSaving = true);
     final bool isDone = await widget.onSave(_text);
@@ -597,6 +608,13 @@ class _SettingsNameSheetState extends State<_SettingsNameSheet> {
                 hint: widget.hint,
                 errorText: _error,
                 textInputAction: TextInputAction.done,
+                // الاسم: 30 characters · الاسم للنداء: 20 letters, no spaces.
+                // Other texts (e.g. a conversation name, [problemOf]) have no limit here.
+                inputFormatters: widget.problemOf != null
+                    ? null
+                    : (widget.isCallName
+                        ? AuthValidators.callNameInputFormatters
+                        : AuthValidators.nameInputFormatters),
                 onChanged: (_) => setState(() {}),
               ),
               SizedBox(height: 20),
@@ -657,6 +675,7 @@ class _SettingsDeleteAccountDialogState extends State<SettingsDeleteAccountDialo
     super.dispose();
   }
 
+  /// "حذف نهائي": deletes the account with the typed password.
   Future<void> _delete() async {
     if (_passwordController.text.isEmpty) {
       setState(() => _error = 'أدخل كلمة المرور');

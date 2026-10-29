@@ -8,6 +8,11 @@ import 'auth_widgets.dart';
 //  HesakAuthFlowScreen. Only the form; the purple top + logo come from
 //  the flow screen.
 //
+//  Flow: "تسجيل الدخول" -> AuthService.logIn ->
+//    success            -> the app opens
+//    email not verified -> the "تأكيد البريد" step
+//    wrong data         -> red message above the button
+//
 //  NAMING: everything here starts with "Login". Keys: 'login_<name>'.
 // =====================================================================
 
@@ -50,6 +55,7 @@ class _LoginFormState extends State<LoginForm> {
 
   // ---- Field errors (null = OK) ----
 
+  /// Empty or wrong-looking email.
   String? get _emailError {
     if (!_hasTriedSubmit) return null;
     if (_emailController.text.trim().isEmpty) return 'أدخل البريد الإلكتروني';
@@ -57,6 +63,7 @@ class _LoginFormState extends State<LoginForm> {
     return null;
   }
 
+  /// Empty password.
   String? get _passwordError {
     if (!_hasTriedSubmit) return null;
     if (_passwordController.text.isEmpty) return 'أدخل كلمة المرور';
@@ -96,7 +103,7 @@ class _LoginFormState extends State<LoginForm> {
         AuthSheetHeader(title: 'تسجيل الدخول', onBack: widget.onBack),
         SizedBox(height: 12),
 
-        // ---- Email ----
+        // ---- "البريد الإلكتروني:" field ----
         AuthFieldLabel('البريد الإلكتروني:'),
         AuthTextField(
           key: Key('login_email_field'),
@@ -108,7 +115,7 @@ class _LoginFormState extends State<LoginForm> {
           onChanged: (_) => setState(() {}), // Refresh the error while fixing it
         ),
 
-        // ---- Password ----
+        // ---- "كلمة المرور:" field ----
         AuthFieldLabel('كلمة المرور:'),
         AuthTextField(
           key: Key('login_password_field'),
@@ -120,7 +127,7 @@ class _LoginFormState extends State<LoginForm> {
           onChanged: (_) => setState(() {}),
         ),
 
-        // "هل نسيت كلمة المرور؟" under the password, on the left (end) side.
+        // ---- "هل نسيت كلمة المرور؟" link (under the password, left side) ----
         Align(
           alignment: AlignmentDirectional.centerEnd,
           child: TextButton(
@@ -136,13 +143,14 @@ class _LoginFormState extends State<LoginForm> {
 
         SizedBox(height: 28),
 
-        // Error from the server (e.g. wrong password), above the button.
+        // ---- Server error (e.g. wrong password), above the button ----
         if (_serverError != null)
           Padding(
             padding: EdgeInsets.only(bottom: 10),
             child: Text(_serverError!, textAlign: TextAlign.center, style: HesakTextStyles.fieldError),
           ),
 
+        // ---- "تسجيل الدخول" button ----
         AuthPrimaryButton(
           key: Key('login_submit_button'),
           label: 'تسجيل الدخول',
@@ -150,6 +158,7 @@ class _LoginFormState extends State<LoginForm> {
           onPressed: _submitLogin,
         ),
 
+        // ---- "ليس لديك حساب؟ إنشاء حساب" ----
         SizedBox(height: 16),
         AuthFooterLink(
           key: Key('login_go_to_signup_link'),

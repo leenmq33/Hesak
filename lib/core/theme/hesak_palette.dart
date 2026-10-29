@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'hesak_colors.dart';
 
 // =====================================================================
-//  HESAK PALETTE — light / dark (المظهر: فاتح / داكن)
+//  HESAK PALETTE — light / dark ("المظهر": فاتح / داكن)
 //
 //  The WHOLE app follows the appearance:
 //  - Most screens use HesakColors.xxx, which gives the light or dark color
@@ -176,7 +176,7 @@ class HesakPalette {
     required this.modeMenuBackdropBorder,
   });
 
-  /// فاتح — exactly the colors the app already uses.
+  /// Light ("فاتح") — exactly the colors the app already uses.
   static const HesakPalette light = HesakPalette(
     background: HesakColorsLight.tabPageBackground, // Lavender like the other tabs
     surface: HesakColorsLight.surface,
@@ -210,7 +210,7 @@ class HesakPalette {
     modeMenuBackdropBorder: HesakColorsLight.modeMenuBackdropBorder,
   );
 
-  /// داكن — very dark purple (not pure black) so it still feels like Hesak.
+  /// Dark ("داكن") — very dark purple (not pure black) so it still feels like Hesak.
   /// Accents are a LIGHTER purple so they stand out on the dark background.
   static const HesakPalette dark = HesakPalette(
     background: Color(0xFF17121D),

@@ -9,15 +9,17 @@ import 'settings_widgets.dart';
 import '../../widgets/hesak_toast.dart';
 
 // =====================================================================
-//  CHANGE PASSWORD (تغيير كلمة المرور) — opened from الإعدادات.
+//  CHANGE PASSWORD ("تغيير كلمة المرور") — opened from الإعدادات.
+//  Saved with AuthService.changePassword (needs internet).
 //
 //  Current password + new password (same rules as إنشاء حساب) + confirm.
 //  The button works only when everything is filled correctly.
-//  "نسيت كلمة المرور الحالية؟" sends a reset link to the user's email.
+//  "هل نسيت كلمة المرور الحالية؟" sends a reset link to the user's email.
 //
 //  NAMING: everything here starts with "SettingsPassword". Keys: 'settings_password_<name>'.
 // =====================================================================
 
+/// The change-password page.
 class SettingsPasswordScreen extends StatefulWidget {
   const SettingsPasswordScreen({super.key});
 
@@ -43,6 +45,7 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
 
   // ---- Checks (shown only after the user typed something) ----
 
+  /// A rule of the new password is not met.
   String? get _newError {
     final text = _newController.text;
     if (text.isEmpty) return null;
@@ -50,6 +53,7 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
     return null;
   }
 
+  /// The two new passwords are different.
   String? get _confirmError {
     if (_confirmController.text.isEmpty) return null;
     if (_confirmController.text != _newController.text) return 'كلمتا المرور غير متطابقتين';
@@ -64,6 +68,7 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
       _confirmController.text == _newController.text &&
       !_isLoading;
 
+  /// "تغيير كلمة المرور": checks the current password, saves the new one.
   Future<void> _submit() async {
     setState(() {
       _isLoading = true;
@@ -84,7 +89,7 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
     }
   }
 
-  /// "نسيت كلمة المرور الحالية؟" -> reset link to the account email.
+  /// "هل نسيت كلمة المرور الحالية؟" -> reset link to the account email.
   Future<void> _sendResetLink() async {
     final email = AuthService.instance.currentEmail;
     if (email == null) {
@@ -120,6 +125,7 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // ---- "كلمة المرور الحالية:" field ----
                         SettingsTextField(
                           key: Key('settings_password_current_field'),
                           label: 'كلمة المرور الحالية:',
@@ -128,6 +134,7 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
                           isPassword: true,
                           onChanged: (_) => setState(() => _serverError = null),
                         ),
+                        // ---- "كلمة المرور الجديدة:" field + the rules under it ----
                         SettingsTextField(
                           key: Key('settings_password_new_field'),
                           label: 'كلمة المرور الجديدة:',
@@ -138,6 +145,7 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
                           onChanged: (_) => setState(() {}), // Updates the rule dots
                         ),
                         SettingsPasswordRules(password: _newController.text),
+                        // ---- "تأكيد كلمة المرور الجديدة:" field ----
                         SettingsTextField(
                           key: Key('settings_password_confirm_field'),
                           label: 'تأكيد كلمة المرور الجديدة:',
@@ -149,6 +157,7 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
                           onChanged: (_) => setState(() {}),
                         ),
 
+                        // ---- Server error + "تغيير كلمة المرور" button ----
                         SizedBox(height: 24),
                         if (_serverError != null)
                           Padding(
@@ -166,23 +175,16 @@ class _SettingsPasswordScreenState extends State<SettingsPasswordScreen> {
                           onTap: _canSubmit ? _submit : null,
                         ),
 
-                        // Forgot the current password?
+                        // ---- "هل نسيت كلمة المرور الحالية؟" (dark purple, bold) ----
+                        // Tapping it still sends the reset link to the account email.
                         SizedBox(height: 10),
                         Center(
                           child: TextButton(
                             key: Key('settings_password_forgot_button'),
                             onPressed: _sendResetLink,
-                            child: Text.rich(
-                              TextSpan(
-                                text: 'نسيت كلمة المرور الحالية؟ ',
-                                style: HesakTextStyles.authHint.copyWith(color: palette.textSecondary),
-                                children: [
-                                  TextSpan(
-                                    text: 'إرسال رابط الاستعادة',
-                                    style: HesakTextStyles.authLink.copyWith(color: palette.accent),
-                                  ),
-                                ],
-                              ),
+                            child: Text(
+                              'هل نسيت كلمة المرور الحالية؟',
+                              style: HesakTextStyles.authLink.copyWith(color: palette.title),
                             ),
                           ),
                         ),

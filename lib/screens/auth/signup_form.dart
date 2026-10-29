@@ -7,12 +7,15 @@ import 'auth_widgets.dart';
 //  SIGN UP FORM (إنشاء حساب) — shown inside the white sheet of
 //  HesakAuthFlowScreen.
 //
+//  Flow: "إنشاء حساب" -> AuthService.signUp (sends the verification
+//  email) -> the "تأكيد البريد" step -> the "الاسم للنداء" step -> the app.
+//
 //  NAMING: everything here starts with "SignUp". Keys: 'signup_<name>'.
 // =====================================================================
 
 /// Name, email, reading voice, password (+ rules), confirm password, terms.
 class SignUpForm extends StatefulWidget {
-  final VoidCallback onSignedUp; // Account created -> next step (call name)
+  final VoidCallback onSignedUp; // Account created -> next step (تأكيد البريد)
   final VoidCallback onGoToLogin; // "لديك حساب؟ تسجيل دخول"
   final VoidCallback onBack; // Back arrow -> welcome (the 2 buttons)
 
@@ -52,11 +55,13 @@ class _SignUpFormState extends State<SignUpForm> {
 
   // ---- Field errors (null = OK) ----
 
+  /// Empty name or not Arabic letters.
   String? get _nameError {
     if (!_hasTriedSubmit) return null;
     return AuthValidators.nameProblem(_nameController.text);
   }
 
+  /// Empty or wrong-looking email.
   String? get _emailError {
     if (!_hasTriedSubmit) return null;
     if (_emailController.text.trim().isEmpty) return 'أدخل البريد الإلكتروني';
@@ -64,6 +69,7 @@ class _SignUpFormState extends State<SignUpForm> {
     return null;
   }
 
+  /// A password rule is not met yet.
   String? get _passwordError {
     if (!_hasTriedSubmit) return null;
     if (!AuthValidators.isStrongPassword(_passwordController.text)) {
@@ -72,18 +78,21 @@ class _SignUpFormState extends State<SignUpForm> {
     return null;
   }
 
+  /// The two passwords are different.
   String? get _confirmPasswordError {
     if (!_hasTriedSubmit) return null;
     if (_confirmPasswordController.text != _passwordController.text) return 'كلمتا المرور غير متطابقتين';
     return null;
   }
 
+  /// The terms box is not ticked.
   String? get _termsError {
     if (!_hasTriedSubmit) return null;
     if (!_hasAcceptedTerms) return 'يجب الموافقة على الشروط والأحكام وسياسة الخصوصية';
     return null;
   }
 
+  /// true = at least one field still has a problem.
   bool get _hasAnyError =>
       _nameError != null ||
       _emailError != null ||
@@ -123,7 +132,7 @@ class _SignUpFormState extends State<SignUpForm> {
       children: [
         AuthSheetHeader(title: 'إنشاء حساب', onBack: widget.onBack),
 
-        // ---- Name (Arabic letters only) ----
+        // ---- "الاسم:" field (Arabic letters only) ----
         // Plain text keyboard (not "name"), because the "name" keyboard on
         // some phones (e.g. Samsung) is locked to English.
         AuthFieldLabel('الاسم:'),
@@ -133,11 +142,12 @@ class _SignUpFormState extends State<SignUpForm> {
           hint: 'اكتب اسمك',
           icon: Icons.person_outline_rounded,
           keyboardType: TextInputType.text,
+          inputFormatters: AuthValidators.nameInputFormatters, // 30 characters at most
           errorText: _nameError,
           onChanged: (_) => setState(() {}),
         ),
 
-        // ---- Email ----
+        // ---- "البريد الإلكتروني:" field ----
         AuthFieldLabel('البريد الإلكتروني:'),
         AuthTextField(
           key: Key('signup_email_field'),
@@ -149,7 +159,7 @@ class _SignUpFormState extends State<SignUpForm> {
           onChanged: (_) => setState(() {}),
         ),
 
-        // ---- الجنس (Hesak reads the user's texts to others with a matching voice) ----
+        // ---- Pink note + "الجنس:" (picks the reading voice) ----
         // Clear space after the email, so the pink note box doesn't stick to it.
         // The note belongs to the voice, so it sits close to the voice row.
         SizedBox(height: 40),
@@ -166,7 +176,7 @@ class _SignUpFormState extends State<SignUpForm> {
           ],
         ),
 
-        // ---- Password + live rules ----
+        // ---- "كلمة المرور:" field + the rules under it (update while typing) ----
         AuthFieldLabel('كلمة المرور:'),
         AuthTextField(
           key: Key('signup_password_field'),
@@ -178,7 +188,7 @@ class _SignUpFormState extends State<SignUpForm> {
         ),
         AuthPasswordRulesList(password: _passwordController.text),
 
-        // ---- Confirm password ----
+        // ---- "تأكيد كلمة المرور:" field ----
         AuthFieldLabel('تأكيد كلمة المرور:'),
         AuthTextField(
           key: Key('signup_confirm_password_field'),
@@ -190,7 +200,7 @@ class _SignUpFormState extends State<SignUpForm> {
           onChanged: (_) => setState(() {}),
         ),
 
-        // ---- Terms ----
+        // ---- Terms checkbox ("الشروط والأحكام" / "سياسة الخصوصية" links) ----
         SizedBox(height: 12),
         AuthTermsCheckbox(
           value: _hasAcceptedTerms,
@@ -200,12 +210,14 @@ class _SignUpFormState extends State<SignUpForm> {
 
         SizedBox(height: 24),
 
+        // ---- Server error (e.g. email already used), above the button ----
         if (_serverError != null)
           Padding(
             padding: EdgeInsets.only(bottom: 10),
             child: Text(_serverError!, textAlign: TextAlign.center, style: HesakTextStyles.fieldError),
           ),
 
+        // ---- "إنشاء حساب" button ----
         AuthPrimaryButton(
           key: Key('signup_submit_button'),
           label: 'إنشاء حساب',
@@ -213,6 +225,7 @@ class _SignUpFormState extends State<SignUpForm> {
           onPressed: _submitSignUp,
         ),
 
+        // ---- "لديك حساب؟ تسجيل الدخول" ----
         SizedBox(height: 12),
         AuthFooterLink(
           key: Key('signup_go_to_login_link'),

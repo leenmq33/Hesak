@@ -15,7 +15,8 @@ import '../../core/data/hesak_connection.dart';
 //  - Any other error is rethrown as it is.
 //
 //  The screen catches HesakNetworkException, stops loading, keeps the
-//  user's text and shows the right Arabic message.
+//  user's text and shows the right message (e.g. "تحسين النص يتطلب
+//  اتصالًا بالإنترنت"). Used by the conversation screen (TTS + enhance).
 // =====================================================================
 
 /// A request failed because of the internet.

@@ -2,22 +2,29 @@ import 'package:flutter/material.dart';
 
 import 'hesak_palette.dart';
 
-/// ALL colors used in the Hesak app live here.
-///
-/// Rules for the team:
-/// - Never write `Color(0xFF......)` inside a screen. Use `HesakColors.xxx`.
-/// - Need a new color? Add it here first (with a comment), then use it.
-/// - Names describe the ROLE of the color (what it's for), not how it looks.
-///
-/// LIGHT + DARK (المظهر: فاتح / داكن):
-/// - [HesakColorsLight] = the light colors (below, with the comments).
-/// - [HesakColorsDark]  = the same names with the dark colors.
-/// - [HesakColors]      = what the screens use: it gives the light OR the dark
-///   color, depending on the user's choice in الإعدادات. So screens never ask
-///   "is it dark?" — they just write `HesakColors.xxx`.
-/// - New color? Add it to BOTH classes, then add its line in [HesakColors].
-/// - Because the color can change, `HesakColors.xxx` is not `const`:
-///   don't write `const` in front of a widget that uses it.
+// =====================================================================
+//  HESAK COLORS — ALL colors used in the app live here.
+//
+//  Rules for the team:
+//  - Never write `Color(0xFF......)` inside a screen. Use `HesakColors.xxx`.
+//  - Need a new color? Add it here first (with a comment), then use it.
+//  - Names describe the ROLE of the color (what it's for), not how it looks.
+//
+//  LIGHT + DARK ("المظهر": فاتح / داكن):
+//  - [HesakColorsLight] = the light colors (below, with the comments).
+//  - [HesakColorsDark]  = the same names with the dark colors.
+//  - [HesakColors]      = what the screens use: it gives the light OR the dark
+//    color, depending on the user's choice in الإعدادات. So screens never ask
+//    "is it dark?" — they just write `HesakColors.xxx`.
+//  - New color? Add it to BOTH classes, then add its line in [HesakColors].
+//  - Because the color can change, `HesakColors.xxx` is not `const`:
+//    don't write `const` in front of a widget that uses it.
+//
+//  The light colors are grouped by page: brand, backgrounds, text, status,
+//  sign in / sign up, الأوضاع, الرئيسية, المحادثات, الإعدادات.
+// =====================================================================
+
+/// The light colors (with a comment on what each one is for).
 class HesakColorsLight {
   HesakColorsLight._(); // Prevents creating an instance
 
@@ -371,10 +378,10 @@ class HesakColorsLight {
   /// purple voice messages stand out from it.
   static const Color chatsConversationBackground = tabPageBackground;
 
-  // =====================================================================
-  //  ROUND 5 — الأوضاع rows, the details under the arrow, the schedule,
-  //  and the white cards of تعديل / إضافة وضع and الإعدادات.
-  // =====================================================================
+  // ---------------------------------------------------------------
+  // الأوضاع rows, the details under the arrow, the schedule periods,
+  // and the white cards of "تعديل / إضافة وضع" and الإعدادات
+  // ---------------------------------------------------------------
 
   // ---- الأوضاع: the NOT selected modes ----
 
@@ -455,7 +462,7 @@ class HesakColorsLight {
   static const Color homeAlertBorder = Color(0xFFECE6F2);
 }
 
-/// The dark colors (خيار أ — بنفسجي ليلي). Same names as [HesakColorsLight].
+/// The dark colors (option A: night purple). Same names as [HesakColorsLight].
 /// Colors that sit on purple (glass, white text on purple, the star, the
 /// sign-in purple background) stay the same as light.
 class HesakColorsDark {

@@ -1,4 +1,12 @@
 // ============================================================================
+// CHATS PAGE (المحادثات) — the list of the user's conversations.
+//
+// Layout (top -> bottom):
+//   header "المحادثات" · tabs "الكل / المحفوظة" · search + sort ·
+//   the 24-hour notice · conversation cards · round "+" button (new conversation)
+// Each card: open, save / unsave, (…) menu = rename / delete.
+// Data: ConversationService (Firebase). Opens chats_conversation_screen.dart.
+//
 // NAMING RULES (Chats page)
 // - Private classes in this file start with "_Chats" (e.g. _ChatsSearchBar).
 // - Public classes shared between the chats files start with "Chats".
@@ -17,7 +25,9 @@ import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
 import '../widgets/hesak_confirm_dialog.dart';
+import '../widgets/bottom_nav_bar.dart' show HesakNavTab;
 import '../widgets/hesak_page_header.dart';
+import '../widgets/hesak_tab_scroll.dart';
 import '../widgets/hesak_toast.dart';
 import 'settings/settings_widgets.dart';
 import 'chats_conversation_screen.dart';
@@ -284,12 +294,14 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
               ),
               child: Column(
                 children: <Widget>[
+                  // ---- "الكل / المحفوظة" tabs ----
                   _ChatsFilterTabs(
                     selectedTab: _selectedFilterTab,
                     onTabSelected: (tab) =>
                         setState(() => _selectedFilterTab = tab),
                   ),
                   SizedBox(height: HesakSizes.sectionGap),
+                  // ---- Search bar + sort button ----
                   Row(
                     children: <Widget>[
                       Expanded(
@@ -312,6 +324,7 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
                 ],
               ),
             ),
+            // ---- The list (or: loading / "إعادة المحاولة" / empty) ----
             Expanded(
               child: _isLoading && _conversations.isEmpty
                   ? Center(
@@ -341,6 +354,8 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
                     )
                   : ListView.separated(
                 key: Key('chats_conversations_list'),
+                // Tapping المحادثات again on the bar scrolls back to the top.
+                controller: HesakTabScroll.controllerFor(HesakNavTab.chats),
                 padding: EdgeInsets.fromLTRB(
                   HesakSizes.pagePadding,
                   HesakSizes.sectionGap,
@@ -372,6 +387,7 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
             ),
           ],
         ),
+        // ---- Round "+" button (محادثة جديدة) ----
         Positioned(
           // Centred right above the "الإعدادات" tab of the bottom bar:
           // bar side padding 14 + half the 62px tab - half the 52px button.

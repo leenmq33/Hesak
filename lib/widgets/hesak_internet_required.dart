@@ -3,7 +3,8 @@ import '../core/data/hesak_connection.dart';
 import 'hesak_confirm_dialog.dart';
 
 // =====================================================================
-//  INTERNET REQUIRED — listening, the mic and sending text need internet.
+//  INTERNET REQUIRED — the shared "لا يوجد اتصال" window for actions that
+//  need the internet (verify email, resend link, delete account ...).
 //
 //  Use it before the action:
 //    if (!await hesakRequireInternet(context)) return;
