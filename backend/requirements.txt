@@ -1,0 +1,6 @@
+# Hesak backend — Python packages
+numpy
+scipy
+silero-vad          # speech detector (installs torch)
+faster-whisper      # Whisper (GPU on Colab / a server, CPU works but slowly)
+pytest              # runs the tests in backend/tests
