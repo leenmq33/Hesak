@@ -4,3 +4,6 @@ scipy
 silero-vad          # speech detector (installs torch)
 faster-whisper      # Whisper (GPU on Colab / a server, CPU works but slowly)
 pytest              # runs the tests in backend/tests
+# GPU on Linux (Colab / a cloud server): the CUDA-12 libraries faster-whisper needs
+nvidia-cublas-cu12; sys_platform == "linux"
+nvidia-cudnn-cu12==9.*; sys_platform == "linux"
