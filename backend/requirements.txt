@@ -3,6 +3,8 @@ numpy
 scipy
 silero-vad          # speech detector (installs torch)
 faster-whisper      # Whisper (GPU on Colab / a server, CPU works but slowly)
+starlette           # the web server (server.py)
+uvicorn[standard]   # runs server.py (includes WebSocket support)
 pytest              # runs the tests in backend/tests
 # GPU on Linux (Colab / a cloud server): the CUDA-12 libraries faster-whisper needs
 nvidia-cublas-cu12; sys_platform == "linux"

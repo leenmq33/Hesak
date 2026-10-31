@@ -259,8 +259,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
     setState(() => _isListening = false);
     _listeningBarsController.stop();
     _demoTranscriptTimer?.cancel();
-    // TODO: stop the real speech-to-text service.
-  }
+    HesakSpeechToTextService.instance.stop();  }
 
   /// Shows the right message for an internet failure.
   /// [offlineMessage] = no internet before starting (nothing was sent).
@@ -309,20 +308,38 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
       _conversation.markStarted(); // start time + 24h countdown begin here
     });
     if (_isListening) {
-      _listeningBarsController.repeat();
-      // Demo until Faster-Whisper is connected (HesakSpeechToTextService).
-      // TODO(models team): when connected, call
-      // HesakSpeechToTextService.instance.start(onText: _addIncomingMessage).
-      _startDemoTranscript();
+           if (HesakSpeechToTextService.instance.isConnected) {
+        _startRealSpeechToText(); // Faster-Whisper on the Hesak server
+      } else {
+        _startDemoTranscript(); // No HESAK_SERVER_URL in env.json -> demo
+      }
+        _startDemoTranscript();
     } else {
       _listeningBarsController.stop();
       _demoTranscriptTimer?.cancel();
-      // TODO: stop the real speech-to-text service.
-    }
+      HesakSpeechToTextService.instance.stop();    }
   }
 
-  /// Demo only: adds one heard sentence after a short delay.
-  void _startDemoTranscript() {
+  /// Connects to the server; every finished sentence becomes a message on the left.
+  Future<void> _startRealSpeechToText() async {
+    try {
+      await HesakSpeechToTextService.instance.start(
+        onText: (String text) {
+          if (mounted) _addIncomingMessage(text);
+        },
+        onConnectionLost: () {
+          if (!mounted || !_isListening) return;
+          _stopSpeechToText();
+          _showFailure('انقطع الاتصال بخادم تحويل الكلام');
+        },
+      );
+    } catch (e) {
+      debugPrint('🔴 [STT] could not start: $e');
+      if (!mounted || !_isListening) return;
+      _stopSpeechToText();
+      _showFailure('تعذّر الاتصال بخادم تحويل الكلام');
+    }
+  }  void _startDemoTranscript() {
     _demoTranscriptTimer?.cancel();
     _demoTranscriptTimer = Timer(Duration(milliseconds: 2600), () {
       if (!mounted || !_isListening) return;

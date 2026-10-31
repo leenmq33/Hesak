@@ -31,11 +31,15 @@ class HomeMicService extends ChangeNotifier {
     _syncWithStore();
   }
   static final HomeMicService instance = HomeMicService._();
-
   final AudioRecorder _recorder = AudioRecorder();
   final HomeActivityGate _gate = HomeActivityGate();
   final List<int> _pending = []; // Bytes waiting to fill one frame
   StreamSubscription<Uint8List>? _sub;
+  /// The raw mic sound (PCM16, 16 kHz, mono) for anyone who needs it —
+  /// speech-to-text listens here instead of opening a second microphone.
+  final StreamController<Uint8List> _audioOut = StreamController<Uint8List>.broadcast();
+  Stream<Uint8List> get audio => _audioOut.stream;
+
 
   bool _isMicOn = false;
   bool _isBusy = false; // true while starting / stopping
@@ -117,6 +121,7 @@ class HomeMicService extends ChangeNotifier {
 
   /// Cuts the sound into 32 ms pieces and measures how loud each one is.
   void _onBytes(Uint8List bytes) {
+        if (_audioOut.hasListener) _audioOut.add(Uint8List.fromList(bytes)); // copy for speech-to-text
     _pending.addAll(bytes);
     const int frameBytes = HomeActivityGate.frameSize * 2; // 16-bit = 2 bytes
     int offset = 0;
