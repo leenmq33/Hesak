@@ -29,6 +29,13 @@ import 'ai/hesak_tts_service.dart';
 /// The voice the app uses to read texts out loud.
 enum HesakVoice { male, female }
 
+/// What happened with the last email-verification link that opened the app.
+///   idle      = nothing to show
+///   verifying = the link is being checked with Firebase
+///   verified  = the email is verified now
+///   failed    = the link expired or was already used
+enum EmailLinkStatus { idle, verifying, verified, failed }
+
 /// Result of an account action: success, or a message to show the user.
 class AuthResult {
   final bool isSuccess;
@@ -177,6 +184,11 @@ class AuthService extends ChangeNotifier {
   /// Firebase keeps the sign-in on the phone, so the user stays signed in
   /// until "تسجيل الخروج" / حذف الحساب (like other apps).
   Future<bool> restoreSession() async {
+    // A verification link is still being checked (it opened the app):
+    // wait for it, so this check sees the new "verified" state.
+    final Future<void>? linkCheck = _emailLinkCheck;
+    if (linkCheck != null) await linkCheck;
+
     final user = _auth.currentUser;
     if (user == null) return false;
     try {
@@ -323,6 +335,7 @@ class AuthService extends ChangeNotifier {
 
   /// Checks with Firebase whether the user opened the verification link.
   /// When verified, the profile is saved in Firestore (users/{uid}) and loaded.
+  /// (On the phone the link opens Hesak and is applied in _handleLink below.)
   Future<bool> checkEmailVerified() async {
     final user = _auth.currentUser;
     if (user == null) return false;
@@ -387,8 +400,11 @@ class AuthService extends ChangeNotifier {
     );
   }
 
-  /// Reads a link that opened the app. Only the password-reset link is used:
-  /// its code goes to [pendingResetCode] (which opens the new-password screen).
+  /// Reads a link that opened the app:
+  ///  - password reset: its code goes to [pendingResetCode]
+  ///    (which opens the new-password screen).
+  ///  - email verification: the email is verified right here, inside the app
+  ///    (the result goes to [emailLinkStatus]).
   void _handleLink(Uri uri) {
     // Firebase wraps the real link: .../__/auth/links?link=<real link>
     Uri actionLink = uri;
@@ -401,8 +417,55 @@ class AuthService extends ChangeNotifier {
 
     if (mode == 'resetPassword' && code != null) {
       pendingResetCode.value = code;
+    } else if (mode == 'verifyEmail' && code != null) {
+      _emailLinkCheck = _applyEmailVerification(code);
     }
   }
+
+  // ---------------------------------------------------------------------
+  // Email verification INSIDE the app (the link from the email opens Hesak)
+  // ---------------------------------------------------------------------
+
+  /// Result of the last verification link that opened the app.
+  /// The "تأكيد البريد" step (or the app-wide message) listens to this.
+  final ValueNotifier<EmailLinkStatus> emailLinkStatus =
+  ValueNotifier<EmailLinkStatus>(EmailLinkStatus.idle);
+
+  /// The verification link being checked right now (null = none).
+  Future<void>? _emailLinkCheck;
+
+  /// Verifies the email with the code from the link. Works even if nobody
+  /// is signed in on this phone (the code alone is enough for Firebase).
+  Future<void> _applyEmailVerification(String code) async {
+    emailLinkStatus.value = EmailLinkStatus.verifying;
+    try {
+      await _auth.applyActionCode(code);
+      await _auth.currentUser?.reload(); // So emailVerified is true right away
+      debugPrint('🟢 [verify] email verified from the link');
+      emailLinkStatus.value = EmailLinkStatus.verified;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('🔴 [verify] ${e.code}');
+      // The link may have been used already (e.g. opened twice):
+      // if the email is verified anyway, that's a success.
+      bool isVerifiedAnyway = false;
+      try {
+        await _auth.currentUser?.reload();
+        isVerifiedAnyway = _auth.currentUser?.emailVerified ?? false;
+      } catch (_) {
+        // No internet: keep "failed"; the user can tap "متابعة" later.
+      }
+      emailLinkStatus.value =
+      isVerifiedAnyway ? EmailLinkStatus.verified : EmailLinkStatus.failed;
+    } catch (e) {
+      debugPrint('🔴 [verify] $e');
+      emailLinkStatus.value = EmailLinkStatus.failed;
+    } finally {
+      _emailLinkCheck = null;
+    }
+  }
+
+  /// The result was shown to the user: forget it.
+  void clearEmailLinkStatus() => emailLinkStatus.value = EmailLinkStatus.idle;
 
   /// Checks the code from the link.
   /// Returns the account's email, or null if the link expired / was used.

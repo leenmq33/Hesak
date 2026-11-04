@@ -18,7 +18,7 @@ import 'main_shell.dart';
 //    3.8 s  the two corner shapes grow and cover the screen with purple
 //    ~5 s   opens the next screen on the same purple
 //
-//  Next screen: signed in + verified -> HesakMainShell (the app),
+//  Next screen: signed igit statusn + verified -> HesakMainShell (the app),
 //  otherwise -> HesakAuthFlowScreen (welcome). Checked with
 //  AuthService.restoreSession during the animation (works offline too).
 //  Colors and text styles come from lib/core/theme.
