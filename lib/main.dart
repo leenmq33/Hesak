@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/theme/hesak_palette.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/new_password_screen.dart';
+import 'screens/auth/verify_email_form.dart' show startShowingEmailLinkResults;
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
@@ -11,7 +12,7 @@ import 'services/auth_service.dart';
 //  MAIN — where the app starts.
 //
 //  Order on open: light/dark choice -> Firebase -> email links
-//  (new password) -> HesakApp -> SplashScreen.
+//  (new password, email verification) -> HesakApp -> SplashScreen.
 //  HesakApp holds the app-wide settings: Arabic, right-to-left, light/dark.
 //  Shared file — don't edit without telling the team.
 // =====================================================================
@@ -27,6 +28,9 @@ void main() async {
   // "نسيت كلمة المرور" link from the email -> opens the new-password screen.
   // (AuthService catches the link, the screen opens when it arrives.)
   startOpeningNewPasswordScreen();
+  // Email verification link -> verified inside the app; the result is shown
+  // by "تأكيد البريد", or as a message when that step isn't on screen.
+  startShowingEmailLinkResults();
   AuthService.instance.startListeningForLinks();
   runApp(const HesakApp());
 }

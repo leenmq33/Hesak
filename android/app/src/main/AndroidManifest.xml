@@ -8,7 +8,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
+            android:launchMode="singleTask"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
@@ -27,8 +27,10 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <!-- Hesak: open Firebase email links (password reset) inside the app.
-                 The app reads the link with the app_links package (see auth_service.dart).
+            <!-- Hesak: open Firebase email links (password reset + email verification)
+                 inside the app. The app reads the link with the app_links package
+                 (see auth_service.dart). launchMode="singleTask" above makes the link
+                 reuse the open app instead of opening a second copy of it.
                  pathPrefix /__/auth/ covers both link shapes:
                  /__/auth/links?link=... (old, wrapped) and /__/auth/action?... (direct). -->
             <intent-filter android:autoVerify="true">
