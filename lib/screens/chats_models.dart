@@ -140,7 +140,7 @@ class ChatsConversation {
   /// Zero when already expired.
   Duration get timeUntilAutoDelete {
     final Duration left =
-        displayTime.add(chatsAutoDeleteAfter).difference(DateTime.now());
+    displayTime.add(chatsAutoDeleteAfter).difference(DateTime.now());
     return left.isNegative ? Duration.zero : left;
   }
 }
@@ -166,9 +166,23 @@ String chatsFormatTime(DateTime date) {
   return '$hour12:$minutes $period';
 }
 
-/// Default name of a new conversation: 1 → "محادثة 01".
-String chatsDefaultConversationTitle(int number) =>
-    'محادثة ${number.toString().padLeft(2, '0')}';
+/// Default name of a new conversation: "محادثة جديدة", until the AI names it
+/// from the first message (see _suggestTitleIfNeeded in
+/// chats_conversation_screen.dart) or the user renames it.
+/// [number] is still counted by ConversationService, just no longer shown.
+String chatsDefaultConversationTitle(int number) => chatsNewConversationTitle;
+
+/// The name every new conversation starts with.
+const String chatsNewConversationTitle = 'محادثة جديدة';
+
+/// true when [title] is still the auto name ("محادثة جديدة", or the old
+/// numbered "محادثة 01"), i.e. the user never renamed it and the AI hasn't
+/// named it yet.
+bool chatsIsDefaultConversationTitle(String title) {
+  final String trimmed = title.trim();
+  return trimmed == chatsNewConversationTitle ||
+      RegExp(r'^محادثة \d+$').hasMatch(trimmed);
+}
 
 /// The biggest NN among titles like "محادثة NN" (0 when there are none).
 /// Used so a new conversation never reuses a number.
@@ -260,12 +274,12 @@ Future<String> chatsEnhanceText(String text) async {
   replacements.forEach((String from, String to) {
     result = result.replaceAllMapped(
       RegExp('(^|\\s)$from(?=\\s|\$)'),
-      (Match m) => '${m[1]}$to',
+          (Match m) => '${m[1]}$to',
     );
   });
   if (!RegExp(r'[.؟!،]$').hasMatch(result)) {
     final bool isQuestion =
-        RegExp(r'^(هل|متى|كيف|لماذا|وين|أين|ما|من)\s').hasMatch(result);
+    RegExp(r'^(هل|متى|كيف|لماذا|وين|أين|ما|من)\s').hasMatch(result);
     result += isQuestion ? '؟' : '.';
   }
   return result;
@@ -293,14 +307,14 @@ List<ChatsConversation> chatsSampleConversations() {
           kind: ChatsMessageKind.speechToText,
           sentAt: meetingStart,
           originalText:
-              'السلام عليكم ورحمة الله وبركاته اليوم… عندنا اجتماع لمشروع التخرج… هل انتم مستعدة ومتجهزة للاجتماع',
+          'السلام عليكم ورحمة الله وبركاته اليوم… عندنا اجتماع لمشروع التخرج… هل انتم مستعدة ومتجهزة للاجتماع',
         ),
         ChatsMessage(
           id: 'm2',
           kind: ChatsMessageKind.speechToText,
           sentAt: meetingStart.add(Duration(minutes: 1)),
           originalText:
-              'نعم نحتاج نحدد المهام لكل واحد و نتفق على الجدول الزمني',
+          'نعم نحتاج نحدد المهام لكل واحد و نتفق على الجدول الزمني',
         ),
         ChatsMessage(
           id: 'm3',
