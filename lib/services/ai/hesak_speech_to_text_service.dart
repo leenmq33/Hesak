@@ -46,7 +46,7 @@ class HesakSpeechToTextService {
   int _nextRequest = 0;
   int _session = 0; // +1 on every start/stop -> an old start that finishes late is ignored
   void Function(String text)? _onText;
-  void Function(String words)? _onLive;
+    void Function(String confirmed, String pending)? _onLive;
   void Function()? _onConnectionLost;
 
   /// Connects to the server and starts sending the microphone.
@@ -55,7 +55,7 @@ class HesakSpeechToTextService {
   /// server goes away while listening.
   Future<void> start({
     required void Function(String text) onText,
-    void Function(String words)? onLive,
+       void Function(String confirmed, String pending)? onLive,
     void Function()? onConnectionLost,
   }) async {
     if (!isConnected) {
@@ -160,8 +160,9 @@ class HesakSpeechToTextService {
       final String text = (data['text'] as String? ?? '').trim();
       if (text.isNotEmpty) _onText?.call(text);
     } else if (m['type'] == 'transcript_partial') {
-      final String words = (data['confirmed'] as String? ?? '').trim();
-      if (words.isNotEmpty) _onLive?.call(words);
+            final String confirmed = (data['confirmed'] as String? ?? '').trim();
+      final String pending = (data['pending'] as String? ?? '').trim();
+      if (confirmed.isNotEmpty || pending.isNotEmpty) _onLive?.call(confirmed, pending);
     }
   }
 

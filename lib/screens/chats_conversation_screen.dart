@@ -86,6 +86,14 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
       AnimationController(vsync: this, duration: Duration(seconds: 1));
 
   bool _isListening = false;
+  
+  /// Live words of the sentence still being spoken ('' = none).
+  /// confirmed = heard the same twice (stays) · pending = last guesses (may change).
+  String _liveConfirmed = '';
+  String _livePending = '';
+
+  /// false = show only confirmed words (a deaf user should not read guesses).
+  static const bool _showPendingWords = false;
   bool _isEditingTitle = false;
 
 
@@ -258,8 +266,20 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   void _stopSpeechToText() {
     setState(() => _isListening = false);
     _listeningBarsController.stop();
-    _demoTranscriptTimer?.cancel();
-    HesakSpeechToTextService.instance.stop();  }
+        _demoTranscriptTimer?.cancel();
+    _stopServerSpeechToText();
+  }
+
+  /// Stops the server stream; the live line goes away once the last text arrived.
+  void _stopServerSpeechToText() {
+    HesakSpeechToTextService.instance.stop().whenComplete(() {
+      if (!mounted) return;
+      setState(() {
+        _liveConfirmed = '';
+        _livePending = '';
+      });
+    });
+  }
 
   /// Shows the right message for an internet failure.
   /// [offlineMessage] = no internet before starting (nothing was sent).
@@ -315,17 +335,31 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
       }
         _startDemoTranscript();
     } else {
-      _listeningBarsController.stop();
-      _demoTranscriptTimer?.cancel();
-      HesakSpeechToTextService.instance.stop();    }
+            _demoTranscriptTimer?.cancel();
+      _stopServerSpeechToText();
+      }
   }
 
   /// Connects to the server; every finished sentence becomes a message on the left.
   Future<void> _startRealSpeechToText() async {
     try {
       await HesakSpeechToTextService.instance.start(
+               // The sentence is finished: the live line becomes a normal message.
         onText: (String text) {
-          if (mounted) _addIncomingMessage(text);
+          if (!mounted) return;
+          _liveConfirmed = '';
+          _livePending = '';
+          _addIncomingMessage(text);
+        },
+        // Word by word while the person is still talking.
+        onLive: (String confirmed, String pending) {
+          if (!mounted) return;
+          final bool isNew = _liveConfirmed.isEmpty && _livePending.isEmpty;
+          setState(() {
+            _liveConfirmed = confirmed;
+            _livePending = pending;
+          });
+          if (isNew || _isAtBottom) _scrollToEnd();
         },
         onConnectionLost: () {
           if (!mounted || !_isListening) return;
@@ -765,9 +799,11 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
 
   /// Date separator + bubbles, or a hint when there are no messages yet.
   Widget _buildMessagesList() {
-    final List<ChatsMessage> messages = _conversation.messages;
+      final List<ChatsMessage> messages = _conversation.messages;
+    final bool hasLiveWords =
+        _liveConfirmed.isNotEmpty || (_showPendingWords && _livePending.isNotEmpty);
 
-    if (messages.isEmpty) {
+    if (messages.isEmpty && !hasLiveWords) {
       // Nothing written here unless listening is on.
       if (!_isListening) return SizedBox.expand();
       return Center(
@@ -790,8 +826,9 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
       if (i == 0 || !chatsIsSameDay(messages[i - 1].sentAt, messages[i].sentAt)) {
         items.add(messages[i].sentAt); // DateTime = date line
       }
-      items.add(messages[i]);
+            items.add(messages[i]);
     }
+    if (hasLiveWords) items.add(_liveWordsMarker); // the sentence being spoken, last
 
     return ListView.separated(
       key: Key('chats_messages_list'),
@@ -802,8 +839,14 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
       separatorBuilder: (_, __) => SizedBox(height: 14),
       itemBuilder: (_, index) {
         final Object item = items[index];
-        if (item is DateTime) {
+               if (item is DateTime) {
           return _ChatsDateSeparator(label: chatsFormatDate(item));
+        }
+        if (identical(item, _liveWordsMarker)) {
+          return _ChatsLiveBubble(
+            confirmed: _liveConfirmed,
+            pending: _showPendingWords ? _livePending : '',
+          );
         }
         final ChatsMessage message = item as ChatsMessage;
         if (message.kind == ChatsMessageKind.speechToText) {
@@ -2351,6 +2394,67 @@ class _ChatsSheetTextBlock extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Live words (the sentence still being spoken)
+// ---------------------------------------------------------------------------
+
+/// Marks the place of the live bubble in the messages list.
+const Object _liveWordsMarker = Object();
+
+/// The sentence someone is saying RIGHT NOW, growing word by word.
+/// It becomes a normal message when the sentence ends.
+class _ChatsLiveBubble extends StatelessWidget {
+  const _ChatsLiveBubble({required this.confirmed, required this.pending});
+
+  final String confirmed; // heard the same twice — will not change
+  final String pending; // last guesses — may still change ('' = hidden)
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: EdgeInsets.only(left: 8),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: 120, maxWidth: 290),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Padding(
+                padding: EdgeInsetsDirectional.only(start: 8, bottom: 5),
+                child: Text('شخص يتكلم…',
+                    style: HesakTextStyles.chipLabel
+                        .copyWith(color: HesakColors.primaryMuted)),
+              ),
+              _ChatsBubbleWithTail(
+                color: HesakColors.surface,
+                isTailOnLeft: true,
+                child: Text.rich(
+                  TextSpan(children: <InlineSpan>[
+                    TextSpan(text: confirmed, style: _chatsMessageTextStyle),
+                    if (pending.isNotEmpty)
+                      TextSpan(
+                        text: confirmed.isEmpty ? pending : ' $pending',
+                        style: _chatsMessageTextStyle
+                            .copyWith(color: HesakColors.textSecondary),
+                      ),
+                    TextSpan(
+                      text: ' ▍',
+                      style: _chatsMessageTextStyle
+                          .copyWith(color: HesakColors.primaryMuted),
+                    ),
+                  ]),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
