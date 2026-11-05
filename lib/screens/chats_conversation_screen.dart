@@ -94,6 +94,12 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
 
   /// false = show only confirmed words (a deaf user should not read guesses).
   static const bool _showPendingWords = false;
+  
+  /// The person's current turn: sentences said with only short pauses between
+  /// them stay in ONE card. A pause longer than [_turnGap] starts a new card.
+  String _turnText = '';
+  Timer? _turnTimer;
+  static const Duration _turnGap = Duration(milliseconds: 2500);
   bool _isEditingTitle = false;
 
 
@@ -148,6 +154,17 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
     _playbackTimer?.cancel();
     _stopFollowingAudio();
     _demoTranscriptTimer?.cancel();
+    _turnTimer?.cancel();
+    if (_turnText.isNotEmpty) {
+      // Leaving the screen mid-turn: keep what was said.
+      _conversation.messages.add(ChatsMessage(
+        id: 'in_${DateTime.now().microsecondsSinceEpoch}',
+        kind: ChatsMessageKind.speechToText,
+        originalText: _turnText,
+        sentAt: DateTime.now(),
+      ));
+    }
+    HesakSpeechToTextService.instance.stop();
     _listeningBarsController.dispose();
     _messagesScrollController.dispose();
     _composerController.dispose();
@@ -271,9 +288,10 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   }
 
   /// Stops the server stream; the live line goes away once the last text arrived.
-  void _stopServerSpeechToText() {
+    void _stopServerSpeechToText() {
     HesakSpeechToTextService.instance.stop().whenComplete(() {
       if (!mounted) return;
+      _commitTurn(); // the last words become a message
       setState(() {
         _liveConfirmed = '';
         _livePending = '';
@@ -281,6 +299,21 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
     });
   }
 
+  /// Starts (again) the countdown that closes the current card.
+  void _restartTurnTimer() {
+    _turnTimer?.cancel();
+    _turnTimer = Timer(_turnGap, _commitTurn);
+  }
+
+  /// The pause was long enough: the current card becomes a normal message.
+  void _commitTurn() {
+    _turnTimer?.cancel();
+    _turnTimer = null;
+    if (!mounted || _turnText.isEmpty) return;
+    final String text = _turnText;
+    _turnText = '';
+    _addIncomingMessage(text);
+  }
   /// Shows the right message for an internet failure.
   /// [offlineMessage] = no internet before starting (nothing was sent).
   void _showNetworkError(HesakNetworkException error, String offlineMessage) {
@@ -345,20 +378,27 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
     try {
       await HesakSpeechToTextService.instance.start(
                // The sentence is finished: the live line becomes a normal message.
+                // A sentence is finished: add it to the current card (same person, same turn).
         onText: (String text) {
           if (!mounted) return;
-          _liveConfirmed = '';
-          _livePending = '';
-          _addIncomingMessage(text);
+          setState(() {
+            _turnText = _turnText.isEmpty ? text : '$_turnText $text';
+            _liveConfirmed = '';
+            _livePending = '';
+          });
+          _restartTurnTimer();
+          if (_isAtBottom) _scrollToEnd();
         },
         // Word by word while the person is still talking.
         onLive: (String confirmed, String pending) {
           if (!mounted) return;
-          final bool isNew = _liveConfirmed.isEmpty && _livePending.isEmpty;
+          final bool isNew =
+              _turnText.isEmpty && _liveConfirmed.isEmpty && _livePending.isEmpty;
           setState(() {
             _liveConfirmed = confirmed;
             _livePending = pending;
           });
+          _restartTurnTimer(); // still talking → keep the same card open
           if (isNew || _isAtBottom) _scrollToEnd();
         },
         onConnectionLost: () {
@@ -800,8 +840,11 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
   /// Date separator + bubbles, or a hint when there are no messages yet.
   Widget _buildMessagesList() {
       final List<ChatsMessage> messages = _conversation.messages;
+        // The open card = sentences of this turn + the words being said now.
+    final String liveText =
+        <String>[_turnText, _liveConfirmed].where((String s) => s.isNotEmpty).join(' ');
     final bool hasLiveWords =
-        _liveConfirmed.isNotEmpty || (_showPendingWords && _livePending.isNotEmpty);
+        liveText.isNotEmpty || (_showPendingWords && _livePending.isNotEmpty);
 
     if (messages.isEmpty && !hasLiveWords) {
       // Nothing written here unless listening is on.
@@ -844,7 +887,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
         }
         if (identical(item, _liveWordsMarker)) {
           return _ChatsLiveBubble(
-            confirmed: _liveConfirmed,
+                      confirmed: liveText,
             pending: _showPendingWords ? _livePending : '',
           );
         }

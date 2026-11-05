@@ -40,7 +40,9 @@ def create_app(controller, info=None, token=None):
     info = dict(info or {})
 
     async def health(request):
-        return JSONResponse({"ok": True, "api": API_VERSION, "clients": clients["n"], **info})
+           # pipeline = live numbers: whisper_rtf (speed), whisper_latency_s (delay of the last sentence) …
+        return JSONResponse({"ok": True, "api": API_VERSION, "clients": clients["n"], **info,
+                             "pipeline": api.status()["pipeline"]})
 
     async def ws_endpoint(ws):
         if token and ws.query_params.get("token") != token:

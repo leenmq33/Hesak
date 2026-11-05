@@ -60,8 +60,9 @@ WHISPER_PROMPT_CHARS = 200    # earlier text kept per conversation (used only if
 WHISPER_USE_CONTEXT = False   # OFF: context makes Whisper repeat old sentences on unclear audio
 WHISPER_STYLE_PROMPT = ""     # OFF: a prompt makes Whisper copy words from it (invented text)
 # Models: "auto" = GPU → large-v3-turbo (live) + large-v3 (final) | CPU → small for both.
-WHISPER_LIVE_MODEL = "auto"
-WHISPER_FINAL_MODEL = "auto"
+import os  # the server can override the models without editing this file:
+WHISPER_LIVE_MODEL = os.environ.get("HESAK_LIVE_MODEL", "auto")     # e.g. HESAK_FINAL_MODEL=large-v3-turbo
+WHISPER_FINAL_MODEL = os.environ.get("HESAK_FINAL_MODEL", "auto")
 WHISPER_GPU_BEAM = 5
 WHISPER_CPU_BEAM = 1
 # The whole sentence is dropped only if Whisper itself says "no speech" with low confidence:

@@ -1,0 +1,12 @@
+﻿{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Hesak (phone)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "RZCW40C4E8R",
+      "args": ["--dart-define-from-file=env.json"]
+    }
+  ]
+}
