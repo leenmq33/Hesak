@@ -23,9 +23,12 @@ import numpy as np
 from .config import (SR, WHISPER_LANG, WHISPER_PROMPT_CHARS, WHISPER_USE_CONTEXT, WHISPER_STYLE_PROMPT,
                      WHISPER_LIVE_MODEL, WHISPER_FINAL_MODEL, WHISPER_GPU_BEAM, WHISPER_CPU_BEAM,
                      WHISPER_NO_SPEECH, WHISPER_MIN_LOGPROB, WHISPER_SEG_NO_SPEECH, WHISPER_SEG_MIN_LOGPROB,
-                     WHISPER_SEG_MAX_COMPRESSION, WHISPER_TARGET_DBFS, WHISPER_MAX_GAIN_DB, HALLUCINATIONS)
+                     WHISPER_SEG_MAX_COMPRESSION, WHISPER_TARGET_DBFS, WHISPER_MAX_GAIN_DB, HALLUCINATIONS,
+                     WHISPER_MIN_SURE)
+
 # DIAGNOSIS (optional): set env HESAK_SAVE_AUDIO=/some/folder to keep every sentence as .wav + its text.
 SAVE_AUDIO_DIR = os.environ.get("HESAK_SAVE_AUDIO")
+
 
 # ============================================================
 # Part 1 — the worker  (Cell 12)
@@ -155,12 +158,7 @@ class WhisperWorker:
             self.stats["filtered"] += 1
 
         if SAVE_AUDIO_DIR:
-            self._save_audio(req, audio, status, text)
-
-
-
-
-
+            self._save_audio(req, audio, status, text, r.get("avg_logprob"))
 
         # Times = where the SPEECH was (not the padded window), so the page lines it up with speech_started/ended.
         self.bus.publish("transcript", status, req["session"],
@@ -226,20 +224,18 @@ class WhisperWorker:
             L["fixed"] = fixed + new
         return list(L["fixed"]), words[min(start + len(new), len(words)):]
 
-
-
-
-        # DIAGNOSIS: keep the sentence as .wav + .txt, to LISTEN to what the server really received.
+    # DIAGNOSIS: keep the sentence as .wav + .txt, to LISTEN to what the server really received.
     @staticmethod
-    def _save_audio(req, audio, status, text):
+    def _save_audio(req, audio, status, text, sure=None):
         try:
             from scipy.io import wavfile
             os.makedirs(SAVE_AUDIO_DIR, exist_ok=True)
             base = os.path.join(SAVE_AUDIO_DIR, f"sentence_{req['id']}")
             pcm = (np.clip(np.asarray(audio, dtype=np.float32), -1, 1) * 32767).astype(np.int16)
             wavfile.write(base + ".wav", SR, pcm)
+            sure_s = "—" if sure is None else f"{sure:.2f}"
             with open(base + ".txt", "w", encoding="utf-8") as f:
-                f.write(f"{status} | {len(audio) / SR:.1f}s | {text}\n")
+                f.write(f"{status} | {len(audio) / SR:.1f}s | sure {sure_s} | {text}\n")
         except Exception:
             pass                                       # saving must never break the transcription
 
@@ -255,10 +251,16 @@ class WhisperWorker:
             return "empty", ""
         if r["no_speech_prob"] > WHISPER_NO_SPEECH and r["avg_logprob"] < WHISPER_MIN_LOGPROB:
             return "no_speech", ""
+        if r["avg_logprob"] is not None and r["avg_logprob"] < WHISPER_MIN_SURE:
+            return "no_speech", ""                    # the model is guessing (noise, laughter, far side-talk) → show nothing
         # Cut known invented phrases OUT; only if nothing real is left is the sentence dropped.
         for h in HALLUCINATIONS:
             text = text.replace(h, " ")
         text = re.sub(r"\[[^\]]*\]|\([^)]*\)", " ", text)          # "[موسيقى]", "(تصفيق)" …
+        text = text.replace("ٱ", "ا")                               # dialect model writes "ٱلتعليم" → "التعليم"
+        # A stuck model repeats one word ("اه اه اه اه …", "شنوة؟ شنوة؟ …") → keep it once.
+        # 2-3 repeats are real speech ("التعليم التعليم", "لا لا لا") and stay.
+        text = re.sub(r"(?<!\S)(\S+)(?:\s+\1){3,}(?!\S)", r"\1", text)
         text = re.sub(r"\s+", " ", text).strip(" .،,")
         if not text:
             return "hallucination", ""
@@ -349,7 +351,7 @@ class FasterWhisperBackend:
             temperature=0.0 if fast else [0.0, 0.2, 0.4],   # high temperatures = invented words
             initial_prompt=prompt or None,
             condition_on_previous_text=False,     # stops repeated-text loops
-             no_repeat_ngram_size=3,               # the model may not write the same 3 words twice → no endless loops
+            no_repeat_ngram_size=3,               # the model may not write the same 3 words twice → no endless loops
             vad_filter=False,                     # Silero already cut the speech
             without_timestamps=True)              # we already know the times (from Silero)
         segs = list(segments)                     # the real work happens HERE (segments is lazy)

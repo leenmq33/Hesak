@@ -81,6 +81,7 @@ HALLUCINATIONS = ("اشتركوا في القناة", "اشترك في القن�
                   "شكرا لكم على المشاهدة", "شكراً لكم على المشاهدة", "ترجمة نانسي قنقر", "نانسي قنقر",
                   "Thank you for watching", "Thanks for watching", "Subtitles by", "Amara.org")
 
+
 # Tiny number so log(0) never happens on pure silence.
 _EPS = 1e-10
 
@@ -88,3 +89,7 @@ _EPS = 1e-10
 def s2t(samples):
     """samples → seconds (display only; all logic uses samples)."""
     return None if samples is None else samples / SR
+
+# Model confidence (average log-probability). Below this = the model is guessing (noise, laughter, far side-talk).
+# Measured on real recordings: real speech -0.03 … -0.16 · invented text -0.45 … -0.78
+WHISPER_MIN_SURE = -0.35
