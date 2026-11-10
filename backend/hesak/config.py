@@ -92,4 +92,4 @@ def s2t(samples):
 
 # Model confidence (average log-probability). Below this = the model is guessing (noise, laughter, far side-talk).
 # Measured on real recordings: real speech -0.03 … -0.16 · invented text -0.45 … -0.78
-WHISPER_MIN_SURE = -0.35
+WHISPER_MIN_SURE = -0.60   # measured: real speech (even with background noise) ≥ -0.57 · pure noise ≤ -0.62
