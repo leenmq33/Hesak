@@ -257,7 +257,8 @@ class WhisperWorker:
         for h in HALLUCINATIONS:
             text = text.replace(h, " ")
         text = re.sub(r"\[[^\]]*\]|\([^)]*\)", " ", text)          # "[موسيقى]", "(تصفيق)" …
-        text = text.replace("ٱ", "ا")                               # dialect model writes "ٱلتعليم" → "التعليم"
+        text = text.replace("ٱ", "ا")                               # dialect model writes "ٱلتعليم" → "التعليم" 
+        text = re.sub(r"[A-Za-z]+", "", text.translate(str.maketrans("کیڨ", "كيق")).replace("ٰ", ""))   # model glitch: Latin/Persian letters
         # A stuck model repeats one word ("اه اه اه اه …", "شنوة؟ شنوة؟ …") → keep it once.
         # 2-3 repeats are real speech ("التعليم التعليم", "لا لا لا") and stay.
         text = re.sub(r"(?<!\S)(\S+)(?:\s+\1){3,}(?!\S)", r"\1", text)

@@ -32,6 +32,7 @@ class HomeAlert {
   });
 }
 
+
 /// "منذ ثوانٍ" / "منذ دقيقة" / "منذ 5 دقائق" / "منذ ساعة" ...
 /// Never "الآن": what is heard right now shows in الأصوات الحالية.
 String homeFormatTimeAgo(DateTime time) {
