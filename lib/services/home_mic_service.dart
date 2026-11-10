@@ -86,11 +86,17 @@ class HomeMicService extends ChangeNotifier {
     if (!await _recorder.hasPermission()) return false;
     _gate.reset();
     _pending.clear();
-    final Stream<Uint8List> stream = await _recorder.startStream(const RecordConfig(
-      encoder: AudioEncoder.pcm16bits,
-      sampleRate: HomeActivityGate.sampleRate,
-      numChannels: 1,
-    ));
+       final Stream<Uint8List> stream = await _recorder.startStream(const RecordConfig(
+        encoder: AudioEncoder.pcm16bits,
+        sampleRate: HomeActivityGate.sampleRate,
+        numChannels: 1,
+        autoGain: true,            // يرفع الأصوات البعيدة/الواطية
+        echoCancel: false,
+        noiseSuppress: false,      // كتم الضوضاء من الجوال يشوّه الكلام، Whisper يتعامل مع الضوضاء أحسن
+        androidConfig: AndroidRecordConfig(
+          audioSource: AndroidAudioSource.voiceRecognition,  // مايك سامسونج المخصص للتعرف على الكلام
+        ),
+      ),);
     _sub = stream.listen(_onBytes, onError: (e) => debugPrint('🔴 [HomeMicService] stream error: $e'));
     _isMicOn = true;
     _setStatus(HomeMicStatus.warming);

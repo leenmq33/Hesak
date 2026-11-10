@@ -24,7 +24,8 @@ from .config import (SR, WHISPER_LANG, WHISPER_PROMPT_CHARS, WHISPER_USE_CONTEXT
                      WHISPER_LIVE_MODEL, WHISPER_FINAL_MODEL, WHISPER_GPU_BEAM, WHISPER_CPU_BEAM,
                      WHISPER_NO_SPEECH, WHISPER_MIN_LOGPROB, WHISPER_SEG_NO_SPEECH, WHISPER_SEG_MIN_LOGPROB,
                      WHISPER_SEG_MAX_COMPRESSION, WHISPER_TARGET_DBFS, WHISPER_MAX_GAIN_DB, HALLUCINATIONS)
-
+# DIAGNOSIS (optional): set env HESAK_SAVE_AUDIO=/some/folder to keep every sentence as .wav + its text.
+SAVE_AUDIO_DIR = os.environ.get("HESAK_SAVE_AUDIO")
 
 # ============================================================
 # Part 1 — the worker  (Cell 12)
@@ -57,7 +58,7 @@ class WhisperWorker:
         self.partial_slot = partial_slot      # live requests (LatestSlot, events.py) or None
         # Sentences that already have their FINAL text → a late live request for them is skipped.
         self._finished = collections.deque(maxlen=100)
-        # Live words of the sentence being spoken: {"key", "prev" (last guess), "fixed" (words that stopped changing)}
+        # Live words of the sentence being spoken: {"key", "fixed" (words already on screen, never changed)}
         self._live = None
         self.backend = None
         # Context per conversation: conversation_id → recent text (used as the prompt of the next sentence).
@@ -153,6 +154,14 @@ class WhisperWorker:
         elif status != "error":
             self.stats["filtered"] += 1
 
+        if SAVE_AUDIO_DIR:
+            self._save_audio(req, audio, status, text)
+
+
+
+
+
+
         # Times = where the SPEECH was (not the padded window), so the page lines it up with speech_started/ended.
         self.bus.publish("transcript", status, req["session"],
                          start_sample=req["speech_start"], end_sample=req["speech_end"],
@@ -185,21 +194,54 @@ class WhisperWorker:
                                   "confirmed": " ".join(fixed), "pending": " ".join(pending),
                                   "audio_s": round(len(p["audio"]) / SR, 2), "busy_s": round(busy, 3)})
 
-    # Word-by-word without flicker ("local agreement"):
-    # a word becomes FIXED when two guesses in a row agree on it (same words from the start).
-    # Fixed words never change on screen; only the last few (pending) words may still change.
+    # Word-by-word, append-only: a word is written ONCE and never changes or disappears.
+    # The final text of the sentence (accurate model) then replaces the live words → spelling is corrected there.
     def _agree(self, key, words):
+        """Live words that only GROW: a word on screen is never changed or removed.
+        A word is written as soon as the NEXT word has started (so it is complete, not cut in half).
+        Only the last word (still being spoken) waits. The final text of the sentence corrects spelling."""
         L = self._live
         if L is None or L["key"] != key:
-            L = self._live = {"key": key, "prev": [], "fixed": []}
+            L = self._live = {"key": key, "fixed": []}
+        fixed = L["fixed"]
+        stable = words[:-1]                          # every word that already has a word after it
         norm = lambda w: w.strip(".,،؟?!:؛;\"'…")
-        n = 0
-        while n < min(len(L["prev"]), len(words)) and norm(L["prev"][n]) == norm(words[n]):
-            n += 1
-        if n > len(L["fixed"]) and [norm(w) for w in words[:len(L["fixed"])]] == [norm(w) for w in L["fixed"]]:
-            L["fixed"] = words[:n]
-        L["prev"] = words
-        return list(L["fixed"]), words[len(L["fixed"]):]
+        # Where does the text already on screen end inside this new guess?
+        # Usually at the same word count; Whisper may join / split a word ("عبد الله" ↔ "عبدالله"),
+        # so look for the last shown word one or two places around it.
+        start = len(fixed)
+        if fixed:
+            last = norm(fixed[-1])
+            last2 = norm(fixed[-2]) + last if len(fixed) > 1 else None      # "عبد"+"الله" shown, now "عبدالله"
+            for j in (len(fixed) - 1, len(fixed) - 2, len(fixed), len(fixed) - 3, len(fixed) + 1):
+                if not 0 <= j < len(stable):
+                    continue
+                w = norm(stable[j])
+                joined = norm(stable[j - 1]) + w if j > 0 else None          # "عبدالله" shown, now "عبد"+"الله"
+                if w == last or joined == last or w == last2:
+                    start = j + 1
+                    break
+        new = stable[start:]
+        if new:
+            L["fixed"] = fixed + new
+        return list(L["fixed"]), words[min(start + len(new), len(words)):]
+
+
+
+
+        # DIAGNOSIS: keep the sentence as .wav + .txt, to LISTEN to what the server really received.
+    @staticmethod
+    def _save_audio(req, audio, status, text):
+        try:
+            from scipy.io import wavfile
+            os.makedirs(SAVE_AUDIO_DIR, exist_ok=True)
+            base = os.path.join(SAVE_AUDIO_DIR, f"sentence_{req['id']}")
+            pcm = (np.clip(np.asarray(audio, dtype=np.float32), -1, 1) * 32767).astype(np.int16)
+            wavfile.write(base + ".wav", SR, pcm)
+            with open(base + ".txt", "w", encoding="utf-8") as f:
+                f.write(f"{status} | {len(audio) / SR:.1f}s | {text}\n")
+        except Exception:
+            pass                                       # saving must never break the transcription
 
     # Decide what to do with the model's answer. Returns (status code, text to show).
     #   "ok"            → show it
@@ -230,7 +272,7 @@ class WhisperWorker:
                 "partials": self.stats["partials"],
                 "rtf": round(self.stats["busy_s"] / a, 3) if a else None,
                 "last_latency_s": self.stats["last_latency_s"]}
-    
+
 
 # ============================================================
 # Part 2 — the real model  (Cell 13)

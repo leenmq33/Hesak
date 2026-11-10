@@ -93,7 +93,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   String _livePending = '';
 
   /// false = show only confirmed words (a deaf user should not read guesses).
-  static const bool _showPendingWords = false;
+    static const bool _showPendingWords = false;
   
   /// The person's current turn: sentences said with only short pauses between
   /// them stay in ONE card. A pause longer than [_turnGap] starts a new card.
@@ -360,18 +360,20 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
       _isListening = !_isListening;
       _conversation.markStarted(); // start time + 24h countdown begin here
     });
-    if (_isListening) {
-           if (HesakSpeechToTextService.instance.isConnected) {
+        if (_isListening) {
+      _listeningBarsController.repeat();
+      if (HesakSpeechToTextService.instance.isConnected) {
         _startRealSpeechToText(); // Faster-Whisper on the Hesak server
       } else {
         _startDemoTranscript(); // No HESAK_SERVER_URL in env.json -> demo
       }
-        _startDemoTranscript();
     } else {
-            _demoTranscriptTimer?.cancel();
+      _listeningBarsController.stop();
+      _demoTranscriptTimer?.cancel();
       _stopServerSpeechToText();
-      }
+    }
   }
+  
 
   /// Connects to the server; every finished sentence becomes a message on the left.
   Future<void> _startRealSpeechToText() async {
@@ -2481,11 +2483,10 @@ class _ChatsLiveBubble extends StatelessWidget {
                 child: Text.rich(
                   TextSpan(children: <InlineSpan>[
                     TextSpan(text: confirmed, style: _chatsMessageTextStyle),
-                    if (pending.isNotEmpty)
+                                      if (pending.isNotEmpty)
                       TextSpan(
                         text: confirmed.isEmpty ? pending : ' $pending',
-                        style: _chatsMessageTextStyle
-                            .copyWith(color: HesakColors.textSecondary),
+                        style: _chatsMessageTextStyle, // shown at once, same look as the rest
                       ),
                     TextSpan(
                       text: ' ▍',

@@ -132,19 +132,28 @@ def test_live_words_then_final_text_then_clean_shutdown():               # TEST 
     ctl.shutdown()
     assert not [t for t in threading.enumerate() if t.name.startswith("hesak-") and t.name not in before]
 
-
-def test_word_by_word_fixed_words_never_change():                         # TEST 16
-    fw = FakeWhisper(script=[ok(t) for t in ("السلام", "السلام عليكم", "السلام عليكم كيف",
-                                              "السلام عليكن كيف حالك", "السلام عليكم كيف حالك")])
+def live_words(guesses):
+    fw = FakeWhisper(script=[ok(t) for t in guesses])
     bus = EventBus()
     w = WhisperWorker(Handoff("t", maxsize=5), bus, lambda: fw)
     w.load()
-    for _ in range(5):
+    for _ in guesses:
         w.handle_partial(dict(request(1), key=(1, 1, 0)))
-    evs = bus.get_since(0)[0]
-    assert [len(e["details"]["confirmed"].split()) for e in evs] == [0, 1, 2, 2, 2]
-    assert evs[-1]["details"]["text"] == "السلام عليكم كيف حالك"
+    return [e["details"]["confirmed"] for e in bus.get_since(0)[0]]
 
+
+def test_live_words_only_grow_and_never_change():                         # TEST 16 (append-only)
+    shown = live_words(("السلام", "السلام عليكم", "السلام عليكم كيف",
+                        "السلام عليكن كيف حالك", "السلام عليكم كيف حالك"))
+    # a word appears as soon as the next word has started, and is never changed afterwards
+    assert shown == ["", "السلام", "السلام عليكم", "السلام عليكم كيف", "السلام عليكم كيف"]
+    for before, after in zip(shown, shown[1:]):
+        assert after.startswith(before)              # only grows ("عليكن" in guess 4 did not change it)
+
+
+def test_live_words_survive_a_joined_or_split_name():
+    shown = live_words(("أنا عبد", "أنا عبدالله محمد", "أنا عبد الله محمد علي", "أنا عبد الله محمد علي عبد"))
+    assert shown[-1] == "أنا عبدالله محمد علي"           # no repeated "الله", nothing removed
 
 def test_invented_phrases_are_cut_out():                                  # TEST 18
     assert WhisperWorker._check(ok("وين المفتاح؟ اشتركوا في القناة")) == ("ok", "وين المفتاح؟")

@@ -106,8 +106,9 @@ class HesakSpeechToTextService {
     if (channel == null) return;
     try {
       await _send('conversation.end');
-      // The last sentence is still being written on the server -> wait for it.
-      for (int i = 0; i < 25; i++) {
+            // Every sentence already heard must still arrive -> wait until the server
+      // has written ALL of them (safety limit: 2 minutes).
+      for (int i = 0; i < 600; i++) {
         final Map<String, dynamic> st = await _send('status.get');
         final Map<String, dynamic> p = (st['pipeline'] as Map).cast<String, dynamic>();
         if (p['whisper_waiting'] == 0 && p['whisper_busy'] == false) break;

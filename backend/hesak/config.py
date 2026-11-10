@@ -35,7 +35,7 @@ ENV_ONGOING_EVERY_S = 3.0     # during a long activity: one request every 3 s
 ENV_IDLE_CHECK_S = 10.0       # gate closed: one check every 10 s (None = off)
 
 # ---- [4] Conversation path : Silero ----
-VAD_THRESHOLD = 0.5
+VAD_THRESHOLD = 0.4           # a bit more sensitive: quiet / far speech counts as speech
 # True: while a conversation is open, Silero hears EVERY frame (quiet / far speech is not lost).
 CONV_ALWAYS_LISTEN = True
 VAD_MIN_SILENCE_MS = 500      # a pause this long ends a sentence
@@ -53,8 +53,8 @@ EVENT_HISTORY_MAX = 2000
 WHISPER_INBOX_MAX = 200       # a finished sentence must never be dropped
 
 # ---- [6] Whisper ----
-STT_PARTIAL_MIN_S = 0.5       # first live words after 0.5 s of speech
-STT_PARTIAL_EVERY_S = 0.4     # then new live words every 0.4 s
+STT_PARTIAL_MIN_S = 0.8     # first live words after 0.3 s of speech
+STT_PARTIAL_EVERY_S = 0.15    # then new live words every 0.25 s (needs a GPU)
 WHISPER_LANG = "ar"           # fixed language: short sentences are often mis-detected
 WHISPER_PROMPT_CHARS = 200    # earlier text kept per conversation (used only if WHISPER_USE_CONTEXT)
 WHISPER_USE_CONTEXT = False   # OFF: context makes Whisper repeat old sentences on unclear audio
@@ -74,7 +74,7 @@ WHISPER_SEG_MIN_LOGPROB = -1.0
 WHISPER_SEG_MAX_COMPRESSION = 2.4   # the same words repeated in a loop → invented
 # Quiet / far speech is made louder before Whisper (never quieter, never clipped).
 WHISPER_TARGET_DBFS = -20.0
-WHISPER_MAX_GAIN_DB = 20.0
+WHISPER_MAX_GAIN_DB = 30.0    # far voices can be made louder before Whisper
 # Phrases Whisper invents on silence / noise — cut OUT of the text.
 HALLUCINATIONS = ("اشتركوا في القناة", "اشترك في القناة", "لا تنسوا الاشتراك", "لا تنسى الاشتراك",
                   "شكرا للمشاهدة", "شكراً للمشاهدة", "شكرا على المشاهدة", "شكراً على المشاهدة",
