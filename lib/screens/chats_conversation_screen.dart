@@ -94,7 +94,9 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
 
   /// false = show only confirmed words (a deaf user should not read guesses).
     static const bool _showPendingWords = false;
-  
+    /// true = after a card ends, its SPELLING is fixed once (OpenAI, text only).
+  static const bool _autoSpelling = true;
+
   /// The person's current turn: sentences said with only short pauses between
   /// them stay in ONE card. A pause longer than [_turnGap] starts a new card.
   String _turnText = '';
@@ -306,13 +308,43 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   }
 
   /// The pause was long enough: the current card becomes a normal message.
-  void _commitTurn() {
-    _turnTimer?.cancel();
-    _turnTimer = null;
-    if (!mounted || _turnText.isEmpty) return;
-    final String text = _turnText;
-    _turnText = '';
-    _addIncomingMessage(text);
+     String _addIncomingMessage(String text) {
+    final String id = 'in_${DateTime.now().microsecondsSinceEpoch}';
+    setState(() {
+      _conversation.messages.add(ChatsMessage(
+        id: id,
+        kind: ChatsMessageKind.speechToText,
+        originalText: text,
+        sentAt: DateTime.now(),
+      ));
+    });
+    _scrollToEnd();
+    return id;
+  }
+
+  /// Fixes only the spelling of a finished card, once, after the person stopped talking.
+  /// No internet / error → the text stays exactly as heard.
+  Future<void> _fixSpellingLater(String id, String text) async {
+    if (!_autoSpelling || !HesakTextEnhanceService.instance.isConnected) return;
+    String fixed;
+    try {
+      fixed = await HesakTextEnhanceService.instance.fixSpelling(text);
+    } catch (_) {
+      return;
+    }
+    if (!mounted || fixed == text) return;
+    final int i = _conversation.messages.indexWhere((ChatsMessage m) => m.id == id);
+    if (i < 0) return;
+    final ChatsMessage old = _conversation.messages[i];
+    setState(() {
+      _conversation.messages[i] = ChatsMessage(
+        id: old.id,
+        kind: old.kind,
+        originalText: fixed,
+        sentAt: old.sentAt,
+        speakerLabel: old.speakerLabel,
+      );
+    });
   }
   /// Shows the right message for an internet failure.
   /// [offlineMessage] = no internet before starting (nothing was sent).

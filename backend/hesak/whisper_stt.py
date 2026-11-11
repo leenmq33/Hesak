@@ -26,6 +26,72 @@ from .config import (SR, WHISPER_LANG, WHISPER_PROMPT_CHARS, WHISPER_USE_CONTEXT
                      WHISPER_SEG_MAX_COMPRESSION, WHISPER_TARGET_DBFS, WHISPER_MAX_GAIN_DB, HALLUCINATIONS,
                      WHISPER_MIN_SURE)
 
+# ============================================================
+# Part 0 — instant spelling fixes (no AI, no internet, < 1 ms)
+# ============================================================
+# Whisper usually HEARS the right word but WRITES it loosely: انا, مره, "ال مطعم", "ان شا الله".
+# These rules fix only the WRITING of a word — they never change which word was said.
+# Applied in _check → live words AND final sentences are shown already fixed.
+# Only safe, unambiguous fixes. To add a word: put it in WORDS ("wrong": "right").
+# 1) Fixed phrases (spelled many ways by the model)
+PHRASES = [
+    (r"\bان\s*شا+ء?\s*ا?لله\b|\bانشا+ء?\s*ا?لله\b|\bإن\s*شا\s*الله\b", "إن شاء الله"),
+    (r"\bما\s*شا+ء?\s*ا?لله\b|\bماشا+ء?\s*ا?لله\b", "ما شاء الله"),
+    (r"\bالحمدلله\b", "الحمد لله"),
+    (r"\bجزاك\s*الله\s*خير\b", "جزاك الله خير"),
+]
+
+# 2) Whole words: wrong spelling → right spelling (only words that cannot mean something else)
+WORDS = {
+    # hamza at the start
+    "انا": "أنا", "ادري": "أدري", "اذا": "إذا", "احد": "أحد", "اكيد": "أكيد", "احسن": "أحسن",
+    "اول": "أول", "امس": "أمس", "اخوي": "أخوي", "اختي": "أختي", "امي": "أمي", "ابوي": "أبوي",
+    "ابوك": "أبوك", "امك": "أمك", "اخوك": "أخوك", "اختك": "أختك", "اهلي": "أهلي", "اهلك": "أهلك",
+    "الاهل": "الأهل", "اخبارك": "أخبارك", "اخبارج": "أخبارج", "الاكل": "الأكل", "الاسبوع": "الأسبوع",
+    "اسبوع": "أسبوع", "الامس": "الأمس", "الان": "الآن", "الى": "إلى", "اللى": "اللي",
+    "اعرف": "أعرف", "اقول": "أقول", "اروح": "أروح", "اشوف": "أشوف", "احب": "أحب", "اسوي": "أسوي",
+    "اجي": "أجي", "اكلم": "أكلم", "انتظر": "أنتظر", "اصلا": "أصلاً", "ابدا": "أبداً", "ايش": "إيش",
+    "اتاخر": "أتأخر", "تاخر": "تأخر", "تاخرت": "تأخرت", "تاخرنا": "تأخرنا", "متاخر": "متأخر",
+    # taa marbuta / alif maqsura (ه at the end that is really ة)
+    "مره": "مرة", "بكره": "بكرة", "سياره": "سيارة", "السياره": "السيارة", "ساعه": "ساعة",
+    "الساعه": "الساعة", "شنطه": "شنطة", "الشنطه": "الشنطة", "قهوه": "قهوة", "القهوه": "القهوة",
+    "مدرسه": "مدرسة", "المدرسه": "المدرسة", "السلامه": "السلامة", "سلامه": "سلامة",
+    "العافيه": "العافية", "عافيه": "عافية", "شويه": "شوية", "حلوه": "حلوة", "طيبه": "طيبة",
+    "زينه": "زينة", "كويسه": "كويسة", "تعبانه": "تعبانة", "جاهزه": "جاهزة", "دقيقه": "دقيقة",
+    "الصلاه": "الصلاة", "صلاه": "صلاة", "الجامعه": "الجامعة", "جامعه": "جامعة", "الغرفه": "الغرفة",
+    "غرفه": "غرفة", "الشركه": "الشركة", "شركه": "شركة", "حاجه": "حاجة",
+    "مشكله": "مشكلة", "المشكله": "المشكلة", "مسوول": "مسؤول",
+    "متي": "متى", "حتي": "حتى", "مستشفي": "مستشفى", "المستشفي": "المستشفى",
+}
+
+_PUNCT = ".,،؟?!:؛;\"'…"
+_WORD_RE = re.compile(r"\S+")
+
+
+def _fix_word(m):
+    w = m.group(0)
+    core = w.strip(_PUNCT)
+    if not core:
+        return w
+    fixed = WORDS.get(core)
+    if fixed is None or fixed == core:
+        return w
+    i = w.index(core)
+    return w[:i] + fixed + w[i + len(core):]
+
+
+def fix_spelling(text):
+    """Instant, safe spelling fixes. Never adds, removes or reorders words."""
+    if not text:
+        return text
+    t = text
+    # 3) a lone prefix written apart from its word: "ال مطعم" → "المطعم", "و تعشوا" → "وتعشوا"
+    t = re.sub(r"(?<!\S)(ال|و|ب|ل|ف)\s+(?=[ء-ي])", r"\1", t)
+    for pat, good in PHRASES:
+        t = re.sub(pat, good, t)
+    return _WORD_RE.sub(_fix_word, t)
+
+
 # DIAGNOSIS (optional): set env HESAK_SAVE_AUDIO=/some/folder to keep every sentence as .wav + its text.
 SAVE_AUDIO_DIR = os.environ.get("HESAK_SAVE_AUDIO")
 
@@ -257,10 +323,11 @@ class WhisperWorker:
         for h in HALLUCINATIONS:
             text = text.replace(h, " ")
         text = re.sub(r"\[[^\]]*\]|\([^)]*\)", " ", text)          # "[موسيقى]", "(تصفيق)" …
-        text = text.replace("ٱ", "ا")                               # dialect model writes "ٱلتعليم" → "التعليم" 
-        text = re.sub(r"[A-Za-z]+", "", text.translate(str.maketrans("کیڨ", "كيق")).replace("ٰ", ""))   # model glitch: Latin/Persian letters
+        text = text.replace("ٱ", "ا")                               # dialect model writes "ٱلتعليم" → "التعليم"
         # A stuck model repeats one word ("اه اه اه اه …", "شنوة؟ شنوة؟ …") → keep it once.
         # 2-3 repeats are real speech ("التعليم التعليم", "لا لا لا") and stay.
+        text = re.sub(r"(?<=[ء-ي])[A-Za-z]+|[A-Za-z]+(?=[ء-ي])", "", text.translate(str.maketrans("کیڨ", "كيق")).replace("ٰ", ""))   # model glitch: Latin/Persian letters
+        text = fix_spelling(text)                                   # instant spelling fixes (Part 0)
         text = re.sub(r"(?<!\S)(\S+)(?:\s+\1){3,}(?!\S)", r"\1", text)
         text = re.sub(r"\s+", " ", text).strip(" .،,")
         if not text:
@@ -352,7 +419,6 @@ class FasterWhisperBackend:
             temperature=0.0 if fast else [0.0, 0.2, 0.4],   # high temperatures = invented words
             initial_prompt=prompt or None,
             condition_on_previous_text=False,     # stops repeated-text loops
-                   # the model may not write the same 3 words twice → no endless loops
             vad_filter=False,                     # Silero already cut the speech
             without_timestamps=True)              # we already know the times (from Silero)
         segs = list(segments)                     # the real work happens HERE (segments is lazy)
