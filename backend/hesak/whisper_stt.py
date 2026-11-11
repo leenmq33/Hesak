@@ -352,7 +352,7 @@ class FasterWhisperBackend:
             temperature=0.0 if fast else [0.0, 0.2, 0.4],   # high temperatures = invented words
             initial_prompt=prompt or None,
             condition_on_previous_text=False,     # stops repeated-text loops
-            no_repeat_ngram_size=3,               # the model may not write the same 3 words twice → no endless loops
+                   # the model may not write the same 3 words twice → no endless loops
             vad_filter=False,                     # Silero already cut the speech
             without_timestamps=True)              # we already know the times (from Silero)
         segs = list(segments)                     # the real work happens HERE (segments is lazy)
