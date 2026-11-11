@@ -92,6 +92,84 @@ def fix_spelling(text):
     return _WORD_RE.sub(_fix_word, t)
 
 
+# ============================================================
+# Part 0b — noise cancellation BEFORE Whisper (conversation only — the phone mic / YAMNet are not touched)
+# ============================================================
+# Chosen with env HESAK_DENOISE (default "off"):
+#   "off"        → audio goes to Whisper as it is
+#   "deepfilter" → DeepFilterNet3 (AI model, 48 kHz inside; runs on the GPU when there is one)
+#   "spectral"   → simple spectral gating (numpy only, no extra package) — for comparison
+# HESAK_DENOISE_LIMIT_DB = the most the noise may be lowered (dB). A LIMIT keeps the voice natural:
+# research shows strong cleaning can hurt Whisper. Default 12 dB.
+DENOISE_KIND = os.environ.get("HESAK_DENOISE", "off").strip().lower()
+DENOISE_LIMIT_DB = float(os.environ.get("HESAK_DENOISE_LIMIT_DB", "12"))
+_DENOISER = None                         # set once by load_whisper() (or by set_denoiser() in tests / Colab)
+
+
+class DeepFilterDenoiser:
+    name = "deepfilter"
+
+    def __init__(self, limit_db=DENOISE_LIMIT_DB):
+        import torchaudio
+        if not hasattr(torchaudio, "AudioMetaData"):          # new torchaudio removed it; DeepFilterNet still imports it
+            torchaudio.AudioMetaData = type("AudioMetaData", (), {})
+        from df.enhance import enhance, init_df
+        self._enhance = enhance
+        self.model, self.state, _ = init_df(log_level="ERROR")
+        self.sr = self.state.sr()                               # 48000
+        self.limit_db = limit_db
+
+    def __call__(self, audio):
+        import torch
+        from scipy.signal import resample_poly
+        a = np.ascontiguousarray(audio, dtype=np.float32)
+        if len(a) < SR // 10:
+            return a
+        up = resample_poly(a, self.sr // SR, 1).astype(np.float32)                 # 16 k → 48 k
+        out = self._enhance(self.model, self.state, torch.from_numpy(up)[None], atten_lim_db=self.limit_db)
+        out = out.squeeze(0).detach().cpu().numpy()
+        down = resample_poly(out, 1, self.sr // SR).astype(np.float32)             # 48 k → 16 k
+        return down[:len(a)] if len(down) >= len(a) else np.pad(down, (0, len(a) - len(down)))
+
+
+class SpectralDenoiser:
+    name = "spectral"
+
+    def __init__(self, limit_db=DENOISE_LIMIT_DB):
+        self.floor = 10 ** (-limit_db / 20)                      # the lowest gain allowed (= the limit)
+
+    def __call__(self, audio):
+        from scipy.signal import stft, istft
+        a = np.ascontiguousarray(audio, dtype=np.float32)
+        if len(a) < 1024:
+            return a
+        _, _, Z = stft(a, fs=SR, nperseg=512, noverlap=384)
+        mag = np.abs(Z)
+        noise = np.percentile(mag, 15, axis=1, keepdims=True)    # the quiet 15 % of the time = the noise
+        gain = np.clip(1.0 - (1.5 * noise / (mag + 1e-10)) ** 2, self.floor, 1.0)
+        _, out = istft(Z * gain, fs=SR, nperseg=512, noverlap=384)
+        out = out[:len(a)].astype(np.float32)
+        return out if len(out) == len(a) else np.pad(out, (0, len(a) - len(out)))
+
+
+def load_denoiser(kind=None):
+    """None = off. Raises with a clear message if the chosen engine cannot load (nothing is changed silently)."""
+    kind = (kind or DENOISE_KIND).lower()
+    if kind in ("", "off", "none", "0", "false"):
+        return None
+    if kind == "deepfilter":
+        return DeepFilterDenoiser()
+    if kind == "spectral":
+        return SpectralDenoiser()
+    raise ValueError(f"HESAK_DENOISE='{kind}' — use off / deepfilter / spectral")
+
+
+def set_denoiser(d):
+    """Switch the noise cancellation on (a denoiser) or off (None) — used by Colab to compare."""
+    global _DENOISER
+    _DENOISER = d
+
+
 # DIAGNOSIS (optional): set env HESAK_SAVE_AUDIO=/some/folder to keep every sentence as .wav + its text.
 SAVE_AUDIO_DIR = os.environ.get("HESAK_SAVE_AUDIO")
 
@@ -409,6 +487,8 @@ class FasterWhisperBackend:
 
     # fast=True (live words): one try, beam 1 → quicker answer while the person is still talking.
     def __call__(self, audio, prompt=None, fast=False):
+        if _DENOISER is not None:
+            audio = _DENOISER(audio)              # noise cancellation (Part 0b) — off unless HESAK_DENOISE is set
         audio = normalize_level(audio)
         prompt = " ".join(x for x in (WHISPER_STYLE_PROMPT, prompt if WHISPER_USE_CONTEXT else None) if x)
         segments, info = self.model.transcribe(
@@ -460,6 +540,8 @@ def load_whisper():
     s = whisper_settings()
     if s["gpu"]:
         s["cuda12_libraries"] = len(load_cuda12_libraries())
+    set_denoiser(load_denoiser())
+    s["denoise"] = f"{_DENOISER.name} (limit {DENOISE_LIMIT_DB:g} dB)" if _DENOISER else "off"
     make = lambda size: FasterWhisperBackend(size, s["device"], s["compute"], s["beam"])
     if s["final_model"] == s["live_model"]:
         backend = make(s["live_model"])
