@@ -172,6 +172,7 @@ def set_denoiser(d):
 
 # DIAGNOSIS (optional): set env HESAK_SAVE_AUDIO=/some/folder to keep every sentence as .wav + its text.
 SAVE_AUDIO_DIR = os.environ.get("HESAK_SAVE_AUDIO")
+LIVE_BEAM = int(os.environ.get("HESAK_LIVE_BEAM", "1"))   # live words: how many guesses to compare (1 = fastest, 5 = like the final text)
 
 
 # ============================================================
@@ -495,7 +496,7 @@ class FasterWhisperBackend:
             audio,
             language=self.language,               # fixed language, no guessing
             task="transcribe",                    # write what was said (not translate)
-            beam_size=1 if fast else self.beam,
+            beam_size=LIVE_BEAM if fast else self.beam,
             temperature=0.0 if fast else [0.0, 0.2, 0.4],   # high temperatures = invented words
             initial_prompt=prompt or None,
             condition_on_previous_text=False,     # stops repeated-text loops
