@@ -4,6 +4,7 @@ import '../../core/theme/hesak_sizes.dart';
 import '../../core/theme/hesak_text_styles.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/hesak_page_header.dart';
+import '../../widgets/hesak_toast.dart';
 import '../auth/auth_widgets.dart' show AuthValidators;
 import 'settings_widgets.dart';
 
@@ -16,6 +17,8 @@ import 'settings_widgets.dart';
 //  Sent by Firebase (AuthService.requestEmailChange). Needs internet.
 //
 //  Step 1: form.  Step 2: "تحقق من بريدك الجديد".
+//  "هل نسيت كلمة المرور؟" under the password (same as تسجيل الدخول) sends
+//  a reset link to the CURRENT email.
 //
 //  NAMING: everything here starts with "SettingsEmail". Keys: 'settings_email_<name>'.
 // =====================================================================
@@ -58,6 +61,22 @@ class _SettingsEmailScreenState extends State<SettingsEmailScreen> {
   /// The button works only when both fields are filled correctly.
   bool get _canSubmit =>
       _newEmail.isNotEmpty && _emailError == null && _passwordController.text.isNotEmpty && !_isLoading;
+
+  /// "هل نسيت كلمة المرور؟" -> reset link to the account's current email.
+  Future<void> _sendResetLink() async {
+    final email = AuthService.instance.currentEmail;
+    if (email == null) {
+      showHesakToast(context, 'لا يوجد بريد إلكتروني مسجّل', icon: Icons.error_outline_rounded);
+      return;
+    }
+    final result = await AuthService.instance.sendPasswordResetEmail(email: email);
+    if (!mounted) return;
+    if (result.isSuccess) {
+      showHesakToast(context, 'تم إرسال رابط الاستعادة إلى بريدك', icon: Icons.mark_email_read_outlined);
+    } else {
+      showHesakToast(context, result.errorMessage ?? 'حدث خطأ، حاول مرة أخرى', icon: Icons.error_outline_rounded);
+    }
+  }
 
   /// "إرسال رابط التأكيد": sends the link, then shows step 2.
   Future<void> _submit() async {
@@ -158,8 +177,22 @@ class _SettingsEmailScreenState extends State<SettingsEmailScreen> {
           onChanged: (_) => setState(() => _serverError = null),
         ),
 
+        // ---- "هل نسيت كلمة المرور؟" (under the password, left side) ----
+        // Same look and place as on تسجيل الدخول.
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: TextButton(
+            key: Key('settings_email_forgot_password_button'),
+            onPressed: _sendResetLink,
+            child: Text(
+              'هل نسيت كلمة المرور؟',
+              style: HesakTextStyles.authLink.copyWith(fontWeight: FontWeight.w400, color: palette.title),
+            ),
+          ),
+        ),
+
         // ---- Server error + "إرسال رابط التأكيد" button ----
-        SizedBox(height: 24),
+        SizedBox(height: 12),
         if (_serverError != null)
           Padding(
             padding: EdgeInsets.only(bottom: 10),

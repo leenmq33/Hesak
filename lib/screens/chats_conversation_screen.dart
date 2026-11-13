@@ -3,7 +3,7 @@
 //
 // Layout (top -> bottom):
 //   header: back · title (tap to rename) · save button
-//   messages: heard speech on the LEFT (+ "تحسين النص"),
+//   messages: heard speech on the LEFT (+ "توضيح النص"),
 //             the user's typed text as a voice message on the RIGHT
 //   bottom bar: typing field + ✦ (improve), then the mic or send button
 // A brand-new conversation shows the start card instead of the messages.
@@ -13,7 +13,7 @@
 // The mic also needs the big listen button (الرئيسية) on.
 //
 // Sections below: back / leave · title · listening · sending · playback ·
-// AI enhancement · scrolling · build · then the small widgets.
+// AI enhancement · automatic title · scrolling · build · then the small widgets.
 //
 // NAMING RULES (Chats page)
 // - Private classes in this file start with "_Chats" (e.g. _ChatsComposerBar).
@@ -35,6 +35,7 @@ import '../core/theme/hesak_colors.dart';
 import '../core/theme/hesak_sizes.dart';
 import '../core/theme/hesak_text_styles.dart';
 import '../core/data/hesak_connection.dart';
+import '../services/ai/hesak_conversation_title_service.dart';
 import '../services/ai/hesak_online_request.dart';
 import '../services/ai/hesak_speech_to_text_service.dart';
 import '../services/ai/hesak_text_enhance_service.dart';
@@ -83,7 +84,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
 
   /// Drives the moving bars while listening.
   late final AnimationController _listeningBarsController =
-      AnimationController(vsync: this, duration: Duration(seconds: 1));
+  AnimationController(vsync: this, duration: Duration(seconds: 1));
 
   bool _isListening = false;
   
@@ -122,6 +123,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   bool _isSending = false;
   bool _isStartingListening = false;
   bool _isEnhancingComposer = false;
+  bool _isNamingConversation = false; // The AI is choosing a title
   final Set<String> _enhancingMessageIds = <String>{};
   final Set<String> _preparingAudioIds = <String>{};
 
@@ -434,6 +436,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
       ));
     });
     _scrollToEnd();
+    _suggestTitleIfNeeded();
   }
 
   // -------------------------------------------------------------------------
@@ -445,10 +448,10 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   /// stays in the field so the user can try again.
 
   Future<void> _sendComposerText() async {
-final String text = _composerController.text.trim();
+    final String text = _composerController.text.trim();
 
 
-if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
+    if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
 
     setState(() => _isSending = true);
     final String messageId = 'out_${DateTime.now().microsecondsSinceEpoch}';
@@ -492,6 +495,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
     });
     _scrollToEnd();
     _playMessage(message); // speak it right away
+    _suggestTitleIfNeeded();
   }
 
   // -------------------------------------------------------------------------
@@ -525,10 +529,10 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
 
       // Audio missing on this phone: generate it again (needs internet).
       final String newFileName = await hesakRunOnline(() => tts.generateAndSave(
-            text: message.originalText,
-            conversationId: _conversation.id,
-            messageId: message.id,
-          ));
+        text: message.originalText,
+        conversationId: _conversation.id,
+        messageId: message.id,
+      ));
       if (!mounted) return;
       message.audioFileName = newFileName;
       ConversationService.instance.saveConversation(_conversation);
@@ -626,9 +630,10 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
   // AI enhancement
   // -------------------------------------------------------------------------
 
-  /// For a heard message: "تحسين النص" shows the improved text RIGHT AWAY
+  /// For a heard message: "توضيح النص" shows the clarified text RIGHT AWAY
   /// in the purple box under the original (no accept / keep window).
   /// The original always stays on top and is never changed.
+  /// Tapped again after "إخفاء النص الموضح": shows the saved text (offline too).
   Future<void> _enhanceIncomingMessage(ChatsMessage message) async {
     if (_enhancingMessageIds.contains(message.id)) return;
     // Already improved before (saved): show it, no internet needed.
@@ -636,19 +641,24 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
       setState(() => _enhancingMessageIds.add(message.id));
       try {
         message.enhancedText = await hesakRunOnline(
-            () => HesakTextEnhanceService.instance.enhance(message.originalText));
+                () => HesakTextEnhanceService.instance.enhance(message.originalText));
       } on HesakNetworkException catch (e) {
-        _showNetworkError(e, 'تحسين النص يتطلب اتصالًا بالإنترنت');
+        _showNetworkError(e, 'توضيح النص يتطلب اتصالًا بالإنترنت');
         return;
       } catch (e) {
         debugPrint('enhance error: $e');
-        _showFailure('تعذّر تحسين النص، حاول مرة أخرى');
+        _showFailure('تعذّر توضيح النص، حاول مرة أخرى');
         return;
       } finally {
         if (mounted) setState(() => _enhancingMessageIds.remove(message.id));
       }
     }
     if (!mounted) return;
+    // Shown again after "إخفاء النص الموضح": just open it, nothing to save.
+    if (message.isEnhancementAccepted) {
+      setState(() => _openEnhancedMessageIds.add(message.id));
+      return;
+    }
     setState(() {
       message.isEnhancementAccepted = true;
       _openEnhancedMessageIds.add(message.id);
@@ -666,13 +676,23 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
   /// On failure the typed text is never changed.
   Future<void> _enhanceComposerText() async {
     final String original = _composerController.text.trim();
-    if (original.isEmpty || _isListening || _isEnhancingComposer) return;
+    if (_isListening || _isEnhancingComposer) return;
+    // Nothing typed yet -> explain instead of doing nothing.
+    if (original.isEmpty) {
+      await showHesakNoticeDialog(
+        context,
+        title: 'لا يوجد نص لتحسينه',
+        message: 'اكتب رسالتك أولًا، ثم اضغط ✦ لتحسين صياغتها',
+        icon: Icons.auto_awesome_rounded,
+      );
+      return;
+    }
 
     setState(() => _isEnhancingComposer = true);
     final String enhanced;
     try {
       enhanced = await hesakRunOnline(
-          () => HesakTextEnhanceService.instance.enhance(original));
+              () => HesakTextEnhanceService.instance.enhance(original));
     } on HesakNetworkException catch (e) {
       _showNetworkError(e, 'تحسين النص يتطلب اتصالًا بالإنترنت');
       return;
@@ -688,7 +708,7 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
     final _ChatsEnhancementChoice? choice = await _showEnhancementSheet(
       originalText: original,
       enhancedText: enhanced,
-      sourceLabel: 'نصك قبل الإرسال',
+      sourceLabel: 'يقترح حِسّك صياغة أوضح لرسالتك، ويمكنك قبولها أو إبقاء النص الأصلي',
     );
     // Replace only if the user didn't change the text meanwhile.
     if (choice == _ChatsEnhancementChoice.accept &&
@@ -719,6 +739,63 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
   }
 
   // -------------------------------------------------------------------------
+  // Automatic title (AI)
+  // -------------------------------------------------------------------------
+
+  /// A new conversation is called "محادثة جديدة" until something is said.
+  /// After a message is sent or heard, the AI reads the first messages and
+  /// gives it a short title (e.g. "موعد المستشفى").
+  /// - The title is set ONCE (a greeting gets one too, e.g. "تحية وسلام").
+  ///   After that only the user can change it, by renaming the conversation.
+  /// - Runs quietly: no loader and no error message. If it fails (offline,
+  ///   no key), "محادثة جديدة" stays and the next message tries again.
+  /// - A name the user typed is never replaced (also while they type one).
+  /// - Not a user change: the conversation's "last change" time stays.
+  Future<void> _suggestTitleIfNeeded() async {
+    if (_isNamingConversation) return;
+    // Already named (by the AI or the user) -> never change it again.
+    if (!chatsIsDefaultConversationTitle(_conversation.title)) return;
+    final HesakConversationTitleService service = HesakConversationTitleService.instance;
+    if (!service.isConnected) return;
+
+    final String currentTitle = _conversation.title;
+    _isNamingConversation = true;
+    try {
+      final String? title = await hesakRunOnline(
+              () => service.suggestTitle(_textForTitle()));
+      if (title == null) return; // Unusable reply: try with the next message
+      // The user renamed it (or is renaming it) meanwhile -> keep their name.
+      if (_conversation.title != currentTitle || _isEditingTitle) return;
+
+      if (mounted) {
+        setState(() => _conversation.title = title);
+      } else {
+        _conversation.title = title; // Left meanwhile: the list shows it too
+      }
+      // Left already, or saved: save now so the new title is kept.
+      if (!mounted || _conversation.isSaved) {
+        ConversationService.instance.saveConversation(_conversation);
+      }
+    } catch (e) {
+      debugPrint('conversation title error: $e'); // Quiet: the auto name stays
+    } finally {
+      _isNamingConversation = false;
+    }
+  }
+
+  /// The first messages (typed + heard), enough for the AI to see the topic.
+  String _textForTitle() {
+    const int maxLength = 600;
+    final StringBuffer text = StringBuffer();
+    for (final ChatsMessage message in _conversation.messages) {
+      if (text.length >= maxLength) break;
+      text.writeln(message.originalText.trim());
+    }
+    final String all = text.toString().trim();
+    return all.length > maxLength ? all.substring(0, maxLength) : all;
+  }
+
+  // -------------------------------------------------------------------------
   // Scrolling
   // -------------------------------------------------------------------------
 
@@ -734,8 +811,8 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
       _scrollProgress = position.maxScrollExtent <= 0
           ? 1.0
           : (position.pixels / position.maxScrollExtent)
-              .clamp(0.0, 1.0)
-              .toDouble();
+          .clamp(0.0, 1.0)
+          .toDouble();
       _isAtBottom = position.pixels >= position.maxScrollExtent - 24;
     });
   }
@@ -798,25 +875,25 @@ if (text.isEmpty || _isListening || _isSending || _isStartingListening) return;
               Expanded(
                 child: isShowingStartCard
                     ? Center(
-                        child: _ChatsStartListeningCard(
-                            onStart: _toggleListening),
-                      )
+                  child: _ChatsStartListeningCard(
+                      onStart: _toggleListening),
+                )
                     : Stack(
-                        children: <Widget>[
-                          _buildMessagesList(),
-                          _ChatsScrollIndicator(
-                            progress: _scrollProgress,
-                            visibleFraction: _visibleFraction,
-                          ),
-                          if (!_isAtBottom)
-                            Positioned(
-                              right: 16,
-                              bottom: 12,
-                              child: _ChatsJumpToEndButton(
-                                  onPressed: _scrollToEnd),
-                            ),
-                        ],
+                  children: <Widget>[
+                    _buildMessagesList(),
+                    _ChatsScrollIndicator(
+                      progress: _scrollProgress,
+                      visibleFraction: _visibleFraction,
+                    ),
+                    if (!_isAtBottom)
+                      Positioned(
+                        right: 16,
+                        bottom: 12,
+                        child: _ChatsJumpToEndButton(
+                            onPressed: _scrollToEnd),
                       ),
+                  ],
+                ),
               ),
               // ---- Bottom bar: typing field + ✦, mic / send ----
               _ChatsComposerBar(
@@ -966,11 +1043,11 @@ class _ChatsConversationHeader extends StatelessWidget {
               Expanded(
                 child: isEditingTitle
                     ? _ChatsTitleEditor(
-                        controller: titleController,
-                        currentTitle: title,
-                        onSave: onSaveTitle)
+                    controller: titleController,
+                    currentTitle: title,
+                    onSave: onSaveTitle)
                     : _ChatsTitleButton(
-                        title: title, onPressed: onStartEditingTitle),
+                    title: title, onPressed: onStartEditingTitle),
               ),
               _ChatsCircleIconButton(
                 key: Key('chats_conversation_save_button'),
@@ -979,9 +1056,9 @@ class _ChatsConversationHeader extends StatelessWidget {
                     ? Icons.bookmark_rounded
                     : Icons.bookmark_add_outlined,
                 iconColor:
-                    isSaved ? HesakColors.primaryMuted : HesakColors.primary,
+                isSaved ? HesakColors.primaryMuted : HesakColors.primary,
                 background:
-                    isSaved ? HesakColors.primaryLight : HesakColors.surface,
+                isSaved ? HesakColors.primaryLight : HesakColors.surface,
                 onPressed: onToggleSaved,
               ),
             ],
@@ -1281,7 +1358,9 @@ class _ChatsDateSeparator extends StatelessWidget {
 }
 
 /// Heard speech turned into text. Always on the physical LEFT, with a tail
-/// at the bottom-left. Label "شخص" above the bubble.
+/// at the bottom-left. Nothing is written above the bubble.
+/// "✦ توضيح النص" shows the clarified text; then only "إخفاء النص الموضح"
+/// shows, and hiding brings "✦ توضيح النص" back.
 class _ChatsIncomingBubble extends StatelessWidget {
   const _ChatsIncomingBubble({
     required this.message,
@@ -1299,7 +1378,9 @@ class _ChatsIncomingBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isAccepted = message.isEnhancementAccepted;
+    // The clarified box is on screen -> only "إخفاء النص الموضح" under it.
+    final bool isShowingClarified =
+        message.isEnhancementAccepted && isEnhancedTextOpen;
 
     // Physical left on purpose: the design fixes heard speech on the left
     // and the user's voice on the right, whatever the text direction.
@@ -1313,12 +1394,6 @@ class _ChatsIncomingBubble extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Padding(
-                padding: EdgeInsetsDirectional.only(start: 8, bottom: 5),
-                child: Text(message.speakerLabel,
-                    style: HesakTextStyles.chipLabel
-                        .copyWith(color: HesakColors.primaryMuted)),
-              ),
               _ChatsBubbleWithTail(
                 color: HesakColors.surface,
                 isTailOnLeft: true,
@@ -1328,17 +1403,15 @@ class _ChatsIncomingBubble extends StatelessWidget {
                   children: <Widget>[
                     // The original text always stays on top.
                     Text(message.originalText, style: _chatsMessageTextStyle),
-                    if (isAccepted && isEnhancedTextOpen) ...<Widget>[
+                    if (isShowingClarified) ...<Widget>[
                       SizedBox(height: 6),
                       _ChatsEnhancedTextBox(text: message.enhancedText ?? ''),
                     ],
                     SizedBox(height: 8),
                     Row(
                       children: <Widget>[
-                        if (!isAccepted)
-                          _ChatsEnhanceChip(onPressed: onEnhance, isLoading: isEnhancing)
-                        else ...<Widget>[
-                          _ChatsEnhancedTag(),
+                        if (isShowingClarified)
+                          // ---- "إخفاء النص الموضح" ----
                           TextButton(
                             key: Key('chats_toggle_enhanced_${message.id}'),
                             onPressed: onToggleEnhancedText,
@@ -1346,17 +1419,17 @@ class _ChatsIncomingBubble extends StatelessWidget {
                               foregroundColor: HesakColors.primary,
                               minimumSize: Size(0, 36),
                               padding:
-                                  EdgeInsets.symmetric(horizontal: 6),
+                              EdgeInsets.symmetric(horizontal: 6),
                             ),
                             child: Text(
-                              isEnhancedTextOpen
-                                  ? 'إخفاء النص المحسّن'
-                                  : 'عرض النص المحسّن',
+                              'إخفاء النص الموضح',
                               style: HesakTextStyles.chipLabel.copyWith(
                                   decoration: TextDecoration.underline),
                             ),
-                          ),
-                        ],
+                          )
+                        else
+                          // ---- "✦ توضيح النص" (new, or saved one hidden) ----
+                          _ChatsEnhanceChip(onPressed: onEnhance, isLoading: isEnhancing),
                         Spacer(),
                         Text(chatsFormatTime(message.sentAt),
                             style: HesakTextStyles.caption
@@ -1374,7 +1447,7 @@ class _ChatsIncomingBubble extends StatelessWidget {
   }
 }
 
-/// Purple box with the accepted AI text, under the original.
+/// Purple box "✦ النص الموضح" with the AI text, under the original.
 class _ChatsEnhancedTextBox extends StatelessWidget {
   const _ChatsEnhancedTextBox({required this.text});
 
@@ -1398,7 +1471,7 @@ class _ChatsEnhancedTextBox extends StatelessWidget {
               Icon(Icons.auto_awesome_rounded,
                   size: 12, color: HesakColors.primary),
               SizedBox(width: 4),
-              Text('النص المحسّن',
+              Text('النص الموضح',
                   style: HesakTextStyles.caption.copyWith(
                       color: HesakColors.primary,
                       fontWeight: FontWeight.w700)),
@@ -1412,7 +1485,7 @@ class _ChatsEnhancedTextBox extends StatelessWidget {
   }
 }
 
-/// "✦ تحسين النص" chip inside the bubble.
+/// "✦ توضيح النص" chip inside the bubble.
 class _ChatsEnhanceChip extends StatelessWidget {
   const _ChatsEnhanceChip({required this.onPressed, this.isLoading = false});
 
@@ -1441,41 +1514,12 @@ class _ChatsEnhanceChip extends StatelessWidget {
               isLoading
                   ? _ChatsSmallLoader(color: HesakColors.primary)
                   : Icon(Icons.auto_awesome_rounded,
-                      size: HesakSizes.iconInChip - 2, color: HesakColors.primary),
+                  size: HesakSizes.iconInChip - 2, color: HesakColors.primary),
               SizedBox(width: 6),
-              Text('تحسين النص', style: HesakTextStyles.chipLabel),
+              Text('توضيح النص', style: HesakTextStyles.chipLabel),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Small "✦ محسّن" tag shown after accepting.
-class _ChatsEnhancedTag extends StatelessWidget {
-  const _ChatsEnhancedTag();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 26,
-      padding: EdgeInsets.symmetric(horizontal: 9),
-      decoration: BoxDecoration(
-        color: HesakColors.primaryLight,
-        border: Border.all(color: HesakColors.primaryLightBorder),
-        borderRadius: BorderRadius.circular(13),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(Icons.auto_awesome_rounded,
-              size: 13, color: HesakColors.primary),
-          SizedBox(width: 4),
-          Text('محسّن',
-              style: HesakTextStyles.caption.copyWith(
-                  color: HesakColors.primary, fontWeight: FontWeight.w700)),
-        ],
       ),
     );
   }
@@ -1500,7 +1544,7 @@ class _ChatsOutgoingVoiceBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final List<String> words = message.originalWords;
     final double progress =
-        isPlaying ? (playingWordIndex + 1) / words.length : 1.0;
+    isPlaying ? (playingWordIndex + 1) / words.length : 1.0;
 
     return Align(
       alignment: Alignment.centerRight,
@@ -1560,10 +1604,10 @@ class _ChatsOutgoingVoiceBubble extends StatelessWidget {
                           state: !isPlaying
                               ? _ChatsWordState.idle
                               : i == playingWordIndex
-                                  ? _ChatsWordState.current
-                                  : i < playingWordIndex
-                                      ? _ChatsWordState.spoken
-                                      : _ChatsWordState.upcoming,
+                              ? _ChatsWordState.current
+                              : i < playingWordIndex
+                              ? _ChatsWordState.spoken
+                              : _ChatsWordState.upcoming,
                         ),
                     ],
                   ),
@@ -1828,7 +1872,7 @@ class _ChatsScrollIndicator extends StatelessWidget {
           builder: (_, constraints) {
             final double trackHeight = constraints.maxHeight;
             final double thumbHeight =
-                math.max(44.0, trackHeight * visibleFraction);
+            math.max(44.0, trackHeight * visibleFraction);
             return Stack(
               children: <Widget>[
                 Container(
@@ -1936,23 +1980,23 @@ class _ChatsComposerBar extends StatelessWidget {
       ),
       child: isListening
           ? _ChatsListeningBar(
-              bars: listeningBars, onStop: onToggleListening)
+          bars: listeningBars, onStop: onToggleListening)
           : Row(
-              children: <Widget>[
-                Expanded(
-                  child: _ChatsComposerField(
-                    controller: controller,
-                    hasText: hasText,
-                    onEnhance: onEnhance,
-                    isEnhancing: isEnhancing,
-                  ),
-                ),
-                SizedBox(width: 10),
-                hasText || isSending
-                    ? _ChatsSendButton(onPressed: onSend, isLoading: isSending)
-                    : _ChatsListenButton(onPressed: onToggleListening, isAvailable: isMicAvailable),
-              ],
+        children: <Widget>[
+          Expanded(
+            child: _ChatsComposerField(
+              controller: controller,
+              hasText: hasText,
+              onEnhance: onEnhance,
+              isEnhancing: isEnhancing,
             ),
+          ),
+          SizedBox(width: 10),
+          hasText || isSending
+              ? _ChatsSendButton(onPressed: onSend, isLoading: isSending)
+              : _ChatsListenButton(onPressed: onToggleListening, isAvailable: isMicAvailable),
+        ],
+      ),
     );
   }
 }
@@ -2020,16 +2064,16 @@ class _ChatsComposerField extends StatelessWidget {
               ),
             ),
           ),
-          // Works only when there is text; otherwise faded and not tappable.
+          // Faded when there is no text; tapping it then opens the
+          // "لا يوجد نص لتحسينه" window (see _enhanceComposerText).
           Semantics(
             button: true,
-            enabled: hasText,
             label: hasText
                 ? 'تحسين النص المكتوب بالذكاء الاصطناعي'
                 : 'تحسين النص، اكتب نصًا أولًا',
             child: GestureDetector(
               key: Key('chats_ai_enhance_button'),
-              onTap: hasText && !isEnhancing ? onEnhance : null,
+              onTap: isEnhancing ? null : onEnhance,
               child: AnimatedOpacity(
                 duration: Duration(milliseconds: 150),
                 opacity: hasText ? 1.0 : 0.45,
@@ -2039,20 +2083,20 @@ class _ChatsComposerField extends StatelessWidget {
                   height: 40,
                   decoration: BoxDecoration(
                     color:
-                        hasText ? HesakColors.primary : HesakColors.primaryLight,
+                    hasText ? HesakColors.primary : HesakColors.primaryLight,
                     shape: BoxShape.circle,
                     border: Border.all(color: HesakColors.primaryLightBorder),
                   ),
                   child: isEnhancing
                       ? Center(
-                          child: _ChatsSmallLoader(color: HesakColors.onPrimary))
+                      child: _ChatsSmallLoader(color: HesakColors.onPrimary))
                       : Icon(
-                          Icons.auto_awesome_rounded,
-                          size: HesakSizes.iconInChip + 3,
-                          color: hasText
-                              ? HesakColors.onPrimary
-                              : HesakColors.primary,
-                        ),
+                    Icons.auto_awesome_rounded,
+                    size: HesakSizes.iconInChip + 3,
+                    color: hasText
+                        ? HesakColors.onPrimary
+                        : HesakColors.primary,
+                  ),
                 ),
               ),
             ),
@@ -2094,22 +2138,22 @@ class _ChatsListenButton extends StatelessWidget {
             height: 52,
             decoration: isAvailable
                 ? BoxDecoration(
-                    gradient: _chatsPrimaryGradient,
-                    shape: BoxShape.circle,
-                    boxShadow: <BoxShadow>[
-                      BoxShadow(
-                        color: HesakColors.primary.withValues(alpha: 0.28),
-                        blurRadius: 18,
-                        offset: Offset(0, 8),
-                      ),
-                    ],
-                  )
+              gradient: _chatsPrimaryGradient,
+              shape: BoxShape.circle,
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: HesakColors.primary.withValues(alpha: 0.28),
+                  blurRadius: 18,
+                  offset: Offset(0, 8),
+                ),
+              ],
+            )
                 : BoxDecoration(
-                    // Same colors as the faded ✦ button.
-                    color: HesakColors.primaryLight,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: HesakColors.primaryLightBorder),
-                  ),
+              // Same colors as the faded ✦ button.
+              color: HesakColors.primaryLight,
+              shape: BoxShape.circle,
+              border: Border.all(color: HesakColors.primaryLightBorder),
+            ),
             child: Icon(
               Icons.mic_none_rounded,
               size: HesakSizes.iconInBox + 1,
@@ -2154,9 +2198,9 @@ class _ChatsSendButton extends StatelessWidget {
           // send_rounded mirrors in RTL so it points the reading way.
           child: isLoading
               ? Center(
-                  child: _ChatsSmallLoader(color: HesakColors.onPrimary, size: 20))
+              child: _ChatsSmallLoader(color: HesakColors.onPrimary, size: 20))
               : Icon(Icons.send_rounded,
-                  size: HesakSizes.iconInChip + 5, color: HesakColors.onPrimary),
+              size: HesakSizes.iconInChip + 5, color: HesakColors.onPrimary),
         ),
       ),
     );
@@ -2230,7 +2274,7 @@ class _ChatsListeningBar extends StatelessWidget {
                       children: List<Widget>.generate(_barCount, (i) {
                         final double height = 5 +
                             (math.sin(t + i * 0.9) * math.cos(i * 0.35))
-                                    .abs() *
+                                .abs() *
                                 22;
                         return Container(
                           width: 3,
@@ -2263,7 +2307,7 @@ class _ChatsListeningBar extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 /// Bottom sheet: original on top, enhanced under it,
-/// "قبول النص المحسّن" / "إبقاء الأصلي". ✕ = keep original.
+/// "قبول النص المحسّن" / "إبقاء النص الأصلي". ✕ = keep original.
 class _ChatsEnhancementSheet extends StatelessWidget {
   const _ChatsEnhancementSheet({
     required this.originalText,
@@ -2374,7 +2418,7 @@ class _ChatsEnhancementSheet extends StatelessWidget {
                 foregroundColor: HesakColors.primary,
                 shape: StadiumBorder(),
               ),
-              child: Text('إبقاء الأصلي',
+              child: Text('إبقاء النص الأصلي',
                   style: HesakTextStyles.itemTitle
                       .copyWith(color: HesakColors.primary)),
             ),
