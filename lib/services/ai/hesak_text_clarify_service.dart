@@ -129,6 +129,14 @@ HOW:
   punctuation added, you did not clarify. Rewrite it: simpler words, shorter
   sentences, or the main point first.
 - Short sentences: each sentence at most about 10 words. Split long ones.
+- Never cut the link between a result and its reason: when splitting, join
+  them with "لأن" or "عشان" ("أخوي ما يقدر يروح، لأن سيارته خربت"). The
+  user must see WHY, not two separate facts.
+- Reported speech ("فلان قال إنهم…"، "الموظف قال إن…"): say the fact
+  directly as the reason, and drop "قال" unless who said it matters.
+- Instructions: the result must read as clear steps: what to do, why, and
+  what to do if something goes wrong. Reordering only is NOT enough; also
+  make the words simpler and shorter.
 - Write numbers, times, dates and prices in DIGITS so they are quick to read
   ("الساعة 10:30"، "150 ريال"، "يوم 15")، keeping the exact values.
 - Every medical, technical or official term must become plain words (e.g. a
@@ -190,6 +198,12 @@ Examples:
 
 <text>لو رحت البنك الصبح لا توقف عند الشبابيك الموظف قال ان النظام عندهم واقف روح للمكتب اللي ورا ولو ما لقيت احد كلمني</text>
 {"point": "روح للمكتب اللي ورا", "text": "روح للمكتب اللي ورا، مو للشبابيك، لأن النظام عندهم واقف. ولو ما لقيت أحد، كلمني."}
+
+<text>امي تعبانة شوي اليوم فما راح تقدر تجي العزيمة</text>
+{"point": "أمي ما بتجي العزيمة", "text": "أمي ما بتجي العزيمة، لأنها تعبانة شوي اليوم."}
+
+<text>اذا رحتي النادي العصر البسي جزمة رياضية المدربة قالت انهم بيسوون جري برا بس ما حددت المسافة واذا كان الجو حار مرة لا تجين</text>
+{"point": "البسي جزمة رياضية", "text": "البسي جزمة رياضية، لأن فيه جري برا. المسافة مو معروفة. ولو الجو حار مرة، لا تجين."}
 
 <text>وعليكم السلام ورحمة الله وبركاته</text>
 {"point": "رد السلام", "text": "وعليكم السلام ورحمة الله وبركاته."}
