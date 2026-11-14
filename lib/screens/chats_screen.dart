@@ -18,7 +18,7 @@
 // ============================================================================
 
 import 'dart:async';
-
+import '../services/ai/hesak_speech_to_text_service.dart';
 import 'package:flutter/material.dart';
 
 import '../core/theme/hesak_colors.dart';
@@ -106,6 +106,7 @@ class _ChatsPageContentState extends State<_ChatsPageContent> {
   @override
   void initState() {
     super.initState();
+        HesakSpeechToTextService.instance.warmUp(); // wake the server early (it sleeps when unused)
     _loadConversations();
     // Reload when a conversation is saved / deleted from another page (الرئيسية).
     ConversationService.instance.changeCount.addListener(_reloadQuietly);

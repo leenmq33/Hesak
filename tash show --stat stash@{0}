@@ -1,0 +1,20 @@
+[33med9c47c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mserver-wakeup[m[33m, [m[1;31morigin/server-wakeup[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{0}: checkout: moving from main to server-wakeup
+[33med9c47c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mserver-wakeup[m[33m, [m[1;31morigin/server-wakeup[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{1}: checkout: moving from server-wakeup to main
+[33med9c47c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mserver-wakeup[m[33m, [m[1;31morigin/server-wakeup[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{2}: checkout: moving from main to server-wakeup
+[33med9c47c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mserver-wakeup[m[33m, [m[1;31morigin/server-wakeup[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{3}: checkout: moving from server-wakeup to main
+[33med9c47c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mserver-wakeup[m[33m, [m[1;31morigin/server-wakeup[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{4}: checkout: moving from main to server-wakeup
+[33med9c47c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mserver-wakeup[m[33m, [m[1;31morigin/server-wakeup[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{5}: checkout: moving from server-wakeup to main
+[33med9c47c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mserver-wakeup[m[33m, [m[1;31morigin/server-wakeup[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{6}: reset: moving to HEAD
+[33med9c47c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mserver-wakeup[m[33m, [m[1;31morigin/server-wakeup[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{7}: checkout: moving from main to server-wakeup
+[33med9c47c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mserver-wakeup[m[33m, [m[1;31morigin/server-wakeup[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{8}: checkout: moving from main to main
+[33med9c47c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mserver-wakeup[m[33m, [m[1;31morigin/server-wakeup[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{9}: pull --ff --recurse-submodules --progress -- origin: Fast-forward
+[33mab9b726[m[33m ([m[1;31morigin/merge-test[m[33m, [m[1;32mmerge-test[m[33m)[m HEAD@{10}: merge merge-test: Fast-forward
+[33m41fdc89[m HEAD@{11}: checkout: moving from merge-test to main
+[33mab9b726[m[33m ([m[1;31morigin/merge-test[m[33m, [m[1;32mmerge-test[m[33m)[m HEAD@{12}: checkout: moving from main to merge-test
+[33m41fdc89[m HEAD@{13}: checkout: moving from merge-test to main
+[33mab9b726[m[33m ([m[1;31morigin/merge-test[m[33m, [m[1;32mmerge-test[m[33m)[m HEAD@{14}: reset: moving to HEAD
+[33mab9b726[m[33m ([m[1;31morigin/merge-test[m[33m, [m[1;32mmerge-test[m[33m)[m HEAD@{15}: commit (amend): Merge origin/main into merge-test
+[33m3ad8f4b[m HEAD@{16}: commit (merge): Merge remote-tracking branch 'origin/main' into merge-test
+[33mc8fde83[m[33m ([m[1;31morigin/whisper-server[m[33m, [m[1;32mwhisper-server[m[33m)[m HEAD@{17}: checkout: moving from whisper-server to merge-test
+[33mc8fde83[m[33m ([m[1;31morigin/whisper-server[m[33m, [m[1;32mwhisper-server[m[33m)[m HEAD@{18}: commit: Modal server + clean up before merging
+[33mcac0138[m[33m ([m[1;31morigin/backend-whisper[m[33m, [m[1;32mbackend-whisper[m[33m)[m HEAD@{19}: checkout: moving from whisper-server to whisper-server

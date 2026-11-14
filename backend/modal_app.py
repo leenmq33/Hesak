@@ -70,12 +70,12 @@ models = modal.Volume.from_name("hesak-models")          # your model lives here
 
 # ---- 2) the server itself ----
 @app.function(
-    gpu="L4",                                 # same GPU as Colab
+    	gpu=["L4", "A10", "T4"],                                # same GPU as Colab
     volumes={"/models": models},
     secrets=[modal.Secret.from_name("hesak-secret")],   # HESAK_TOKEN (not in the code, not in GitHub)
     min_containers=KEEP_WARM,                 # 0 = sleeps when unused
     max_containers=1,                         # never more than ONE GPU → no surprise bill
-    scaledown_window=300,                     # stays awake 5 min after the last chat, then sleeps
+    scaledown_window=1200,                # stays awake 5 min after the last chat, then sleeps
     timeout=3 * 60 * 60,                      # one conversation can last up to 3 hours
 )
 @modal.concurrent(max_inputs=20)              # many connections share the same loaded models
