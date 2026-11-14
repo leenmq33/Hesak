@@ -39,6 +39,7 @@ import '../services/ai/hesak_conversation_title_service.dart';
 import '../services/ai/hesak_online_request.dart';
 import '../services/ai/hesak_speech_to_text_service.dart';
 import '../services/ai/hesak_text_enhance_service.dart';
+import '../services/ai/hesak_text_clarify_service.dart';
 import '../services/ai/hesak_tts_service.dart';
 import '../services/conversation_service.dart';
 import '../widgets/hesak_confirm_dialog.dart';
@@ -641,7 +642,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
       setState(() => _enhancingMessageIds.add(message.id));
       try {
         message.enhancedText = await hesakRunOnline(
-                () => HesakTextEnhanceService.instance.enhance(message.originalText));
+                () => HesakTextClarifyService.instance.clarify(message.originalText));
       } on HesakNetworkException catch (e) {
         _showNetworkError(e, 'توضيح النص يتطلب اتصالًا بالإنترنت');
         return;
