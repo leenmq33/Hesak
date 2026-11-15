@@ -539,7 +539,7 @@ class AuthService extends ChangeNotifier {
     if (user == null) {
       return const AuthResult.failure('يرجى تسجيل الدخول أولًا');
     }
-    // Changes right away (also without internet), like الجنس.
+    // Changes right away (also without internet), like نوع الصوت.
     // Firestore sends it to Firebase when the internet is back.
     currentUserName = name.trim();
     notifyListeners();

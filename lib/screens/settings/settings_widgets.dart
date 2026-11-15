@@ -211,7 +211,7 @@ class SettingsRow extends StatelessWidget {
 }
 
 /// Two (or more) options side by side, the picked one is a raised white pill.
-/// Used for "الجنس" (ذكر / أنثى) and "المظهر" (فاتح / داكن).
+/// Used for "نوع الصوت" (ذكر / أنثى) and "المظهر" (فاتح / داكن).
 class SettingsSegmented<T> extends StatelessWidget {
   final List<T> values;
   final T selected;

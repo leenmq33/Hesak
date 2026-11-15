@@ -159,15 +159,15 @@ class _SignUpFormState extends State<SignUpForm> {
           onChanged: (_) => setState(() {}),
         ),
 
-        // ---- Pink note + "الجنس:" (picks the reading voice) ----
+        // ---- Pink note + "نوع الصوت:" (ذكر / أنثى, picks the reading voice) ----
         // Clear space after the email, so the pink note box doesn't stick to it.
         // The note belongs to the voice, so it sits close to the voice row.
         SizedBox(height: 40),
-        AuthInfoBanner('سيستخدم حِسّك اختيارك لقراءة النصوص للآخرين بصوت مناسب'),
+        AuthInfoBanner('سيستخدم حِسّك الصوت الذي تختاره لقراءة رسائلك بصوت مسموع'),
         SizedBox(height: 10),
         Row(
           children: [
-            Text('الجنس:', style: HesakTextStyles.fieldLabel),
+            Text('نوع الصوت:', style: HesakTextStyles.fieldLabel),
             Spacer(),
             AuthVoiceToggle(
               value: _selectedVoice,

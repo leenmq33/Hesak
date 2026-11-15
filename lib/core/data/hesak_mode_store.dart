@@ -713,11 +713,9 @@ class HesakModeStore extends ChangeNotifier {
             (repeat) => repeat.name == d['alertRepeat'],
         orElse: () => fallback?.alertRepeat ?? HesakAlertRepeat.twice,
       ),
-      // Emergency sounds are always on.
-      soundIds: {
-        ...hesakEmergencySoundIds,
-        ...(rawSounds?.cast<String>() ?? fallback?.soundIds ?? const <String>{}),
-      },
+      // Emergency sounds are always on. Old saved ids are moved to the
+      // current sound list (renamed / removed sounds, see hesak_sounds.dart).
+      soundIds: hesakMigrateSoundIds(rawSounds?.cast<String>() ?? fallback?.soundIds ?? const <String>{}),
     );
   }
 

@@ -22,13 +22,13 @@ import '../widgets/hesak_internet_required.dart';
 //
 //  Sections:
 //   الحساب:          الاسم (sheet) · البريد الإلكتروني (page) · تغيير كلمة المرور (page)
-//   التفضيلات:        الجنس (ذكر / أنثى) · المظهر (فاتح / داكن)
+//   التفضيلات:        نوع الصوت (ذكر / أنثى) · المظهر (فاتح / داكن)
 //   للتنبيه عند النداء: الاسم للنداء (sheet — add or edit)
 //   تسجيل الخروج (asks first)
 //   حذف الحساب: small red link under it -> confirm -> password -> deletes everything
 //
 //  Every change has its own "حفظ" (faded until something really changes),
-//  so there's no big "حفظ التعديلات" button. الجنس / المظهر save right away.
+//  so there's no big "حفظ التعديلات" button. نوع الصوت / المظهر save right away.
 //
 //  Colors come from HesakPalette (light / dark, see hesak_palette.dart).
 //  Data: AuthService (every account setting is saved there).
@@ -144,24 +144,24 @@ class _SettingsPageContent extends StatelessWidget {
             ],
           ),
 
-          // ---------------- "التفضيلات" card: الجنس · المظهر ----------------
+          // ---------------- "التفضيلات" card: نوع الصوت · المظهر ----------------
           SettingsSectionTitle('التفضيلات'),
           SettingsCard(
             children: [
-              // الجنس: the note first (inside the card, so it clearly belongs to
-              // الجنس and not to المظهر), then the row with the choice.
+              // نوع الصوت: the note first (inside the card, so it clearly belongs to
+              // نوع الصوت and not to المظهر), then the row with the choice.
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Padding(
                     padding: EdgeInsets.fromLTRB(12, 12, 12, 0),
                     // Same note as in إنشاء حساب.
-                    child: SettingsNote('سيستخدم حِسّك اختيارك لقراءة النصوص للآخرين بصوت مناسب'),
+                    child: SettingsNote('سيستخدم حِسّك الصوت الذي تختاره لقراءة رسائلك بصوت مسموع'),
                   ),
                   SettingsRow(
                     key: Key('settings_voice_row'),
                     icon: Icons.record_voice_over_outlined,
-                    title: 'الجنس',
+                    title: 'نوع الصوت',
                     trailing: SettingsSegmented<HesakVoice>(
                       keyPrefix: 'settings_voice',
                       values: HesakVoice.values,
@@ -170,7 +170,7 @@ class _SettingsPageContent extends StatelessWidget {
                       onChanged: (voice) {
                         if (voice == auth.currentVoice) return;
                         auth.updateVoice(voice);
-                        showHesakToast(context, 'تم تغيير الجنس');
+                        showHesakToast(context, 'تم تغيير نوع الصوت');
                       },
                     ),
                   ),
