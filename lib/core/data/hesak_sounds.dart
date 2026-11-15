@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 // =====================================================================
 //  SOUNDS — the sounds the user can turn on/off for each mode,
-//  grouped in sections (الطوارئ، أصوات المداخل، الأشخاص ...).
+//  grouped in sections (الطوارئ، المداخل والتنبيهات، الأصوات البشرية ...).
 //
 //  The sound model can hear many more sounds (500+). This is only the
 //  list the USER sees and picks from. To add a sound: add one line to
@@ -22,10 +22,9 @@ enum HesakSoundCategory {
   emergency,
   entrances,
   people,
-  devices,
-  homeKitchen,
-  traffic,
   animals,
+  weather,
+  traffic,
 }
 
 /// Title + icon of each section (as shown on the sounds list).
@@ -33,19 +32,17 @@ extension HesakSoundCategoryInfo on HesakSoundCategory {
   String get label {
     switch (this) {
       case HesakSoundCategory.emergency:
-        return 'الطوارئ والإنذارات';
+        return 'الطوارئ';
       case HesakSoundCategory.entrances:
-        return 'أصوات المداخل';
+        return 'المداخل والتنبيهات';
       case HesakSoundCategory.people:
-        return 'الأشخاص';
-      case HesakSoundCategory.devices:
-        return 'الأجهزة';
-      case HesakSoundCategory.homeKitchen:
-        return 'المنزل والمطبخ';
-      case HesakSoundCategory.traffic:
-        return 'الطريق والمواصلات';
+        return 'الأصوات البشرية';
       case HesakSoundCategory.animals:
         return 'الحيوانات';
+      case HesakSoundCategory.weather:
+        return 'الطقس';
+      case HesakSoundCategory.traffic:
+        return 'الطريق';
     }
   }
 
@@ -57,14 +54,12 @@ extension HesakSoundCategoryInfo on HesakSoundCategory {
         return Icons.door_front_door_outlined;
       case HesakSoundCategory.people:
         return Icons.record_voice_over_outlined;
-      case HesakSoundCategory.devices:
-        return Icons.phone_android_rounded;
-      case HesakSoundCategory.homeKitchen:
-        return Icons.kitchen_outlined;
-      case HesakSoundCategory.traffic:
-        return Icons.directions_car_outlined;
       case HesakSoundCategory.animals:
         return Icons.pets_rounded;
+      case HesakSoundCategory.weather:
+        return Icons.thunderstorm_outlined;
+      case HesakSoundCategory.traffic:
+        return Icons.directions_car_outlined;
     }
   }
 
@@ -72,7 +67,7 @@ extension HesakSoundCategoryInfo on HesakSoundCategory {
   bool get isLocked => this == HesakSoundCategory.emergency;
 }
 
-/// One sound the user can pick (e.g. جرس الباب).
+/// One sound the user can pick (e.g. الجرس).
 class HesakSound {
   final String id; // Unique, English, e.g. 'doorbell'
   final String label; // Arabic name shown on screen
@@ -81,53 +76,34 @@ class HesakSound {
   const HesakSound(this.id, this.label, this.category);
 }
 
-/// All the sounds the user can pick, grouped by section.
+/// All the sounds the user can pick, grouped by section (16 sounds).
 const List<HesakSound> hesakSounds = [
-  // ---- الطوارئ والإنذارات (always on) ----
-  HesakSound('fire_alarm', 'إنذار حريق', HesakSoundCategory.emergency),
-  HesakSound('general_alarm', 'إنذار عام', HesakSoundCategory.emergency),
-  HesakSound('loud_sound', 'صوت عالٍ', HesakSoundCategory.emergency),
-  HesakSound('explosion', 'صوت انفجار', HesakSoundCategory.emergency),
+  // ---- الطوارئ (always on) ----
+  HesakSound('emergency_vehicle', 'مركبات الطوارئ', HesakSoundCategory.emergency),
+  HesakSound('fire_alarm', 'إنذار الحريق', HesakSoundCategory.emergency),
 
-  // ---- أصوات المداخل ----
-  HesakSound('doorbell', 'جرس الباب', HesakSoundCategory.entrances),
+  // ---- المداخل والتنبيهات ----
+  HesakSound('doorbell', 'الجرس', HesakSoundCategory.entrances),
   HesakSound('door_knock', 'طرق الباب', HesakSoundCategory.entrances),
-  HesakSound('door_open_close', 'فتح وإغلاق باب', HesakSoundCategory.entrances),
-  HesakSound('keys', 'صوت مفاتيح', HesakSoundCategory.entrances),
+  HesakSound('keys', 'المفاتيح', HesakSoundCategory.entrances),
 
-  // ---- الأشخاص ----
-  HesakSound('baby_cry', 'بكاء طفل', HesakSoundCategory.people),
-  HesakSound('shout', 'صراخ', HesakSoundCategory.people),
-  HesakSound('laugh', 'ضحك', HesakSoundCategory.people),
-  HesakSound('clapping', 'تصفيق', HesakSoundCategory.people),
-  HesakSound('cough', 'سعال', HesakSoundCategory.people),
-
-  // ---- الأجهزة ----
-  HesakSound('phone_ring', 'رنين هاتف', HesakSoundCategory.devices),
-  HesakSound('alarm_clock', 'منبه', HesakSoundCategory.devices),
-  HesakSound('timer_beep', 'صفارة مؤقت', HesakSoundCategory.devices),
-  HesakSound('washing_machine', 'غسالة', HesakSoundCategory.devices),
-  HesakSound('smoke_detector_beep', 'تنبيه جهاز', HesakSoundCategory.devices),
-
-  // ---- المنزل والمطبخ ----
-  HesakSound('running_water', 'ماء جارٍ', HesakSoundCategory.homeKitchen),
-  HesakSound('kettle', 'غلاية', HesakSoundCategory.homeKitchen),
-  HesakSound('microwave', 'ميكروويف', HesakSoundCategory.homeKitchen),
-  HesakSound('vacuum', 'مكنسة كهربائية', HesakSoundCategory.homeKitchen),
-  HesakSound('glass_break', 'كسر زجاج', HesakSoundCategory.homeKitchen),
-
-  // ---- الطريق والمواصلات ----
-  HesakSound('car_horn', 'بوق سيارة', HesakSoundCategory.traffic),
-  HesakSound('siren', 'صفارة إسعاف أو شرطة', HesakSoundCategory.traffic),
-  HesakSound('motorcycle', 'دراجة نارية', HesakSoundCategory.traffic),
-  HesakSound('train', 'قطار', HesakSoundCategory.traffic),
-  HesakSound('airplane', 'طائرة', HesakSoundCategory.traffic),
+  // ---- الأصوات البشرية ----
+  HesakSound('shout', 'الصراخ', HesakSoundCategory.people),
+  HesakSound('baby_cry', 'بكاء الطفل', HesakSoundCategory.people),
+  HesakSound('crowd', 'ضجيج الأشخاص', HesakSoundCategory.people),
 
   // ---- الحيوانات ----
-  HesakSound('dog', 'كلب', HesakSoundCategory.animals),
-  HesakSound('cat', 'قطة', HesakSoundCategory.animals),
-  HesakSound('birds', 'طيور', HesakSoundCategory.animals),
-  HesakSound('rooster', 'ديك', HesakSoundCategory.animals),
+  HesakSound('dog', 'الكلب', HesakSoundCategory.animals),
+  HesakSound('cat', 'القطة', HesakSoundCategory.animals),
+  HesakSound('birds', 'الطيور', HesakSoundCategory.animals),
+  HesakSound('chicken', 'الدجاج/الديك', HesakSoundCategory.animals),
+  HesakSound('sheep_goat', 'الغنم/الماعز', HesakSoundCategory.animals),
+
+  // ---- الطقس ----
+  HesakSound('rain_storm', 'المطر والعواصف', HesakSoundCategory.weather),
+
+  // ---- الطريق ----
+  HesakSound('car_horn', 'البوري', HesakSoundCategory.traffic),
 ];
 
 /// The sounds of one section, in list order.
@@ -140,3 +116,38 @@ final Set<String> hesakEmergencySoundIds =
 
 /// Ids of ALL the sounds.
 final Set<String> hesakAllSoundIds = hesakSounds.map((sound) => sound.id).toSet();
+
+// ---------------------------------------------------------------------
+// Old sound list (before Nov 2026): modes saved in Firebase may still have
+// these ids. hesakMigrateSoundIds() turns them into the new list.
+// ---------------------------------------------------------------------
+
+/// Old ids that became a new id.
+const Map<String, String> _hesakRenamedSoundIds = {
+  'siren': 'emergency_vehicle', // صفارة إسعاف أو شرطة -> مركبات الطوارئ
+  'rooster': 'chicken', // ديك -> الدجاج/الديك
+};
+
+/// ALL the ids of the old list (32 sounds). A mode that had every one of
+/// them ("all sounds", like العام) gets every NEW sound too.
+const Set<String> _hesakOldAllSoundIds = {
+  'fire_alarm', 'general_alarm', 'loud_sound', 'explosion',
+  'doorbell', 'door_knock', 'door_open_close', 'keys',
+  'baby_cry', 'shout', 'laugh', 'clapping', 'cough',
+  'phone_ring', 'alarm_clock', 'timer_beep', 'washing_machine', 'smoke_detector_beep',
+  'running_water', 'kettle', 'microwave', 'vacuum', 'glass_break',
+  'car_horn', 'siren', 'motorcycle', 'train', 'airplane',
+  'dog', 'cat', 'birds', 'rooster',
+};
+
+/// Saved sound ids -> ids of the CURRENT list:
+/// renamed ids are renamed, removed ones are dropped, emergency is always in.
+Set<String> hesakMigrateSoundIds(Iterable<String> savedIds) {
+  final Set<String> saved = savedIds.toSet();
+  if (saved.containsAll(_hesakOldAllSoundIds)) return {...hesakAllSoundIds};
+  return {
+    ...hesakEmergencySoundIds,
+    for (final id in saved)
+      if (hesakAllSoundIds.contains(_hesakRenamedSoundIds[id] ?? id)) _hesakRenamedSoundIds[id] ?? id,
+  };
+}
