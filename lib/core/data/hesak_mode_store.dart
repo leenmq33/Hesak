@@ -575,6 +575,13 @@ class HesakModeStore extends ChangeNotifier {
       final Map<String, Map<String, dynamic>> saved = {
         for (final doc in modesSnap.docs) doc.id: doc.data(),
       };
+
+      // Older accounts: save the built-in modes that are not in Firebase yet.
+      // Only with the server's answer: the phone's copy may be empty while
+      // offline, and writing then could overwrite the user's real changes.
+      if (!modesSnap.metadata.isFromCache) {
+        _saveMissingDefaultModes(userDoc.collection('userModes'), saved.keys.toSet());
+      }
       final List<(int, HesakModeConfig)> loaded = [];
 
       // Built-in modes: the user's saved copy, or the default if never changed.
@@ -612,6 +619,38 @@ class HesakModeStore extends ChangeNotifier {
     } catch (e) {
       debugPrint('🔴 [HesakModeStore] load error: $e');
     }
+  }
+
+  /// New account: saves the 3 built-in modes (العام، النوم، السيارة) in
+  /// users/{uid}/userModes right away, so every user has them in Firebase.
+  /// Called by AuthService when users/{uid} is created (after verification).
+  /// Never overwrites a mode that is already saved (edited or isDeleted).
+  Future<void> saveDefaultModesIfMissing(String uid) async {
+    try {
+      final collection = _db.collection('users').doc(uid).collection('userModes');
+      final snap = await collection.get(const GetOptions(source: Source.server));
+      _saveMissingDefaultModes(collection, snap.docs.map((doc) => doc.id).toSet());
+    } catch (e) {
+      // e.g. offline: they are saved on the next login (_loadFromFirebase).
+      debugPrint('🔴 [HesakModeStore] save defaults error: $e');
+    }
+  }
+
+  /// Writes the built-in modes whose id is not in [savedIds] (one batch).
+  void _saveMissingDefaultModes(
+      CollectionReference<Map<String, dynamic>> collection,
+      Set<String> savedIds,
+      ) {
+    final defaults = _defaultModes();
+    final batch = _db.batch();
+    bool hasMissing = false;
+    for (int i = 0; i < defaults.length; i++) {
+      if (savedIds.contains(defaults[i].id)) continue;
+      batch.set(collection.doc(defaults[i].id), _modeToMap(defaults[i], i));
+      hasMissing = true;
+    }
+    if (!hasMissing) return;
+    unawaited(batch.commit().catchError((e) => debugPrint('🔴 [HesakModeStore] save defaults error: $e')));
   }
 
   /// Saves one mode (all its settings) to users/{uid}/userModes/{id}.
@@ -657,9 +696,9 @@ class HesakModeStore extends ChangeNotifier {
     unawaited(
       userDoc
           .update({
-            'settings.currentModeId': _selectedModeId,
-            'settings.scheduleSelectedModeId': _scheduleSelectedModeId, // null = picked by the user
-          })
+        'settings.currentModeId': _selectedModeId,
+        'settings.scheduleSelectedModeId': _scheduleSelectedModeId, // null = picked by the user
+      })
           .catchError((e) => debugPrint('🔴 [HesakModeStore] select error: $e')),
     );
   }
