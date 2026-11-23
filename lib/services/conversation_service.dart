@@ -307,7 +307,6 @@ class ConversationService {
       'originalText': m.originalText,
       'enhancedText': m.enhancedText,
       'isEnhancementAccepted': m.isEnhancementAccepted,
-      'speakerLabel': m.speakerLabel,
       'sentAt': Timestamp.fromDate(m.sentAt),
       'voiceDurationMs': m.voiceDuration?.inMilliseconds,
       'audioFileName': m.audioFileName,
@@ -324,7 +323,6 @@ class ConversationService {
           : ChatsMessageKind.speechToText,
       originalText: d['originalText'] as String? ?? '',
       sentAt: (d['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      speakerLabel: d['speakerLabel'] as String? ?? 'شخص',
       enhancedText: d['enhancedText'] as String?,
       isEnhancementAccepted: d['isEnhancementAccepted'] as bool? ?? false,
       voiceDuration:

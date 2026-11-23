@@ -521,7 +521,7 @@ class AuthService extends ChangeNotifier {
       _userDoc(user.uid).update({
         'nameRecognition': {
           'enabled': true,
-          'names': [callName.trim()],
+          'name': callName.trim(), // One call name (a String, not a list)
           'updatedAt': FieldValue.serverTimestamp(),
         },
       }).catchError((e) => debugPrint('saveCallName error: $e')),
@@ -657,6 +657,8 @@ class AuthService extends ChangeNotifier {
           'currentModeId': 'general',
         },
       });
+      // The 3 built-in modes are saved in users/{uid}/userModes too.
+      await HesakModeStore.instance.saveDefaultModesIfMissing(user.uid);
     } else if (user.email != null && data['email'] != user.email) {
       // The email was changed with requestEmailChange: keep Firestore in sync.
       await doc.update({'email': user.email});
@@ -664,7 +666,15 @@ class AuthService extends ChangeNotifier {
 
     final settings = data?['settings'] as Map<String, dynamic>?;
     final nameRecognition = data?['nameRecognition'] as Map<String, dynamic>?;
-    final names = nameRecognition?['names'] as List<dynamic>?;
+    // nameRecognition.name (String). Older accounts saved it as a list
+    // "names": read the first one, it becomes "name" on the next change.
+    final savedCallName = nameRecognition?['name'];
+    final oldNames = nameRecognition?['names'];
+    final String? callName = savedCallName is String
+        ? savedCallName
+        : (oldNames is List && oldNames.isNotEmpty && oldNames.first is String)
+        ? oldNames.first as String
+        : null;
 
     currentUserName = (data?['displayName'] as String?) ?? user.displayName;
     currentEmail = user.email;
@@ -672,8 +682,7 @@ class AuthService extends ChangeNotifier {
         ? (_pendingVoice ?? HesakVoice.male)
         : (settings['ttsVoice'] == HesakVoice.female.name ? HesakVoice.female : HesakVoice.male);
     _pendingVoice = null;
-    currentCallName =
-    (names != null && names.isNotEmpty) ? names.first as String : null;
+    currentCallName = (callName != null && callName.trim().isNotEmpty) ? callName : null;
     notifyListeners();
 
     // فاتح / داكن saved in the account (follows the user to another phone).

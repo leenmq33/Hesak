@@ -40,7 +40,6 @@ class ChatsMessage {
     required this.kind,
     required this.originalText,
     required this.sentAt,
-    this.speakerLabel = 'شخص',
     this.enhancedText,
     this.isEnhancementAccepted = false,
     this.voiceDuration,
@@ -54,9 +53,6 @@ class ChatsMessage {
   final String originalText;
 
   final DateTime sentAt;
-
-  /// Label shown above speech-to-text messages.
-  final String speakerLabel;
 
   /// AI-improved version of [originalText] (null until requested).
   String? enhancedText;
