@@ -1,0 +1,623 @@
+{
+  "version": "1.9",
+  "categories": [
+    {
+      "id": "critical",
+      "ar": "الطوارئ والإنذارات",
+      "en": "Emergency & Alarms",
+      "locked": true,
+      "sounds": [
+        "emergency_siren",
+        "fire_alarm",
+        "alarm",
+        "explosion"
+      ]
+    },
+    {
+      "id": "entrances",
+      "ar": "المداخل",
+      "en": "Entrances",
+      "locked": false,
+      "sounds": [
+        "bell",
+        "knock",
+        "keys"
+      ]
+    },
+    {
+      "id": "people",
+      "ar": "الأشخاص",
+      "en": "People",
+      "locked": false,
+      "sounds": [
+        "scream",
+        "baby_cry",
+        "laughter",
+        "clapping",
+        "crowd",
+        "footsteps"
+      ]
+    },
+    {
+      "id": "home_devices",
+      "ar": "المنزل والأجهزة",
+      "en": "Home & Devices",
+      "locked": false,
+      "sounds": [
+        "phone_tone",
+        "washing_machine"
+      ]
+    },
+    {
+      "id": "road",
+      "ar": "الطريق",
+      "en": "Road",
+      "locked": false,
+      "sounds": [
+        "horn",
+        "traffic",
+        "skid"
+      ]
+    },
+    {
+      "id": "animals",
+      "ar": "الحيوانات",
+      "en": "Animals",
+      "locked": false,
+      "sounds": [
+        "dog",
+        "cat",
+        "birds",
+        "rooster",
+        "livestock"
+      ]
+    },
+    {
+      "id": "nature",
+      "ar": "الطبيعة والطقس",
+      "en": "Nature & Weather",
+      "locked": false,
+      "sounds": [
+        "rain",
+        "thunder"
+      ]
+    },
+    {
+      "id": "religious",
+      "ar": "ديني",
+      "en": "Religious",
+      "locked": false,
+      "sounds": [
+        "adhan"
+      ]
+    }
+  ],
+  "sounds": {
+    "emergency_siren": {
+      "ar": "صفارة إسعاف / شرطة / دفاع مدني",
+      "en": "Emergency siren",
+      "category": "critical",
+      "yamnet": [
+        "Siren",
+        "Ambulance (siren)",
+        "Police car (siren)",
+        "Fire engine, fire truck (siren)",
+        "Emergency vehicle",
+        "Civil defense siren"
+      ],
+      "source": "yamnet",
+      "release": "R1"
+    },
+    "fire_alarm": {
+      "ar": "إنذار حريق / دخان",
+      "en": "Fire / smoke alarm",
+      "category": "critical",
+      "yamnet": [
+        "Fire alarm",
+        "Smoke detector, smoke alarm"
+      ],
+      "source": "yamnet",
+      "release": "R1"
+    },
+    "alarm": {
+      "ar": "إنذار عام",
+      "en": "General alarm",
+      "category": "critical",
+      "yamnet": [
+        "Alarm"
+      ],
+      "source": "yamnet+train",
+      "release": "R1"
+    },
+    "explosion": {
+      "ar": "انفجار / إطلاق نار",
+      "en": "Explosion / gunshot",
+      "category": "critical",
+      "yamnet": [
+        "Explosion",
+        "Gunshot, gunfire"
+      ],
+      "source": "yamnet+train",
+      "release": "R1"
+    },
+    "bell": {
+      "ar": "جرس (باب، انتركم، مدرسة، استقبال، دراجة، جرس يد. مو كنيسة)",
+      "en": "Bell (doorbell, intercom, school, service, bicycle, hand bell; not church/tower)",
+      "category": "entrances",
+      "yamnet": [
+        "Doorbell",
+        "Ding-dong",
+        "Ding",
+        "Bell",
+        "Bicycle bell"
+      ],
+      "source": "yamnet+train",
+      "release": "R1"
+    },
+    "knock": {
+      "ar": "طرق الباب",
+      "en": "Door knock",
+      "category": "entrances",
+      "yamnet": [
+        "Knock"
+      ],
+      "source": "yamnet+train",
+      "release": "R1"
+    },
+    "keys": {
+      "ar": "صوت مفاتيح",
+      "en": "Keys jangling",
+      "category": "entrances",
+      "yamnet": [
+        "Keys jangling",
+        "Chink, clink"
+      ],
+      "source": "yamnet+train",
+      "release": "R1"
+    },
+    "scream": {
+      "ar": "صراخ / استغاثة",
+      "en": "Screaming / shouting",
+      "category": "people",
+      "yamnet": [
+        "Screaming",
+        "Shout",
+        "Yell",
+        "Bellow",
+        "Children shouting"
+      ],
+      "source": "yamnet+train",
+      "release": "R1"
+    },
+    "baby_cry": {
+      "ar": "بكاء طفل",
+      "en": "Baby crying",
+      "category": "people",
+      "yamnet": [
+        "Baby cry, infant cry",
+        "Crying, sobbing"
+      ],
+      "source": "yamnet",
+      "release": "R1"
+    },
+    "laughter": {
+      "ar": "ضحك",
+      "en": "Laughter",
+      "category": "people",
+      "yamnet": [
+        "Laughter",
+        "Baby laughter"
+      ],
+      "source": "yamnet+train",
+      "release": "R1"
+    },
+    "clapping": {
+      "ar": "تصفيق",
+      "en": "Clapping",
+      "category": "people",
+      "yamnet": [
+        "Clapping",
+        "Applause"
+      ],
+      "source": "yamnet+train",
+      "release": "R1"
+    },
+    "crowd": {
+      "ar": "ضجة ناس / كلام",
+      "en": "Crowd / speech",
+      "category": "people",
+      "yamnet": [
+        "Crowd",
+        "Chatter",
+        "Hubbub, speech noise, speech babble",
+        "Speech",
+        "Conversation",
+        "Child speech, kid speaking"
+      ],
+      "source": "yamnet+train",
+      "release": "R1"
+    },
+    "footsteps": {
+      "ar": "خطوات",
+      "en": "Footsteps",
+      "category": "people",
+      "yamnet": [
+        "Walk, footsteps"
+      ],
+      "source": "yamnet+train",
+      "release": "R1"
+    },
+    "phone_tone": {
+      "ar": "نغمة جوال / منبّه",
+      "en": "Phone ringtone / alarm clock",
+      "category": "home_devices",
+      "yamnet": [
+        "Telephone bell ringing",
+        "Ringtone",
+        "Telephone",
+        "Alarm clock"
+      ],
+      "source": "yamnet+train",
+      "release": "R1"
+    },
+    "washing_machine": {
+      "ar": "غسالة (انتهاء الدورة)",
+      "en": "Washing machine (cycle end)",
+      "category": "home_devices",
+      "yamnet": [],
+      "source": "train",
+      "release": "R1"
+    },
+    "horn": {
+      "ar": "بوري (سيارة / شاحنة)",
+      "en": "Horn",
+      "category": "road",
+      "yamnet": [
+        "Vehicle horn, car horn, honking",
+        "Air horn, truck horn"
+      ],
+      "source": "yamnet",
+      "release": "R1"
+    },
+    "traffic": {
+      "ar": "ضجة سيارات / شارع",
+      "en": "Traffic / vehicles",
+      "category": "road",
+      "yamnet": [
+        "Car passing by",
+        "Truck",
+        "Bus",
+        "Motorcycle",
+        "Car",
+        "Vehicle",
+        "Motor vehicle (road)",
+        "Traffic noise, roadway noise",
+        "Air brake"
+      ],
+      "source": "yamnet+train",
+      "release": "R1"
+    },
+    "skid": {
+      "ar": "فرامل / انزلاق إطارات",
+      "en": "Skid / tire squeal",
+      "category": "road",
+      "yamnet": [
+        "Skidding",
+        "Tire squeal"
+      ],
+      "source": "yamnet",
+      "release": "R1"
+    },
+    "dog": {
+      "ar": "كلب",
+      "en": "Dog",
+      "category": "animals",
+      "yamnet": [
+        "Dog",
+        "Bark",
+        "Bow-wow",
+        "Yip",
+        "Growling"
+      ],
+      "source": "yamnet",
+      "release": "R1"
+    },
+    "cat": {
+      "ar": "قطة",
+      "en": "Cat",
+      "category": "animals",
+      "yamnet": [
+        "Cat",
+        "Meow",
+        "Purr",
+        "Caterwaul"
+      ],
+      "source": "yamnet+train",
+      "release": "R1"
+    },
+    "birds": {
+      "ar": "طيور",
+      "en": "Birds",
+      "category": "animals",
+      "yamnet": [
+        "Bird",
+        "Bird vocalization, bird call, bird song",
+        "Chirp, tweet",
+        "Pigeon, dove",
+        "Crow"
+      ],
+      "source": "yamnet",
+      "release": "R1"
+    },
+    "rooster": {
+      "ar": "ديك / دجاج",
+      "en": "Rooster / chicken",
+      "category": "animals",
+      "yamnet": [
+        "Chicken, rooster",
+        "Crowing, cock-a-doodle-doo",
+        "Cluck"
+      ],
+      "source": "yamnet",
+      "release": "R1"
+    },
+    "livestock": {
+      "ar": "غنم / ماعز",
+      "en": "Sheep / goat",
+      "category": "animals",
+      "yamnet": [
+        "Sheep",
+        "Goat",
+        "Bleat"
+      ],
+      "source": "yamnet",
+      "release": "R1"
+    },
+    "rain": {
+      "ar": "مطر",
+      "en": "Rain",
+      "category": "nature",
+      "yamnet": [
+        "Rain",
+        "Raindrop",
+        "Rain on surface"
+      ],
+      "source": "yamnet+train",
+      "release": "R1"
+    },
+    "thunder": {
+      "ar": "رعد",
+      "en": "Thunder",
+      "category": "nature",
+      "yamnet": [
+        "Thunder",
+        "Thunderstorm"
+      ],
+      "source": "yamnet",
+      "release": "R1"
+    },
+    "adhan": {
+      "ar": "الأذان",
+      "en": "Adhan",
+      "category": "religious",
+      "yamnet": [],
+      "source": "train",
+      "release": "R2"
+    }
+  },
+  "ignore_yamnet": [
+    "Silence",
+    "Music",
+    "Musical instrument",
+    "Background music",
+    "Inside, small room",
+    "Inside, large room or hall",
+    "Field recording",
+    "Narration, monologue",
+    "Wind noise (microphone)",
+    "Air conditioning",
+    "Mechanical fan",
+    "Toilet flush",
+    "Engine",
+    "Howl",
+    "Hiss",
+    "Beatboxing"
+  ],
+  "suppress": {
+    "explosion": [
+      "Fireworks",
+      "Firecracker",
+      "Thunder",
+      "Thunderstorm",
+      "Clapping",
+      "Applause"
+    ],
+    "alarm": [
+      "Alarm clock"
+    ],
+    "bell": [
+      "Church bell",
+      "Change ringing (campanology)",
+      "Ringtone",
+      "Telephone bell ringing"
+    ],
+    "traffic": [
+      "Rain",
+      "Raindrop",
+      "Rain on surface"
+    ],
+    "knock": [
+      "Walk, footsteps"
+    ]
+  },
+  "default_modes": {
+    "sleep": {
+      "ar": "النوم",
+      "sounds": [
+        "emergency_siren",
+        "fire_alarm",
+        "alarm",
+        "explosion"
+      ]
+    },
+    "driving": {
+      "ar": "القيادة",
+      "sounds": [
+        "emergency_siren",
+        "fire_alarm",
+        "alarm",
+        "explosion",
+        "horn",
+        "skid"
+      ]
+    },
+    "general": {
+      "ar": "عام",
+      "sounds": [
+        "emergency_siren",
+        "fire_alarm",
+        "alarm",
+        "explosion",
+        "bell",
+        "knock",
+        "keys",
+        "scream",
+        "baby_cry",
+        "laughter",
+        "clapping",
+        "crowd",
+        "footsteps",
+        "phone_tone",
+        "washing_machine",
+        "horn",
+        "traffic",
+        "skid",
+        "dog",
+        "cat",
+        "birds",
+        "rooster",
+        "livestock",
+        "rain",
+        "thunder"
+      ]
+    }
+  },
+  "rules": {
+    "critical_always_on": true,
+    "min_consecutive_frames": 2,
+    "smoothing_gap_sec": 2.0,
+    "threshold": {
+      "critical": 0.25,
+      "default": 0.5
+    },
+    "thresholds": {
+      "emergency_siren": 0.4,
+      "fire_alarm": 0.3,
+      "alarm": 0.4,
+      "explosion": 0.4,
+      "bell": 0.125,
+      "knock": 0.375,
+      "keys": 0.5,
+      "scream": 0.5,
+      "baby_cry": 0.65,
+      "laughter": 0.225,
+      "clapping": 0.225,
+      "crowd": 0.5,
+      "footsteps": 0.2,
+      "phone_tone": 0.5,
+      "horn": 0.35,
+      "traffic": 0.5,
+      "skid": 0.5,
+      "dog": 0.8,
+      "cat": 0.875,
+      "birds": 0.475,
+      "rooster": 0.2,
+      "livestock": 0.225,
+      "rain": 0.775,
+      "thunder": 0.7
+    },
+    "min_frames": {
+      "emergency_siren": 2,
+      "fire_alarm": 2,
+      "alarm": 2,
+      "explosion": 1,
+      "bell": 2,
+      "knock": 1,
+      "keys": 1,
+      "scream": 2,
+      "baby_cry": 2,
+      "laughter": 2,
+      "clapping": 1,
+      "crowd": 2,
+      "footsteps": 2,
+      "phone_tone": 2,
+      "horn": 1,
+      "traffic": 2,
+      "skid": 2,
+      "dog": 2,
+      "cat": 1,
+      "birds": 2,
+      "rooster": 2,
+      "livestock": 2,
+      "rain": 1,
+      "thunder": 1
+    }
+  },
+  "changelog": {
+    "1.9 (2026-10-30)": [
+      "Head v6: footsteps, clapping, laughter, cat, rain trained in the head (source yamnet+train). Head = 15 sounds.",
+      "New suppress rules (mapping): traffic by Rain / Raindrop / Rain on surface; knock by Walk, footsteps; explosion by Clapping / Applause.",
+      "Reason: final test round 1 (log 6.8): rain fired traffic, footsteps fired knock, clapping fired explosion."
+    ],
+    "1.8 (2026-10-30)": [
+      "After the final test round 1 (log 6.8): laughter fired crowd in test_final. New priority rule: crowd is hidden when laughter fires.",
+      "footsteps kept (team decision). footsteps / clapping / laughter become hard negatives in head training v5. No threshold or mapping changed."
+    ],
+    "1.7 (2026-10-30)": [
+      "Removed train (team decision 2026-10-30): it overlapped with traffic (train fired traffic in 16/16 ESC-50 clips). 27 -> 26 sounds (25 R1 + adhan R2).",
+      "priority: traffic is now hidden only by skid. Driving mode: critical + horn + skid.",
+      "test_final/train clips moved to test_final/other as negatives (except 854368, which has scooters = traffic)."
+    ],
+    "1.6 (2026-10-30)": [
+      "Removed insects (team decision 2026-10-30): 28 -> 27 sounds (26 R1 + adhan R2). Nothing else changed."
+    ],
+    "1.5 (2026-10-30)": [
+      "After step 2c (all 28 sounds tested). Team decision 2026-10-30.",
+      "New 'priority' display rule: alarm is hidden when fire_alarm or emergency_siren fires; traffic is hidden when train or skid fires (fire_alarm came with alarm in 8/8 clips, emergency_siren with alarm in 4/5, train with traffic in 16/16, skid with traffic in 3/3).",
+      "traffic and keys added to the head training list (source yamnet+train): traffic fired on microwave/kettle/blender/drill/printer, keys on dishes/cutlery/hammer.",
+      "Data fix: 31057 (rubbish truck), 398859 (truck), 804483 (truck reversing) moved from other to traffic: they contain trucks, so the traffic alert on them was correct.",
+      "No threshold or mapping changed."
+    ],
+    "1.4 (2026-10-30)": [
+      "Scope reduction (team decision 2026-10-30): 53 -> 28 sounds (27 R1 + adhan R2), 8 categories. Sounds may be added back later if accuracy is good.",
+      "Deleted: door_window, cough, whistling, device_beep, glass_break, water_running, boiling, microwave, vacuum, blender, frying, dishes, printer, power_tool, hammer, saw, reversing, crash, car_alarm, aircraft, wind. Their recordings moved to data 'other' as negatives.",
+      "speech merged into crowd ('ضجة ناس / كلام'): crowd now maps Speech, Conversation, Child speech too. Speech/radio/TV/recitation/nasheed files moved from other to crowd; recitation & nasheeds stay adhan negatives (crowd/_notes_crowd.txt).",
+      "phone_ring + alarm_clock merged into phone_tone. motorcycle + truck_bus + car_passing merged into traffic (Car, Vehicle, Motor vehicle (road), Traffic noise removed from ignore_yamnet; Air brake added).",
+      "bell threshold 0.85 -> 0.125 (tuned on half the bell groups, step 4). bell suppressed by Ringtone / Telephone bell ringing too (step 4b).",
+      "Kept step-4b candidate additions for surviving sounds: keys += Chink, clink. (Heavy engine (low frequency) is not a YAMNet class, so not added.) Candidate changes for deleted sounds dropped.",
+      "Categories: devices+home+work -> home_devices; road trimmed. Driving mode excludes traffic (always present while driving).",
+      "source 'yamnet+train' = planned FSD50K/our-data head training (bell, knock, scream, alarm, explosion, crowd, phone_tone, washing_machine). phone_tone and traffic thresholds are defaults (0.5) until tested."
+    ],
+    "1.3 (2026-10-28)": [
+      "Removed quran (team decision 2026-10-23). 53 sounds: 52 R1 + adhan R2.",
+      "bell = any bell (doorbell, intercom, school, reception/service, bicycle, hand bell) EXCEPT church/tower bells (team decision 2026-10-28).",
+      "bell mapping: removed Church bell, Jingle bell, Tubular bells; added Bicycle bell.",
+      "suppress bell when Church bell / Change ringing (campanology) is present.",
+      "bell threshold 0.85 was tuned on ESC-50 church bells: must be re-tuned on our recordings in step 4.",
+      "Notebooks must assert every YAMNet class name here exists in yamnet_class_map.csv (Bicycle bell, Change ringing (campanology) not yet verified)."
+    ]
+  },
+  "priority": {
+    "_doc": "Display rule: if any sound in the list fires, do not show the key sound (the more specific alert wins).",
+    "alarm": [
+      "fire_alarm",
+      "emergency_siren"
+    ],
+    "traffic": [
+      "skid"
+    ],
+    "crowd": [
+      "laughter"
+    ]
+  }
+}

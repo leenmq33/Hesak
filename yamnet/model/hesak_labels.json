@@ -1,0 +1,455 @@
+{
+  "version": "2.0",
+  "based_on": "1.9",
+  "_doc": "v2.0 is an OUTPUT layer on top of the frozen v6b system. The detector still runs the 25 internal v1.9 sounds (hesak_labels_v1.9.json + hesak_head_v6.keras + hesak_head_v6b_config.json, unchanged, no retraining). Then: merged sounds fire if ANY of their internal sounds fires; removed internal sounds are dropped; then the v2.0 priority rule is applied. Only the sounds below are shown to the user.",
+  "internal_labels_file": "hesak_labels_v1.9.json",
+  "categories": [
+    {
+      "id": "critical",
+      "ar": "الطوارئ والإنذارات",
+      "en": "Emergency & Alarms",
+      "locked": true,
+      "sounds": [
+        "emergency_siren",
+        "alarm"
+      ]
+    },
+    {
+      "id": "entrances",
+      "ar": "المداخل",
+      "en": "Entrances",
+      "locked": false,
+      "sounds": [
+        "bell",
+        "knock",
+        "keys"
+      ]
+    },
+    {
+      "id": "people",
+      "ar": "الأشخاص",
+      "en": "People",
+      "locked": false,
+      "sounds": [
+        "scream",
+        "baby_cry",
+        "crowd"
+      ]
+    },
+    {
+      "id": "devices_alerts",
+      "ar": "الأجهزة والتنبيهات",
+      "en": "Devices & Alerts",
+      "locked": false,
+      "sounds": [
+        "phone_tone",
+        "washing_machine"
+      ]
+    },
+    {
+      "id": "road",
+      "ar": "الطريق",
+      "en": "Road",
+      "locked": false,
+      "sounds": [
+        "horn"
+      ]
+    },
+    {
+      "id": "animals",
+      "ar": "الحيوانات",
+      "en": "Animals",
+      "locked": false,
+      "sounds": [
+        "dog",
+        "cat",
+        "birds",
+        "rooster",
+        "livestock"
+      ]
+    },
+    {
+      "id": "nature",
+      "ar": "الطبيعة والطقس",
+      "en": "Nature & Weather",
+      "locked": false,
+      "sounds": [
+        "rain"
+      ]
+    },
+    {
+      "id": "religious",
+      "ar": "ديني",
+      "en": "Religious",
+      "locked": false,
+      "sounds": [
+        "adhan"
+      ]
+    }
+  ],
+  "sounds": {
+    "emergency_siren": {
+      "ar": "صفارة إسعاف / شرطة / دفاع مدني",
+      "en": "Emergency siren",
+      "category": "critical",
+      "yamnet": [
+        "Siren",
+        "Ambulance (siren)",
+        "Police car (siren)",
+        "Fire engine, fire truck (siren)",
+        "Emergency vehicle",
+        "Civil defense siren"
+      ],
+      "source": "yamnet",
+      "release": "R1",
+      "internal_sounds": [
+        "emergency_siren"
+      ]
+    },
+    "alarm": {
+      "ar": "إنذار (حريق / دخان / عام)",
+      "en": "Alarm (fire / smoke / general)",
+      "category": "critical",
+      "yamnet": [
+        "Fire alarm",
+        "Smoke detector, smoke alarm",
+        "Alarm"
+      ],
+      "source": "yamnet+train",
+      "release": "R1",
+      "internal_sounds": [
+        "fire_alarm",
+        "alarm"
+      ]
+    },
+    "bell": {
+      "ar": "جرس (باب، انتركم، مدرسة، استقبال، دراجة، جرس يد. مو كنيسة)",
+      "en": "Bell (doorbell, intercom, school, service, bicycle, hand bell; not church/tower)",
+      "category": "entrances",
+      "yamnet": [
+        "Doorbell",
+        "Ding-dong",
+        "Ding",
+        "Bell",
+        "Bicycle bell"
+      ],
+      "source": "yamnet+train",
+      "release": "R1",
+      "internal_sounds": [
+        "bell"
+      ]
+    },
+    "knock": {
+      "ar": "طرق الباب",
+      "en": "Door knock",
+      "category": "entrances",
+      "yamnet": [
+        "Knock"
+      ],
+      "source": "yamnet+train",
+      "release": "R1",
+      "internal_sounds": [
+        "knock"
+      ]
+    },
+    "keys": {
+      "ar": "صوت مفاتيح",
+      "en": "Keys jangling",
+      "category": "entrances",
+      "yamnet": [
+        "Keys jangling",
+        "Chink, clink"
+      ],
+      "source": "yamnet+train",
+      "release": "R1",
+      "internal_sounds": [
+        "keys"
+      ]
+    },
+    "scream": {
+      "ar": "صراخ / استغاثة",
+      "en": "Screaming / shouting",
+      "category": "people",
+      "yamnet": [
+        "Screaming",
+        "Shout",
+        "Yell",
+        "Bellow",
+        "Children shouting"
+      ],
+      "source": "yamnet+train",
+      "release": "R1",
+      "internal_sounds": [
+        "scream"
+      ]
+    },
+    "baby_cry": {
+      "ar": "بكاء طفل",
+      "en": "Baby crying",
+      "category": "people",
+      "yamnet": [
+        "Baby cry, infant cry",
+        "Crying, sobbing"
+      ],
+      "source": "yamnet",
+      "release": "R1",
+      "internal_sounds": [
+        "baby_cry"
+      ]
+    },
+    "crowd": {
+      "ar": "ناس / كلام (ضجة، كلام، ضحك)",
+      "en": "People / speech (crowd, speech, laughter)",
+      "category": "people",
+      "yamnet": [
+        "Crowd",
+        "Chatter",
+        "Hubbub, speech noise, speech babble",
+        "Speech",
+        "Conversation",
+        "Child speech, kid speaking",
+        "Laughter",
+        "Baby laughter"
+      ],
+      "source": "yamnet+train",
+      "release": "R1",
+      "internal_sounds": [
+        "crowd",
+        "laughter"
+      ]
+    },
+    "phone_tone": {
+      "ar": "نغمة جوال / منبّه",
+      "en": "Phone ringtone / alarm clock",
+      "category": "devices_alerts",
+      "yamnet": [
+        "Telephone bell ringing",
+        "Ringtone",
+        "Telephone",
+        "Alarm clock"
+      ],
+      "source": "yamnet+train",
+      "release": "R1",
+      "internal_sounds": [
+        "phone_tone"
+      ],
+      "status": "retest in round 3; removed if still weak"
+    },
+    "washing_machine": {
+      "ar": "غسالة (انتهاء الدورة)",
+      "en": "Washing machine (cycle end)",
+      "category": "devices_alerts",
+      "yamnet": [],
+      "source": "train",
+      "release": "R1",
+      "internal_sounds": [
+        "washing_machine"
+      ]
+    },
+    "horn": {
+      "ar": "بوري (سيارة / شاحنة)",
+      "en": "Horn",
+      "category": "road",
+      "yamnet": [
+        "Vehicle horn, car horn, honking",
+        "Air horn, truck horn"
+      ],
+      "source": "yamnet",
+      "release": "R1",
+      "internal_sounds": [
+        "horn"
+      ]
+    },
+    "dog": {
+      "ar": "كلب",
+      "en": "Dog",
+      "category": "animals",
+      "yamnet": [
+        "Dog",
+        "Bark",
+        "Bow-wow",
+        "Yip",
+        "Growling"
+      ],
+      "source": "yamnet",
+      "release": "R1",
+      "internal_sounds": [
+        "dog"
+      ]
+    },
+    "cat": {
+      "ar": "قطة",
+      "en": "Cat",
+      "category": "animals",
+      "yamnet": [
+        "Cat",
+        "Meow",
+        "Purr",
+        "Caterwaul"
+      ],
+      "source": "yamnet+train",
+      "release": "R1",
+      "internal_sounds": [
+        "cat"
+      ]
+    },
+    "birds": {
+      "ar": "طيور",
+      "en": "Birds",
+      "category": "animals",
+      "yamnet": [
+        "Bird",
+        "Bird vocalization, bird call, bird song",
+        "Chirp, tweet",
+        "Pigeon, dove",
+        "Crow"
+      ],
+      "source": "yamnet",
+      "release": "R1",
+      "internal_sounds": [
+        "birds"
+      ]
+    },
+    "rooster": {
+      "ar": "ديك / دجاج",
+      "en": "Rooster / chicken",
+      "category": "animals",
+      "yamnet": [
+        "Chicken, rooster",
+        "Crowing, cock-a-doodle-doo",
+        "Cluck"
+      ],
+      "source": "yamnet",
+      "release": "R1",
+      "internal_sounds": [
+        "rooster"
+      ]
+    },
+    "livestock": {
+      "ar": "غنم / ماعز",
+      "en": "Sheep / goat",
+      "category": "animals",
+      "yamnet": [
+        "Sheep",
+        "Goat",
+        "Bleat"
+      ],
+      "source": "yamnet",
+      "release": "R1",
+      "internal_sounds": [
+        "livestock"
+      ]
+    },
+    "rain": {
+      "ar": "مطر / عاصفة (مطر، رعد)",
+      "en": "Rain / storm (rain, thunder)",
+      "category": "nature",
+      "yamnet": [
+        "Rain",
+        "Raindrop",
+        "Rain on surface",
+        "Thunder",
+        "Thunderstorm"
+      ],
+      "source": "yamnet+train",
+      "release": "R1",
+      "internal_sounds": [
+        "rain",
+        "thunder"
+      ],
+      "status": "retest in round 3"
+    },
+    "adhan": {
+      "ar": "الأذان",
+      "en": "Adhan",
+      "category": "religious",
+      "yamnet": [],
+      "source": "train",
+      "release": "R2",
+      "internal_sounds": [
+        "adhan"
+      ]
+    }
+  },
+  "merge": {
+    "alarm": [
+      "fire_alarm",
+      "alarm"
+    ],
+    "crowd": [
+      "crowd",
+      "laughter"
+    ],
+    "rain": [
+      "rain",
+      "thunder"
+    ]
+  },
+  "removed_internal": {
+    "explosion": "17% in round 2; fired on thunder, clapping, traffic; critical alerts cannot be muted",
+    "clapping": "20% in round 2; fired knock and explosion",
+    "footsteps": "0% in round 2; fired knock; the user's own steps would alert all the time",
+    "traffic": "0% in round 2; fires on any engine-like sound; not useful (always present)",
+    "skid": "0% in round 2; team decision: the driver sees braking, the pedestrian needs the horn"
+  },
+  "priority": {
+    "_doc": "Display rule: if any sound in the list fires, do not show the key sound (the more specific alert wins).",
+    "alarm": [
+      "emergency_siren"
+    ]
+  },
+  "default_modes": {
+    "sleep": {
+      "ar": "النوم",
+      "sounds": [
+        "emergency_siren",
+        "alarm"
+      ]
+    },
+    "driving": {
+      "ar": "القيادة",
+      "sounds": [
+        "emergency_siren",
+        "alarm",
+        "horn"
+      ]
+    },
+    "general": {
+      "ar": "عام",
+      "sounds": [
+        "emergency_siren",
+        "alarm",
+        "bell",
+        "knock",
+        "keys",
+        "scream",
+        "baby_cry",
+        "crowd",
+        "phone_tone",
+        "washing_machine",
+        "horn",
+        "dog",
+        "cat",
+        "birds",
+        "rooster",
+        "livestock",
+        "rain"
+      ]
+    }
+  },
+  "rules": {
+    "critical_always_on": true,
+    "note": "Thresholds, min_frames, suppress and ignore lists are the internal v1.9 ones (internal_labels_file) and the v6b config. They are not changed in v2.0."
+  },
+  "changelog": {
+    "2.0 (2026-11-04)": [
+      "Team decision (Leen, 2026-11-04) after test round 2 (log 6.12). 25 -> 17 R1 sounds + adhan (R2), 7 categories + religious.",
+      "Merged: fire_alarm + alarm -> alarm; crowd + laughter -> crowd; rain + thunder -> rain.",
+      "Removed: explosion, clapping, footsteps, traffic, skid (reasons in removed_internal).",
+      "Category home_devices renamed to devices_alerts ('الأجهزة والتنبيهات'); road = horn only; nature = rain/storm.",
+      "Priority: alarm hidden when emergency_siren fires (old crowd<-laughter and traffic<-skid rules no longer needed).",
+      "Driving mode: emergency_siren + alarm + horn. Sleep: emergency_siren + alarm.",
+      "phone_tone and rain/storm are re-tested in round 3. No model retraining, no threshold change."
+    ]
+  }
+}

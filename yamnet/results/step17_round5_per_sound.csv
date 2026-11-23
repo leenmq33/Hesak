@@ -1,0 +1,17 @@
+﻿tier,sound,clips,mapping_detected,mapping_wrong,v6b_detected,v6b_wrong,v10_detected,v10_wrong,v11_detected,v11_wrong,v11_any_critical,v11_wrong_with
+critical,alarm,5,1.0,0.0,1.0,1.0,1.0,0.0,1.0,0.0,1.0,
+critical,emergency_siren,5,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.2,1.0,horn 1
+important,bell,5,1.0,0.4,1.0,0.0,1.0,0.0,1.0,0.2,,horn 1
+important,knock,5,0.6,0.0,0.8,0.0,0.8,0.0,0.6,0.0,,
+important,scream,5,0.0,0.0,0.8,0.0,0.8,0.0,0.8,0.2,,dog 1
+rest,baby_cry,5,1.0,0.2,1.0,0.2,1.0,0.4,1.0,0.4,,"scream 1, crowd 1"
+rest,birds,5,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,,
+rest,cat,5,1.0,0.2,1.0,0.2,1.0,0.2,1.0,0.2,,livestock 1
+rest,crowd,5,0.8,0.0,0.8,0.6,0.8,0.2,1.0,0.2,,scream 1
+rest,dog,5,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,,
+rest,horn,5,1.0,0.0,1.0,0.6,1.0,0.2,1.0,0.2,,emergency_siren 1
+rest,keys,5,0.6,0.4,0.8,0.0,1.0,0.0,1.0,0.0,,
+rest,livestock,5,0.8,0.2,0.8,0.2,0.8,0.0,0.8,0.2,,horn 1
+rest,rain,5,0.0,0.0,0.0,0.0,0.2,0.0,0.6,0.0,,
+rest,rooster,5,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,,
+rest,washing_machine,5,0.0,1.0,0.2,1.0,0.2,1.0,0.4,0.8,,alarm 4

@@ -1,0 +1,261 @@
+{
+  "version": "head_v11",
+  "model_file": "hesak_head_v11.keras",
+  "labels_version": "1.9",
+  "output_labels_version": "2.0",
+  "classes": [
+    "alarm",
+    "explosion",
+    "bell",
+    "knock",
+    "keys",
+    "scream",
+    "laughter",
+    "clapping",
+    "crowd",
+    "footsteps",
+    "phone_tone",
+    "washing_machine",
+    "traffic",
+    "cat",
+    "rain",
+    "dog"
+  ],
+  "mode": {
+    "emergency_siren": "mapping",
+    "fire_alarm": "mapping",
+    "alarm": "head_and_mapping",
+    "explosion": "head",
+    "bell": "head",
+    "knock": "head_or_mapping",
+    "keys": "head",
+    "scream": "head",
+    "baby_cry": "mapping",
+    "laughter": "head",
+    "clapping": "head",
+    "crowd": "head",
+    "footsteps": "head",
+    "phone_tone": "head",
+    "washing_machine": "head",
+    "horn": "mapping",
+    "traffic": "head",
+    "skid": "mapping",
+    "dog": "head",
+    "cat": "head",
+    "birds": "mapping",
+    "rooster": "mapping",
+    "livestock": "mapping",
+    "rain": "head",
+    "thunder": "mapping"
+  },
+  "output_layer": {
+    "base": "hesak_labels.json v2.0",
+    "removed_sounds": [
+      "phone_tone"
+    ],
+    "shown_sounds": [
+      "emergency_siren",
+      "alarm",
+      "bell",
+      "knock",
+      "keys",
+      "scream",
+      "baby_cry",
+      "crowd",
+      "washing_machine",
+      "horn",
+      "dog",
+      "cat",
+      "birds",
+      "rooster",
+      "livestock",
+      "rain"
+    ],
+    "note": "RS 10 Nov: phone_tone is computed inside the head but never shown"
+  },
+  "fixed_mapping_thresholds": {
+    "birds": 0.475
+  },
+  "thresholds": {
+    "alarm": 0.9,
+    "explosion": 0.5,
+    "bell": 0.55,
+    "knock": 0.65,
+    "keys": 0.65,
+    "scream": 0.775,
+    "laughter": 0.725,
+    "clapping": 0.575,
+    "crowd": 0.75,
+    "footsteps": 0.925,
+    "phone_tone": 0.7,
+    "washing_machine": 0.525,
+    "traffic": 0.875,
+    "cat": 0.95,
+    "rain": 0.85,
+    "dog": 0.875
+  },
+  "mapping_thresholds": {
+    "emergency_siren": 0.225,
+    "fire_alarm": 0.525,
+    "alarm": 0.4,
+    "explosion": null,
+    "bell": null,
+    "knock": 0.375,
+    "keys": null,
+    "scream": null,
+    "baby_cry": 0.65,
+    "laughter": null,
+    "clapping": null,
+    "crowd": null,
+    "footsteps": null,
+    "phone_tone": null,
+    "horn": 0.2,
+    "traffic": null,
+    "skid": 0.5,
+    "dog": null,
+    "cat": null,
+    "birds": 0.475,
+    "rooster": 0.675,
+    "livestock": 0.075,
+    "rain": null,
+    "thunder": 0.675
+  },
+  "short_rule": {
+    "sounds": [
+      "scream"
+    ],
+    "rule": "mode 'head_short': the head fires if ONE 3-frame window is above the threshold"
+  },
+  "tiers": {
+    "critical": [
+      "emergency_siren",
+      "fire_alarm",
+      "alarm"
+    ],
+    "important": [
+      "knock",
+      "bell",
+      "scream"
+    ],
+    "rest": [
+      "explosion",
+      "keys",
+      "baby_cry",
+      "laughter",
+      "clapping",
+      "crowd",
+      "footsteps",
+      "phone_tone",
+      "washing_machine",
+      "horn",
+      "traffic",
+      "skid",
+      "dog",
+      "cat",
+      "birds",
+      "rooster",
+      "livestock",
+      "rain",
+      "thunder"
+    ]
+  },
+  "false_alarm_allowance": {
+    "critical": 0.04,
+    "important": 0.03,
+    "rest": 0.03
+  },
+  "max_false_alarm_other": 0.2,
+  "tuning_set": "our recordings not used in training (without alarm_LM_01_yt: same source as a train_extra clip) + test_final round 1 + test_round3 (104 clips)",
+  "extra_training": "test_round2 + data/train_extra (scream, alarm = 27 fire alarms, rain = 5 round-4 copies + new rain-only clips: {'alarm': 27, 'scream': 19, 'rain': 15}), all repeated x3; alarm = FIRE ALARM ONLY (RS 10 Nov, 23 Saudi clips moved to data/alarm_excluded); v2.0 merges used as targets (fire_alarm -> alarm, thunder -> rain)",
+  "round3_check": {
+    "note": "v10a / v11a = v10 / v11 model tuned on the old set only; fair vs v6b on round 3, but round 3 is not a new test",
+    "summary": {
+      "v6b": {
+        "false_alarm_other": 0.13333333333333333,
+        "critical_det": 0.8333333333333333,
+        "important_det": 0.6666666666666666,
+        "rest_det": 0.8181818181818182,
+        "all_det": 0.7916666666666667
+      },
+      "v10a": {
+        "false_alarm_other": 0.13333333333333333,
+        "critical_det": 0.8333333333333333,
+        "important_det": 0.6666666666666666,
+        "rest_det": 0.890909090909091,
+        "all_det": 0.8416666666666667
+      },
+      "v11a": {
+        "false_alarm_other": 0.06666666666666667,
+        "critical_det": 0.8333333333333333,
+        "important_det": 0.6,
+        "rest_det": 0.890909090909091,
+        "all_det": 0.8291666666666666
+      }
+    },
+    "allowance_v10a": [
+      0.06,
+      0.03
+    ],
+    "allowance_v11a": [
+      0.04,
+      0.03
+    ],
+    "any_emergency_info": {
+      "v6b": [
+        7,
+        8
+      ],
+      "v10a": [
+        7,
+        8
+      ],
+      "v11a": [
+        7,
+        8
+      ]
+    }
+  },
+  "window": {
+    "frames": 3,
+    "rule": "mean of 3 consecutive YAMNet embeddings; mostly-silent windows = 0"
+  },
+  "clip_rule": "head fires if 2 consecutive windows are above its threshold (mode 'head_short': 1 window)",
+  "hybrid_rule": "per sound: head / head_short / mapping / head_or_mapping / head_and_mapping, then v1.9 priority, then the v2.0 output layer",
+  "train": {
+    "fsd_cap": {
+      "train": 200,
+      "val": 50,
+      "eval": 50
+    },
+    "fsd_cap_weak": {
+      "train": 400,
+      "val": 80,
+      "eval": 50
+    },
+    "weak": [
+      "alarm",
+      "bell",
+      "dog",
+      "phone_tone",
+      "rain",
+      "scream"
+    ],
+    "fsd_neg": {
+      "train": 1200,
+      "val": 250,
+      "eval": 250
+    },
+    "seed": 42,
+    "real_repeat": 3,
+    "best_epoch": 39,
+    "best_val_map": 0.6466655776496908,
+    "input_dropout": 0.2,
+    "dropout": 0.5,
+    "l2": 0.0001,
+    "lr": 0.0003,
+    "pos_weight_cap": 5,
+    "label_smoothing": 0.1,
+    "patience": 8
+  },
+  "fsd50k_repo": "Fhrozen/FSD50k"
+}
