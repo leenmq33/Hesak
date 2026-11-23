@@ -47,10 +47,9 @@ Configure the following variables:
 
 ```json
 {
-  "ELEVENLABS_API_KEY": "",
+"ELEVENLABS_API_KEY": "",
   "ELEVENLABS_VOICE_ID_MALE": "",
   "ELEVENLABS_VOICE_ID_FEMALE": "",
-  "OPENAI_API_KEY": "",
   "HESAK_SERVER_URL": "",
   "HESAK_SERVER_TOKEN": ""
 }
