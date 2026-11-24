@@ -91,6 +91,20 @@ class HesakConversationTitleService {
     return _cleanTitle(title);
   }
 
+  /// Makes [title] different from every title in [takenTitles]:
+  /// "موعد المستشفى" is taken -> "موعد المستشفى 2", then " 3" ...
+  /// Only the AI title gets a number; a name the user types is kept as is.
+  static String uniqueTitle(String title, Iterable<String> takenTitles) {
+    final Set<String> taken =
+    takenTitles.map((String t) => t.trim()).toSet();
+    if (!taken.contains(title)) return title;
+    int number = 2;
+    while (taken.contains('$title $number')) {
+      number++;
+    }
+    return '$title $number';
+  }
+
   /// Removes quotes / end punctuation and keeps the title short.
   /// A title made ONLY of symbols (e.g. "؟" or "!!") is kept as it is:
   /// the user typed just that, so that is the conversation's name.
@@ -119,7 +133,7 @@ RULES:
 - The topic or the situation, not a summary of every sentence.
 - Same language as the conversation. Arabic conversations get a simple,
   clear Arabic title (Saudi everyday words are fine).
-- No quotes, no emoji, no final punctuation.
+- No quotes, no final punctuation, and no emoji (except the emoji rule below).
 - Never start with "محادثة عن" / "حديث عن".
 - Keep it neutral and kind; never add details that were not said.
 - ALWAYS give a title, never an empty one.
@@ -130,7 +144,11 @@ RULES:
   topic.
 - Single letters, random letters, symbols or punctuation with no meaning
   (e.g. "م"، "؟"، "سشيبل"): the title is the text EXACTLY as written.
-  Only numbers get "أرقام". Only laughter or emoji get "ضحك ومزاح".
+  Only numbers get "أرقام".
+  Only laughter (هههه، 😂، 🤣) gets "ضحك ومزاح".
+  Any OTHER emoji is NOT laughter: name what it means in 1 to 2 words
+  (❤️ → "حب ومودة"، 👍 → "موافقة"، 😢 → "حزن"، 🎉 → "تهنئة"، ☕ → "قهوة").
+  If its meaning is not clear, the title is the emoji itself.
   A single name: the title is the name itself (e.g. "سارة").
 - Long text: name its main topic only.
 
@@ -179,6 +197,16 @@ Examples:
 😂😂
 </conversation>
 {"title": "ضحك ومزاح"}
+
+<conversation>
+👍
+</conversation>
+{"title": "موافقة"}
+
+<conversation>
+😢😢
+</conversation>
+{"title": "حزن"}
 
 <conversation>
 مساء الخير

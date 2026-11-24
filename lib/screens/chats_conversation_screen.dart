@@ -88,15 +88,15 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   AnimationController(vsync: this, duration: Duration(seconds: 1));
 
   bool _isListening = false;
-  
+
   /// Live words of the sentence still being spoken ('' = none).
   /// confirmed = heard the same twice (stays) · pending = last guesses (may change).
   String _liveConfirmed = '';
   String _livePending = '';
 
   /// false = show only confirmed words (a deaf user should not read guesses).
-    static const bool _showPendingWords = false;
-  
+  static const bool _showPendingWords = false;
+
   /// The person's current turn: sentences said with only short pauses between
   /// them stay in ONE card. A pause longer than [_turnGap] starts a new card.
   String _turnText = '';
@@ -286,12 +286,12 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
   void _stopSpeechToText() {
     setState(() => _isListening = false);
     _listeningBarsController.stop();
-        _demoTranscriptTimer?.cancel();
+    _demoTranscriptTimer?.cancel();
     _stopServerSpeechToText();
   }
 
   /// Stops the server stream; the live line goes away once the last text arrived.
-    void _stopServerSpeechToText() {
+  void _stopServerSpeechToText() {
     HesakSpeechToTextService.instance.stop().whenComplete(() {
       if (!mounted) return;
       _commitTurn(); // the last words become a message
@@ -363,7 +363,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
       _isListening = !_isListening;
       _conversation.markStarted(); // start time + 24h countdown begin here
     });
-        if (_isListening) {
+    if (_isListening) {
       _listeningBarsController.repeat();
       if (HesakSpeechToTextService.instance.isConnected) {
         _startRealSpeechToText(); // Faster-Whisper on the Hesak server
@@ -376,14 +376,14 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
       _stopServerSpeechToText();
     }
   }
-  
+
 
   /// Connects to the server; every finished sentence becomes a message on the left.
   Future<void> _startRealSpeechToText() async {
     try {
       await HesakSpeechToTextService.instance.start(
-               // The sentence is finished: the live line becomes a normal message.
-                // A sentence is finished: add it to the current card (same person, same turn).
+        // The sentence is finished: the live line becomes a normal message.
+        // A sentence is finished: add it to the current card (same person, same turn).
         onText: (String text) {
           if (!mounted) return;
           setState(() {
@@ -765,13 +765,26 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
       final String? title = await hesakRunOnline(
               () => service.suggestTitle(_textForTitle()));
       if (title == null) return; // Unusable reply: try with the next message
+
+      // Another conversation already has this title -> add a number
+      // ("موعد المستشفى 2"). If the list can't be loaded, keep the title.
+      final List<ChatsConversation>? all =
+      await ConversationService.instance.loadConversations();
+      final String uniqueTitle = all == null
+          ? title
+          : HesakConversationTitleService.uniqueTitle(
+          title,
+          all
+              .where((ChatsConversation c) => c.id != _conversation.id)
+              .map((ChatsConversation c) => c.title));
+
       // The user renamed it (or is renaming it) meanwhile -> keep their name.
       if (_conversation.title != currentTitle || _isEditingTitle) return;
 
       if (mounted) {
-        setState(() => _conversation.title = title);
+        setState(() => _conversation.title = uniqueTitle);
       } else {
-        _conversation.title = title; // Left meanwhile: the list shows it too
+        _conversation.title = uniqueTitle; // Left meanwhile: the list shows it too
       }
       // Left already, or saved: save now so the new title is kept.
       if (!mounted || _conversation.isSaved) {
@@ -919,10 +932,10 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
 
   /// Date separator + bubbles, or a hint when there are no messages yet.
   Widget _buildMessagesList() {
-      final List<ChatsMessage> messages = _conversation.messages;
-        // The open card = sentences of this turn + the words being said now.
+    final List<ChatsMessage> messages = _conversation.messages;
+    // The open card = sentences of this turn + the words being said now.
     final String liveText =
-        <String>[_turnText, _liveConfirmed].where((String s) => s.isNotEmpty).join(' ');
+    <String>[_turnText, _liveConfirmed].where((String s) => s.isNotEmpty).join(' ');
     final bool hasLiveWords =
         liveText.isNotEmpty || (_showPendingWords && _livePending.isNotEmpty);
 
@@ -949,7 +962,7 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
       if (i == 0 || !chatsIsSameDay(messages[i - 1].sentAt, messages[i].sentAt)) {
         items.add(messages[i].sentAt); // DateTime = date line
       }
-            items.add(messages[i]);
+      items.add(messages[i]);
     }
     if (hasLiveWords) items.add(_liveWordsMarker); // the sentence being spoken, last
 
@@ -962,12 +975,12 @@ class _ChatsConversationScreenState extends State<ChatsConversationScreen>
       separatorBuilder: (_, __) => SizedBox(height: 14),
       itemBuilder: (_, index) {
         final Object item = items[index];
-               if (item is DateTime) {
+        if (item is DateTime) {
           return _ChatsDateSeparator(label: chatsFormatDate(item));
         }
         if (identical(item, _liveWordsMarker)) {
           return _ChatsLiveBubble(
-                      confirmed: liveText,
+            confirmed: liveText,
             pending: _showPendingWords ? _livePending : '',
           );
         }
@@ -1412,7 +1425,7 @@ class _ChatsIncomingBubble extends StatelessWidget {
                     Row(
                       children: <Widget>[
                         if (isShowingClarified)
-                          // ---- "إخفاء النص الموضح" ----
+                        // ---- "إخفاء النص الموضح" ----
                           TextButton(
                             key: Key('chats_toggle_enhanced_${message.id}'),
                             onPressed: onToggleEnhancedText,
@@ -1429,7 +1442,7 @@ class _ChatsIncomingBubble extends StatelessWidget {
                             ),
                           )
                         else
-                          // ---- "✦ توضيح النص" (new, or saved one hidden) ----
+                        // ---- "✦ توضيح النص" (new, or saved one hidden) ----
                           _ChatsEnhanceChip(onPressed: onEnhance, isLoading: isEnhancing),
                         Spacer(),
                         Text(chatsFormatTime(message.sentAt),
@@ -2528,7 +2541,7 @@ class _ChatsLiveBubble extends StatelessWidget {
                 child: Text.rich(
                   TextSpan(children: <InlineSpan>[
                     TextSpan(text: confirmed, style: _chatsMessageTextStyle),
-                                      if (pending.isNotEmpty)
+                    if (pending.isNotEmpty)
                       TextSpan(
                         text: confirmed.isEmpty ? pending : ' $pending',
                         style: _chatsMessageTextStyle, // shown at once, same look as the rest
