@@ -2529,12 +2529,8 @@ class _ChatsLiveBubble extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Padding(
-                padding: EdgeInsetsDirectional.only(start: 8, bottom: 5),
-                child: Text('شخص يتكلم…',
-                    style: HesakTextStyles.chipLabel
-                        .copyWith(color: HesakColors.primaryMuted)),
-              ),
+            
+            
               _ChatsBubbleWithTail(
                 color: HesakColors.surface,
                 isTailOnLeft: true,
