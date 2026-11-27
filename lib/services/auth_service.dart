@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 import '../core/data/hesak_mode_store.dart';
@@ -484,12 +485,47 @@ class AuthService extends ChangeNotifier {
     required String code,
     required String newPassword,
   }) async {
+    // The new password must be different from the old one.
+    if (await _isSameAsOldPassword(code: code, password: newPassword)) {
+      return const AuthResult.failure('كلمة المرور الجديدة يجب أن تختلف عن القديمة');
+    }
     try {
       await _auth.confirmPasswordReset(code: code, newPassword: newPassword);
       pendingResetCode.value = null;
       return const AuthResult.success();
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(_arabicError(e.code));
+    }
+  }
+
+  /// true if [password] is the account's OLD password.
+  /// How: tries to sign in with it on a separate "check" Firebase app, so
+  /// whoever is signed in on this phone is not touched. Signs out right after.
+  /// Any other problem (no internet, too many tries...) -> false, so the
+  /// normal save goes on and shows its own error if needed.
+  Future<bool> _isSameAsOldPassword({
+    required String code,
+    required String password,
+  }) async {
+    final email = await checkResetCode(code); // The account's email
+    if (email == null) return false;
+    try {
+      final checkApp = Firebase.apps.any((a) => a.name == 'hesak_password_check')
+          ? Firebase.app('hesak_password_check')
+          : await Firebase.initializeApp(
+        name: 'hesak_password_check',
+        options: Firebase.app().options,
+      );
+      final checkAuth = FirebaseAuth.instanceFor(app: checkApp);
+      await checkAuth.signInWithEmailAndPassword(email: email, password: password);
+      await checkAuth.signOut();
+      return true; // Signed in -> same as the old password
+    } on FirebaseAuthException catch (e) {
+      debugPrint('🟢 [reset] old-password check: ${e.code}');
+      return false; // wrong-password / invalid-credential -> different password
+    } catch (e) {
+      debugPrint('🔴 [reset] old-password check: $e');
+      return false;
     }
   }
 

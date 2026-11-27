@@ -45,17 +45,68 @@ class AuthValidators {
   // name@domain.com — letters/numbers/._%+- before @, a dot in the domain.
   static final RegExp _emailPattern = RegExp(r'^[\w.%+-]+@[\w-]+(\.[\w-]+)+$');
 
+  /// Endings that are almost always a typo of ".com" (e.g. name@gmail.con).
+  static const Set<String> _typoEndings = {
+    'con', 'cmo', 'cm', 'om', 'comm', 'coom', 'vom', 'xom', 'ocm', 'cpm',
+  };
+
+  /// Big email providers and their only real domains.
+  /// name@gmail.co or name@hotmail.co is refused (should be .com).
+  static const Map<String, Set<String>> _knownProviders = {
+    'gmail': {'gmail.com'},
+    'googlemail': {'googlemail.com'},
+    'icloud': {'icloud.com'},
+    'hotmail': {'hotmail.com', 'hotmail.co.uk', 'hotmail.fr', 'hotmail.de', 'hotmail.it', 'hotmail.es'},
+    'outlook': {'outlook.com', 'outlook.sa', 'outlook.fr', 'outlook.de', 'outlook.es', 'outlook.it'},
+    'live': {'live.com', 'live.co.uk', 'live.fr', 'live.de', 'live.it', 'live.nl'},
+    'yahoo': {'yahoo.com', 'yahoo.co.uk', 'yahoo.fr', 'yahoo.de', 'yahoo.es', 'yahoo.it', 'yahoo.co.jp'},
+    'msn': {'msn.com'},
+  };
+
+  /// Common misspellings of gmail / hotmail / yahoo / outlook / icloud.
+  static const Set<String> _misspelledProviders = {
+    'gmial', 'gmai', 'gamil', 'gmal', 'gmaill', 'gnail', 'gmali', 'gmil', 'gimail', 'gemail',
+    'hotmial', 'hotmai', 'hotmal', 'hotamil', 'hotmil', 'hotmaill',
+    'yaho', 'yahooo', 'yhoo', 'yahho',
+    'outlok', 'outllok', 'outloo', 'otlook',
+    'iclod', 'icoud', 'iclould', 'icluod',
+  };
+
   /// true when the text looks like a real email.
-  static bool isValidEmail(String email) => _emailPattern.hasMatch(email.trim());
+  /// Also refuses typos like @gmail.co, @gmail.con, @gmial.com.
+  static bool isValidEmail(String email) {
+    final text = email.trim().toLowerCase();
+    if (!_emailPattern.hasMatch(text)) return false;
+
+    final domain = text.substring(text.lastIndexOf('@') + 1); // gmail.com
+    final parts = domain.split('.');
+    final provider = parts.first; // gmail
+    final ending = parts.last; // com
+
+    // The last part must be letters only, at least 2 (com, sa, net ...).
+    if (ending.length < 2 || !RegExp(r'^[a-z]+$').hasMatch(ending)) return false;
+
+    // ".con", ".cm", ".om" ... -> typo of ".com".
+    if (_typoEndings.contains(ending)) return false;
+
+    // "gmial", "hotmial" ... -> typo of a known provider.
+    if (_misspelledProviders.contains(provider)) return false;
+
+    // Known provider with a wrong ending: gmail.co, gmail.net, hotmail.co ...
+    final realDomains = _knownProviders[provider];
+    if (realDomains != null && !realDomains.contains(domain)) return false;
+
+    return true;
+  }
 
   /// The 5 password rules, each marked as met or not.
   static List<AuthPasswordRule> passwordRules(String password) => [
-        AuthPasswordRule('$minPasswordLength خانات على الأقل', password.length >= minPasswordLength),
-        AuthPasswordRule('حرف إنجليزي كبير (A-Z)', password.contains(RegExp(r'[A-Z]'))),
-        AuthPasswordRule('حرف إنجليزي صغير (a-z)', password.contains(RegExp(r'[a-z]'))),
-        AuthPasswordRule('رقم (0-9)', password.contains(RegExp(r'[0-9]'))),
-        AuthPasswordRule('رمز خاص مثل ! @ # \$ %', password.contains(RegExp(r'[^A-Za-z0-9\s]'))),
-      ];
+    AuthPasswordRule('$minPasswordLength خانات على الأقل', password.length >= minPasswordLength),
+    AuthPasswordRule('حرف إنجليزي كبير (A-Z)', password.contains(RegExp(r'[A-Z]'))),
+    AuthPasswordRule('حرف إنجليزي صغير (a-z)', password.contains(RegExp(r'[a-z]'))),
+    AuthPasswordRule('رقم (0-9)', password.contains(RegExp(r'[0-9]'))),
+    AuthPasswordRule('رمز خاص مثل ! @ # \$ %', password.contains(RegExp(r'[^A-Za-z0-9\s]'))),
+  ];
 
   /// true when the password meets ALL the rules.
   static bool isStrongPassword(String password) =>
@@ -64,11 +115,11 @@ class AuthValidators {
   // ARABIC letters and spaces only — no English, no numbers, no symbols.
   // \u0621-\u064A = Arabic letters, \u064B-\u0652 = harakat (تشكيل), \u0640 = ـ
   static final RegExp _arabicLettersPattern =
-      RegExp(r'^[\u0621-\u064A\u064B-\u0652\u0640 ]+$');
+  RegExp(r'^[\u0621-\u064A\u064B-\u0652\u0640 ]+$');
 
   // Arabic OR English letters and spaces — no numbers, no symbols.
   static final RegExp _arabicOrEnglishLettersPattern =
-      RegExp(r'^[\u0621-\u064A\u064B-\u0652\u0640A-Za-z ]+$');
+  RegExp(r'^[\u0621-\u064A\u064B-\u0652\u0640A-Za-z ]+$');
 
   /// Longest NAME (الاسم): 30 characters, spaces included.
   static const int maxNameLength = 30;
@@ -78,15 +129,15 @@ class AuthValidators {
 
   /// For the NAME fields: stops typing (and pasting) after [maxNameLength] characters.
   static List<TextInputFormatter> get nameInputFormatters => [
-        LengthLimitingTextInputFormatter(maxNameLength),
-      ];
+    LengthLimitingTextInputFormatter(maxNameLength),
+  ];
 
   /// For the CALL NAME fields: spaces can't be typed, and typing stops after
   /// [maxCallNameLength] letters.
   static List<TextInputFormatter> get callNameInputFormatters => [
-        FilteringTextInputFormatter.deny(RegExp(r'\s')),
-        LengthLimitingTextInputFormatter(maxCallNameLength),
-      ];
+    FilteringTextInputFormatter.deny(RegExp(r'\s')),
+    LengthLimitingTextInputFormatter(maxCallNameLength),
+  ];
 
   /// Why the user's NAME is not OK, or null when it's fine.
   /// Rules: not empty, Arabic or English letters only, at least 2 letters,
@@ -354,10 +405,10 @@ class AuthPrimaryButton extends StatelessWidget {
           ),
           child: isLoading
               ? SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2.5, color: HesakColors.onPrimary),
-                )
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2.5, color: HesakColors.onPrimary),
+          )
               : Text(label, style: labelStyle ?? HesakTextStyles.buttonLabel),
         ),
       ),
