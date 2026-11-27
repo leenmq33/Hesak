@@ -219,8 +219,107 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  // ---------------------------------------------------------------------
+  // After تغيير البريد: show the new email right away
+  // ---------------------------------------------------------------------
+
+  /// true = Firebase ended the session and we could not log in again by
+  /// ourselves -> the main shell sends the user to تسجيل الدخول.
+  final ValueNotifier<bool> sessionEnded = ValueNotifier<bool>(false);
+
+  /// A short message for a toast (e.g. "تم تحديث بريدك الإلكتروني").
+  /// The main shell shows it, then sets it back to null.
+  final ValueNotifier<String?> accountToast = ValueNotifier<String?>(null);
+
+  /// The current password typed in "تغيير البريد", kept ONLY in memory (never
+  /// saved) until the link is opened. Firebase ends the session when the email
+  /// changes, so we use it once to log in again with the NEW email by ourselves.
+  String? _emailChangePassword;
+
+  /// The new email asked for in "تغيير البريد" (null = none).
+  String? _emailChangeTarget;
+
+  void _forgetEmailChange() {
+    _emailChangePassword = null;
+    _emailChangeTarget = null;
+  }
+
+  /// The refresh running right now (so two calls don't log in twice).
+  Future<bool>? _refreshRun;
+
+  /// Asks Firebase for the latest account info. Called when the app comes back
+  /// from the background, and right after the email-change link is applied.
+  /// Returns false when the session ended and the user must log in again.
+  /// No internet / other problems -> true (nothing changes).
+  Future<bool> refreshAccount() {
+    return _refreshRun ??= _refreshAccountNow().whenComplete(() => _refreshRun = null);
+  }
+
+  Future<bool> _refreshAccountNow() async {
+    // An email-change link may be applying right now: wait for it first.
+    final Future<void>? pendingChange = _emailChangeApply;
+    if (pendingChange != null) await pendingChange;
+
+    final user = _auth.currentUser;
+    if (user == null) return true;
+    try {
+      await user.reload();
+      await user.getIdToken(true); // Fails if Firebase ended the session
+      _showNewEmailIfChanged(_auth.currentUser);
+      return true;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('🔴 [account] ${e.code}');
+      const sessionEndedCodes = {'user-token-expired', 'invalid-user-token', 'user-not-found', 'user-disabled'};
+      if (!sessionEndedCodes.contains(e.code)) return true;
+      return _logInAgainAfterEmailChange();
+    } catch (e) {
+      debugPrint('🔴 [account] $e');
+      return true;
+    }
+  }
+
+  /// The email changed and Firebase ended the session: log in again with the
+  /// NEW email + the password typed in "تغيير البريد", so the user stays inside
+  /// the app. Not possible (e.g. the app was closed meanwhile) -> log out.
+  Future<bool> _logInAgainAfterEmailChange() async {
+    final String? email = _emailChangeTarget;
+    final String? password = _emailChangePassword;
+    _forgetEmailChange();
+    if (email != null && password != null) {
+      try {
+        final cred = await _auth.signInWithEmailAndPassword(email: email, password: password);
+        await _loadProfile(cred.user!); // currentEmail + Firestore copy = new email
+        debugPrint('🟢 [account] logged in again with the new email');
+        accountToast.value = 'تم تحديث بريدك الإلكتروني';
+        return true;
+      } catch (e) {
+        debugPrint('🔴 [account] log in again failed: $e');
+      }
+    }
+    await logOut();
+    return false;
+  }
+
+  /// Shows the new email in الإعدادات and keeps Firestore's copy in sync.
+  void _showNewEmailIfChanged(User? user) {
+    final String? newEmail = user?.email;
+    // currentEmail == null -> the profile isn't loaded yet (app start): not a change.
+    if (user == null || newEmail == null || currentEmail == null || newEmail == currentEmail) return;
+    debugPrint('🟢 [account] email changed -> $newEmail');
+    currentEmail = newEmail;
+    _forgetEmailChange();
+    notifyListeners();
+    accountToast.value = 'تم تحديث بريدك الإلكتروني';
+    unawaited(
+      _userDoc(user.uid)
+          .update({'email': newEmail})
+          .catchError((e) => debugPrint('email sync error: $e')),
+    );
+  }
+
   /// Signs the user out and forgets their info on this phone.
   Future<void> logOut() async {
+    _forgetEmailChange();
     await _auth.signOut();
     currentUserName = null;
     currentEmail = null;
@@ -420,6 +519,49 @@ class AuthService extends ChangeNotifier {
       pendingResetCode.value = code;
     } else if (mode == 'verifyEmail' && code != null) {
       _emailLinkCheck = _applyEmailVerification(code);
+    } else if ((mode == 'verifyAndChangeEmail' || mode == 'recoverEmail') && code != null) {
+      // تغيير البريد: the link from the email opened the app.
+      _handleEmailChangeLink(code);
+    }
+  }
+
+  /// The email-change link being applied right now (null = none).
+  Future<void>? _emailChangeApply;
+
+  /// Applies the email-change code (the email changes in Firebase here),
+  /// then updates the app right away: new email in الإعدادات + a toast.
+  Future<void> _handleEmailChangeLink(String code) async {
+    final Future<void> apply = _applyEmailChange(code);
+    _emailChangeApply = apply;
+    await apply;
+    _emailChangeApply = null;
+    if (_auth.currentUser == null) return; // Nobody signed in on this phone
+    // A refresh that started BEFORE the change would miss it: let it finish first.
+    final Future<bool>? running = _refreshRun;
+    if (running != null) await running;
+    final bool isStillSignedIn = await refreshAccount();
+    if (!isStillSignedIn) sessionEnded.value = true;
+  }
+
+  Future<void> _applyEmailChange(String code) async {
+    try {
+      // Which email the account will have after this link (to log in again).
+      final info = await _auth.checkActionCode(code);
+      final String? linkEmail = info.data['email'] as String?;
+      if (linkEmail != null) _emailChangeTarget = linkEmail;
+      await _auth.applyActionCode(code);
+      debugPrint('🟢 [email change] applied from the link -> $linkEmail');
+    } on FirebaseAuthException catch (e) {
+      debugPrint('🔴 [email change] ${e.code}'); // e.g. the link was used already
+      _forgetEmailChange();
+      if (e.code == 'email-already-in-use') {
+        // Someone made an account with this email after the link was sent.
+        accountToast.value = 'لم يتم تغيير البريد: هذا البريد مسجّل بحساب آخر';
+      } else if (e.code == 'expired-action-code' || e.code == 'invalid-action-code') {
+        accountToast.value = 'الرابط منتهي أو استُخدم من قبل، اطلب رابطًا جديدًا';
+      }
+    } catch (e) {
+      debugPrint('🔴 [email change] $e');
     }
   }
 
@@ -659,9 +801,18 @@ class AuthService extends ChangeNotifier {
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(_wrongCurrentPassword(e.code));
     }
+    // Refuse an email that already has an account (Firebase doesn't refuse
+    // it by itself when sending the link). Works because "Email enumeration
+    // protection" is OFF in Firebase Console (Authentication > Settings).
+    if (await _emailHasAccount(newEmail.trim())) {
+      return const AuthResult.failure('هذا البريد الإلكتروني مسجّل بحساب آخر');
+    }
     try {
       await _auth.setLanguageCode('ar');
       await user.verifyBeforeUpdateEmail(newEmail.trim());
+      // Kept in memory only, to log in again by ourselves after the link.
+      _emailChangeTarget = newEmail.trim();
+      _emailChangePassword = currentPassword;
       return const AuthResult.success();
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(_arabicError(e.code));
@@ -671,6 +822,47 @@ class AuthService extends ChangeNotifier {
   // ---------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------
+
+  /// true if [email] already has a Hesak account (verified or not).
+  /// How: on the separate "check" Firebase app (whoever is signed in on this
+  /// phone is not touched), tries to CREATE an account with this email:
+  ///  - Firebase says "email-already-in-use" -> the email has an account.
+  ///  - It works -> the email is free: the test account is deleted right away.
+  /// Firebase always gives this answer (also with Email enumeration protection).
+  /// Other problems (no internet...) -> false, and Firebase still refuses it
+  /// later when the link is opened (see _applyEmailChange).
+  Future<bool> _emailHasAccount(String email) async {
+    final checkAuth = FirebaseAuth.instanceFor(app: await _checkApp());
+    try {
+      final cred = await checkAuth.createUserWithEmailAndPassword(
+        email: email,
+        // Strong random password (passes the password policy). Never used.
+        password: 'Hk!${DateTime.now().microsecondsSinceEpoch}aZ9',
+      );
+      await cred.user?.delete(); // Free email: remove the test account now
+      debugPrint('🟢 [email change] account check: email is free');
+      return false;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('🟢 [email change] account check: ${e.code}');
+      return e.code == 'email-already-in-use';
+    } catch (e) {
+      debugPrint('🔴 [email change] account check: $e');
+      return false;
+    } finally {
+      try {
+        await checkAuth.signOut();
+      } catch (_) {}
+    }
+  }
+
+  /// A second Firebase app used only for checks (old password, email taken),
+  /// so the signed-in user on this phone never changes.
+  Future<FirebaseApp> _checkApp() async {
+    const name = 'hesak_password_check';
+    return Firebase.apps.any((a) => a.name == name)
+        ? Firebase.app(name)
+        : await Firebase.initializeApp(name: name, options: Firebase.app().options);
+  }
 
   /// Reads users/{uid} from Firestore into the fields above.
   Future<void> _loadProfile(User user) async {
@@ -753,7 +945,7 @@ class AuthService extends ChangeNotifier {
   String _arabicError(String code) {
     switch (code) {
       case 'email-already-in-use':
-        return 'هذا البريد الإلكتروني مسجّل مسبقًا';
+        return 'هذا البريد الإلكتروني مسجّل بحساب آخر';
       case 'invalid-email':
         return 'البريد الإلكتروني غير صحيح';
       case 'weak-password':
