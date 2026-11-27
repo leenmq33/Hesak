@@ -9,6 +9,7 @@ import '../services/auth_service.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/hesak_tab_scroll.dart';
 import '../widgets/hesak_toast.dart';
+import 'auth/auth_flow_screen.dart';
 import 'chats_screen.dart';
 import 'home_screen.dart';
 import 'modes_screen.dart';
@@ -73,11 +74,32 @@ class _HesakMainShellState extends State<HesakMainShell> with WidgetsBindingObse
     // Watches the internet (conversations use it). Listening stays on without
     // internet: only the speech-to-text inside a conversation stops.
     HesakConnection.instance.start();
+    _checkAccount();
+    // After تغيير البريد (the link was opened): toast / back to تسجيل الدخول.
+    AuthService.instance.accountToast.addListener(_showAccountToast);
+    AuthService.instance.sessionEnded.addListener(_onSessionEnded);
+  }
+
+  void _showAccountToast() {
+    final String? message = AuthService.instance.accountToast.value;
+    if (message == null) return;
+    AuthService.instance.accountToast.value = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) showHesakToast(context, message, icon: Icons.mark_email_read_outlined);
+    });
+  }
+
+  void _onSessionEnded() {
+    if (!AuthService.instance.sessionEnded.value) return;
+    AuthService.instance.sessionEnded.value = false;
+    _goToLogIn();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    AuthService.instance.accountToast.removeListener(_showAccountToast);
+    AuthService.instance.sessionEnded.removeListener(_onSessionEnded);
     _scheduleMessagesSubscription?.cancel();
     super.dispose();
   }
@@ -85,7 +107,32 @@ class _HesakMainShellState extends State<HesakMainShell> with WidgetsBindingObse
   // Back from the background -> a period may have started or ended meanwhile.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _modeStore.checkSchedule();
+    if (state == AppLifecycleState.resumed) {
+      _modeStore.checkSchedule();
+      _checkAccount(); // The email may have changed from the link (تغيير البريد)
+    }
+  }
+
+  /// Gets the latest email from Firebase. If Firebase ended the session
+  /// (after the email changed), goes to the welcome screen to log in again.
+  Future<void> _checkAccount() async {
+    final bool isStillSignedIn = await AuthService.instance.refreshAccount();
+    if (isStillSignedIn || !mounted) return;
+    _goToLogIn();
+  }
+
+  /// The session ended after تغيير البريد: welcome screen + log in again.
+  void _goToLogIn() {
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      PageRouteBuilder(
+        transitionDuration: Duration(milliseconds: 500),
+        pageBuilder: (_, __, ___) =>
+            HesakAuthFlowScreen(startMessage: 'تم تغيير بريدك الإلكتروني، سجّل الدخول بالبريد الجديد'),
+        transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
+      ),
+          (_) => false,
+    );
   }
 
   @override
